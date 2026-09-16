@@ -10,13 +10,13 @@ MAKEFILE_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 TARGET := $(abspath $(MAKEFILE_DIR)/../../build-x360/melee360-test)
 BUILD := build
 SOURCES := ../../src/common ../../src/xbox360 .
-INCLUDES := ../../src/common
+INCLUDES := ../../src/common ../../build-x360
 
 CFLAGS := -g -O2 -Wall -Wextra $(MACHDEP) $(INCLUDE) \
           -DM360_BUILD_ID=\"$(shell git -C $(MAKEFILE_DIR)/../.. rev-parse --short HEAD 2>/dev/null || echo working-tree)\"
 CXXFLAGS := $(CFLAGS)
 LDFLAGS = -g $(MACHDEP) -Wl,--gc-sections -Wl,-Map,$(OUTPUT).map
-LIBS := -lxenon -lm
+LIBS := -lxenon -lm -lfat
 LIBDIRS :=
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))

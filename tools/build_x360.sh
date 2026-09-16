@@ -8,6 +8,7 @@ stage() { printf '\n[M360][BUILD] %s\n' "$*"; }
 fail() { printf '[M360][BUILD][ERROR] %s\n' "$*" >&2; exit 1; }
 
 mkdir -p "$ROOT/build-x360" "$ROOT/dist"
+"$ROOT/tools/generate_xenos_shaders.sh"
 
 DOCKER=()
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
