@@ -1,6 +1,7 @@
 # Proprietary game images and extracted game data
 *.iso
 *.gcm
+*.bin
 game/*
 !game/.gitkeep
 
