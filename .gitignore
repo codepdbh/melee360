@@ -1,0 +1,32 @@
+# Proprietary game images and extracted game data
+*.iso
+*.gcm
+game/*
+!game/.gitkeep
+
+# Generated build products
+build*/
+dist/*
+!dist/.gitkeep
+
+# Toolchain/local environment
+.env
+.devkitxenon
+*.elf
+*.elf32
+*.map
+*.o
+*.a
+
+# Editor and OS files
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Upstream repositories are independently versioned and pinned in docs/UPSTREAMS.md
+upstream/
+third_party/
+reference/
+tools/xenon-emulator/
