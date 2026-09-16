@@ -1,0 +1,72 @@
+diff --git a/Xenon/Core/XeMain.cpp b/Xenon/Core/XeMain.cpp
+index dc7ec6d..c220c05 100644
+--- a/Xenon/Core/XeMain.cpp
++++ b/Xenon/Core/XeMain.cpp
+@@ -186,6 +186,11 @@ void XeMain::Reboot(u32 type) {
+ void XeMain::ReloadFiles() {
+   if (!GetCPU())
+     return;
++  if (Config::xcpu.elfLoader) {
++    ShutdownCPU();
++    StartCPU();
++    return;
++  }
+   GetCPU()->Halt();
+   // Reset the SFCX
+   sfcx = std::make_shared<STRIP_UNIQUE(sfcx)>("SFCX", SFCX_DEV_SIZE, Config::filepaths.nand, pciBridge.get(), ram.get());
+@@ -248,27 +253,44 @@ void XeMain::CreatePCIDevices(RAM *ram) {
+   ethernet = std::make_shared<STRIP_UNIQUE(ethernet)>("ETHERNET", ETHERNET_DEV_SIZE, pciBridge.get(), ram);
+   pciBridge->AddPCIDevice(ethernet);
+ 
+-  sfcx = std::make_shared<STRIP_UNIQUE(sfcx)>("SFCX", SFCX_DEV_SIZE, Config::filepaths.nand, pciBridge.get(), ram);
+-  if (sfcx->hasInitialised) {
+-    pciBridge->AddPCIDevice(sfcx);
+-    nand = std::make_shared<STRIP_UNIQUE(nand)>("NAND", sfcx.get());
++  // Direct ELF execution bypasses the retail boot chain, so it neither needs
++  // nor should try to start an SFCX device backed by a NAND image.
++  if (Config::xcpu.elfLoader) {
++    LOG_INFO(Xenon, "Direct ELF loader enabled: skipping SFCX/NAND.");
++    sfcx.reset();
++    nand.reset();
++  } else {
++    sfcx = std::make_shared<STRIP_UNIQUE(sfcx)>("SFCX", SFCX_DEV_SIZE, Config::filepaths.nand, pciBridge.get(), ram);
++    if (sfcx->hasInitialised) {
++      pciBridge->AddPCIDevice(sfcx);
++      nand = std::make_shared<STRIP_UNIQUE(nand)>("NAND", sfcx.get());
++      sfcx->Start();
++    } else {
++      sfcx.reset();
++      nand.reset();
++    }
+   }
+ 
+   xma = std::make_shared<STRIP_UNIQUE(xma)>("XMA", XMA_DEV_SIZE);
+   pciBridge->AddPCIDevice(xma);
+ 
+-  odd = std::make_shared<STRIP_UNIQUE(odd)>("CDROM", ODD_DEV_SIZE, pciBridge.get(), ram);
+-  pciBridge->AddPCIDevice(odd);
++  if (!Config::xcpu.elfLoader) {
++    odd = std::make_shared<STRIP_UNIQUE(odd)>("CDROM", ODD_DEV_SIZE, pciBridge.get(), ram);
++    pciBridge->AddPCIDevice(odd);
+ 
+-  hdd = std::make_shared<STRIP_UNIQUE(hdd)>("HDD", HDD_DEV_SIZE, pciBridge.get(), ram);
+-  pciBridge->AddPCIDevice(hdd);
++    hdd = std::make_shared<STRIP_UNIQUE(hdd)>("HDD", HDD_DEV_SIZE, pciBridge.get(), ram);
++    pciBridge->AddPCIDevice(hdd);
++  } else {
++    LOG_INFO(Xenon, "Direct ELF loader enabled: skipping ODD/HDD.");
++    odd.reset();
++    hdd.reset();
++  }
+ 
+   smcCore = std::make_shared<STRIP_UNIQUE(smcCore)>("SMC", SMC_DEV_SIZE, pciBridge.get());
+   pciBridge->AddPCIDevice(smcCore);
+ 
+-  sfcx->Start();
+ }
+ 
+ Xe::XCPU::XenonCPU *XeMain::GetCPU() {
+   return xenonCPU.get();
+-}
+\ No newline at end of file
++}
