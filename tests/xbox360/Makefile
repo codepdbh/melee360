@@ -13,7 +13,7 @@ SOURCES := ../../src/common ../../src/xbox360 .
 INCLUDES := ../../src/common
 
 CFLAGS := -g -O2 -Wall -Wextra $(MACHDEP) $(INCLUDE) \
-          -DM360_BUILD_ID=\"$(shell git -C ../.. rev-parse --short HEAD 2>/dev/null || echo working-tree)\"
+          -DM360_BUILD_ID=\"$(shell git -C $(MAKEFILE_DIR)/../.. rev-parse --short HEAD 2>/dev/null || echo working-tree)\"
 CXXFLAGS := $(CFLAGS)
 LDFLAGS = -g $(MACHDEP) -Wl,--gc-sections -Wl,-Map,$(OUTPUT).map
 LIBS := -lxenon -lm
