@@ -7,13 +7,29 @@
 #include <usb/usbmain.h>
 #include <xenon_soc/xenon_power.h>
 #include <ppc/timebase.h>
+#include <xenos/xe.h>
+#include <xenos/edram.h>
 #include <xenos/xenos.h>
 #include <console/console.h>
+
+#ifndef M360_DISABLE_VIDEO
+static struct XenosDevice m360_xenos_device;
+#endif
 
 int platform_init(void)
 {
 #ifndef M360_DISABLE_VIDEO
+    struct XenosSurface *framebuffer;
+
     xenos_init(VIDEO_MODE_AUTO);
+    Xe_Init(&m360_xenos_device);
+    framebuffer = Xe_GetFramebufferSurface(&m360_xenos_device);
+    Xe_SetRenderTarget(&m360_xenos_device, framebuffer);
+    edram_init(&m360_xenos_device);
+    Xe_InvalidateState(&m360_xenos_device);
+    Xe_SetClearColor(&m360_xenos_device, 0x101828ff);
+    Xe_Resolve(&m360_xenos_device);
+    Xe_Sync(&m360_xenos_device);
     console_init();
 #endif
     xenon_make_it_faster(XENON_SPEED_FULL);

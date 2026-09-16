@@ -5,9 +5,9 @@
 - M2 Toolchain functional: complete (official Free60 Docker image)
 - M3 Official example compiled: complete (`xenon-examples/template`)
 - M4 Hello World / platform test ELF: complete, awaiting hardware execution
-- M5 Framebuffer: next
+- M5 Framebuffer: compiled using the verified Xenos example sequence; hardware test pending
+- M6 Triangle: next
 
 The platform test currently compiles CPU/endian reporting, aligned memory,
 video/console initialization, USB initialization, and controller A/Y/Guide
 handling. Filesystem and audio are deliberately marked pending.
-
