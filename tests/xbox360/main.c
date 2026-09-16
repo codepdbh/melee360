@@ -1,5 +1,6 @@
 #include "platform.h"
 #include "m360_log.h"
+#include "gcm.h"
 
 #include <melee/lb/lbtime.h>
 
@@ -56,10 +57,30 @@ int main(void)
     printf("FILESYSTEM ........ %s\n", fs_ready ? "OK" : "FAIL");
     printf("AUDIO ............. %s\n\n", audio_ready ? "OK" : "DISABLED/FAIL");
     printf("BUILD ............. %s\n\n", M360_BUILD_ID);
-    if (fs_ready && platform_find_melee_iso(iso_path, sizeof(iso_path), game_id, &revision))
+    if (fs_ready && platform_find_melee_iso(iso_path, sizeof(iso_path), game_id, &revision)) {
+        struct m360_gcm gcm;
+        struct m360_gcm_file banner;
+        FILE *image;
+
         M360_LOG_FS("found %s Game ID=%s revision=%u", iso_path, game_id, revision);
-    else
+        image = fopen(iso_path, "rb");
+        if (image && m360_gcm_mount(&gcm, image) == 0) {
+            if (m360_gcm_find(&gcm, "opening.bnr", &banner))
+                M360_LOG_FS("GCM FST entries=%lu opening.bnr offset=%lu size=%lu",
+                            (unsigned long)gcm.entry_count,
+                            (unsigned long)banner.offset,
+                            (unsigned long)banner.size);
+            else
+                M360_LOG_FS("GCM mounted but opening.bnr was not found");
+            m360_gcm_unmount(&gcm);
+        } else {
+            M360_LOG_FS("failed to mount GCM filesystem");
+        }
+        if (image)
+            fclose(image);
+    } else {
         M360_LOG_FS("GALE01 ISO not found in known read-only locations");
+    }
     if (audio_ready) {
         M360_LOG_AUDIO("playing 440 Hz PCM test tone");
         platform_audio_test_tone();

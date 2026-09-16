@@ -12,6 +12,7 @@
 - M9 Filesystem: FAT/device discovery and read-only ISO header probe compiled; hardware test pending
 - M10 ISO located and validated: complete on host; target-side validation awaits hardware media
 - M11 First reconstructed Melee module integrated: complete (`melee/lb/lbtime.c`)
+- M12 GameCube FST reader: complete; validated against the legal GALE01 image
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
@@ -25,3 +26,8 @@ The Xbox build now compiles `lbtime.c` directly from the pinned `melee-pc`
 checkout. A LibXenon adapter supplies the Dolphin OS tick/calendar boundary,
 and the platform test executes three original saturation helpers before
 reporting `MELEE LBTIME ...... LINKED/OK`.
+
+The portable GCM reader mounts the filesystem table directly from a raw ISO,
+resolves nested paths, bounds-checks names and reads file extents. Its host
+test validated 1,212 entries and the `BNR1` header of `opening.bnr`; the same
+implementation is linked into the Xbox 360 ELF.
