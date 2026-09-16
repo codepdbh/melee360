@@ -1,6 +1,8 @@
 #include "platform.h"
 #include "m360_log.h"
 
+#include <melee/lb/lbtime.h>
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -37,6 +39,12 @@ int main(void)
     printf("POWERPC ........... OK\n");
     printf("ENDIAN ............ %s\n", endian_name());
     printf("MEMORY ............ %s\n", memory ? "OK" : "FAIL");
+    printf("MELEE LBTIME ...... %s\n",
+           lbTime_8000AEC8(0xFFFFFFF0u, 0x20u) == 0xFFFFFFFFu &&
+                   lbTime_8000AEE4(3u, -5) == 0u &&
+                   lbTime_8000AF74(0xFAu, 10) == 0xFFu
+               ? "LINKED/OK"
+               : "FAIL");
 #ifdef M360_DISABLE_VIDEO
     printf("VIDEO ............. DISABLED\n");
 #else

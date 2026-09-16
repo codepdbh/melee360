@@ -9,10 +9,13 @@ include $(DEVKITXENON)/rules
 MAKEFILE_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 TARGET := $(abspath $(MAKEFILE_DIR)/../../build-x360/melee360-test)
 BUILD := build
-SOURCES := ../../src/common ../../src/xbox360 .
-INCLUDES := ../../src/common ../../build-x360
+MELEE_PC := ../../upstream/melee-pc
+SOURCES := ../../src/common ../../src/xbox360 . $(MELEE_PC)/src/melee/lb
+INCLUDES := ../../src/common ../../build-x360 $(MELEE_PC)/src \
+            $(MELEE_PC)/extern/aurora/include
 
 CFLAGS := -g -O2 -Wall -Wextra $(MACHDEP) $(INCLUDE) \
+          -DTARGET_PC=1 -DMELEE_PC=1 \
           -DM360_BUILD_ID=\"$(shell git -C $(MAKEFILE_DIR)/../.. rev-parse --short HEAD 2>/dev/null || echo working-tree)\"
 CXXFLAGS := $(CFLAGS)
 LDFLAGS = -g $(MACHDEP) -Wl,--gc-sections -Wl,-Map,$(OUTPUT).map
@@ -23,7 +26,8 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 export OUTPUT := $(TARGET)
 export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 export DEPSDIR := $(CURDIR)/$(BUILD)
-CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CFILES := $(foreach dir,$(filter-out $(MELEE_PC)/src/melee/lb,$(SOURCES)),$(notdir $(wildcard $(dir)/*.c))) \
+          lbtime.c
 export OFILES := $(CFILES:.c=.o)
 export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
                   -I$(CURDIR)/$(BUILD) -I$(LIBXENON_INC)
