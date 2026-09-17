@@ -149,7 +149,7 @@ void BuildScene(bool meleeCodePassed)
     AddRect(g_panel, 715, 400, 230, 12);
 
     AddText(g_green, 62, 25, "MELEE360", 6);
-    AddText(g_white, 430, 38, "PLAYABLE XEX PROTOTYPE", 3);
+    AddText(g_white, 430, 38, "TEXTURED XEX PROTOTYPE", 3);
     AddText(g_cyan, 96, 151, "L STICK MOVE", 3);
     AddText(g_cyan, 406, 151, "A JUMP", 3);
     AddText(g_cyan, 625, 151, "X ATTACK", 3);
@@ -300,31 +300,19 @@ void RenderGame(SpriteRenderer& renderer, const GameState& game, DWORD now)
     const LONG x = static_cast<LONG>(game.playerX);
     const LONG y = static_cast<LONG>(game.playerY);
     DrawRect(renderer, x - 8, 568, 54, 7, D3DCOLOR_XRGB(0, 0, 0), 0.40f);
-    DrawRect(renderer, x + 7, y - 2, 24, 20,
-             D3DCOLOR_XRGB(232, 244, 255));
-    DrawRect(renderer, x + 2, y + 16, 34, 31,
-             D3DCOLOR_XRGB(48, 164, 234));
-    DrawRect(renderer, x - 4, y + 20, 8, 22,
-             D3DCOLOR_XRGB(92, 221, 255));
-    DrawRect(renderer, x + 35, y + 20, 8, 22,
-             D3DCOLOR_XRGB(92, 221, 255));
-    DrawRect(renderer, x + 5, y + 47, 11, 9,
-             D3DCOLOR_XRGB(107, 232, 52));
-    DrawRect(renderer, x + 23, y + 47, 11, 9,
-             D3DCOLOR_XRGB(107, 232, 52));
-    DrawRect(renderer, x + 12, y + 5, 4, 4,
-             D3DCOLOR_XRGB(14, 31, 55));
-    DrawRect(renderer, x + 23, y + 5, 4, 4,
-             D3DCOLOR_XRGB(14, 31, 55));
+    const SpriteColor white = { 1.0f, 1.0f, 1.0f, 1.0f };
+    renderer.AddSprite(static_cast<float>(x - 13), static_cast<float>(y - 8),
+                       65.0f, 64.0f, 8.0f / 128.0f, 0.0f,
+                       56.0f / 128.0f, 1.0f, white);
 
-    const BYTE red = static_cast<BYTE>(80 + (game.damage * 175) / 255);
+    const float damageTint = static_cast<float>(game.damage) / 637.5f;
+    const SpriteColor targetTint = {
+        1.0f, 1.0f - damageTint, 1.0f - damageTint, 1.0f
+    };
     DrawRect(renderer, 840, 568, 66, 7, D3DCOLOR_XRGB(0, 0, 0), 0.40f);
-    DrawRect(renderer, 850, 510, 46, 64, D3DCOLOR_XRGB(red, 64, 90));
-    DrawRect(renderer, 844, 520, 8, 36, D3DCOLOR_XRGB(212, 79, 91));
-    DrawRect(renderer, 894, 520, 8, 36, D3DCOLOR_XRGB(212, 79, 91));
-    DrawRect(renderer, 858, 490, 30, 22, D3DCOLOR_XRGB(245, 190, 103));
-    DrawRect(renderer, 864, 497, 4, 4, D3DCOLOR_XRGB(35, 24, 35));
-    DrawRect(renderer, 878, 497, 4, 4, D3DCOLOR_XRGB(35, 24, 35));
+    renderer.AddSprite(849.0f, 510.0f, 48.0f, 64.0f,
+                       68.0f / 128.0f, 0.0f,
+                       116.0f / 128.0f, 1.0f, targetTint);
 
     if (now < game.attackUntil)
         DrawRect(renderer, x + 38, y + 22, 65, 18,

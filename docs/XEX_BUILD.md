@@ -90,3 +90,9 @@ Xbox 360 shader compiler. The generated microcode headers are placed under
 vertex declaration. It batches all UI glyphs, arena geometry, gradients and
 character primitives into one `D3DPT_QUADLIST` submission per frame with alpha
 blending. Only the initial back-buffer clear remains a D3D clear operation.
+
+The pixel shader now samples a `D3DFMT_LIN_A8R8G8B8` sprite atlas. For this
+repository milestone, the atlas is generated at runtime and contains original
+placeholder fighter and training-dummy artwork plus a white texel used for
+solid-color geometry. This validates UV coordinates, point sampling and alpha
+transparency without distributing copyrighted game artwork.

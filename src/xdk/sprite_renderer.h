@@ -20,6 +20,9 @@ public:
     void AddGradientQuad(float x, float y, float width, float height,
                          const SpriteColor& top,
                          const SpriteColor& bottom);
+    void AddSprite(float x, float y, float width, float height,
+                   float u0, float v0, float u1, float v1,
+                   const SpriteColor& tint);
     void End(IDirect3DDevice9* device);
     void Shutdown();
 
@@ -33,6 +36,8 @@ private:
         float green;
         float blue;
         float alpha;
+        float u;
+        float v;
     };
 
     static const unsigned kMaxQuads = 4096;
@@ -41,6 +46,7 @@ private:
     IDirect3DVertexShader9* vertexShader_;
     IDirect3DPixelShader9* pixelShader_;
     IDirect3DVertexDeclaration9* declaration_;
+    IDirect3DTexture9* atlas_;
 };
 
 #endif

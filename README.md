@@ -45,6 +45,7 @@ LibXenon implementations.
 | Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
 | XDK `default.xex` generation | ✅ PowerPC/D3D9 interactive prototype builds and passes `imagexex /DUMP` |
 | D3D9 shader/quads renderer | ✅ Runtime-batched 2D geometry with vertex/pixel shaders, gradients and alpha blending |
+| Textured sprite atlas | ✅ Runtime-generated legal placeholder art with UV sampling and transparency |
 | Native movement/jump/attack sandbox | ✅ Running in Xenia Canary with controller and keyboard input |
 | Melee menus and gameplay | 🚧 Not implemented yet |
 
