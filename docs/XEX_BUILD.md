@@ -40,10 +40,12 @@ Build the native D3D9 bootstrap from PowerShell:
 ./tools/build_xex.ps1
 ```
 
-This produces `dist/default.xex`. The initial bootstrap renders a MELEE360
-status screen, an animated progress bar and controller-exit handling. It is a
-real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`; it is not the
-full game yet.
+This produces `dist/default.xex`. The current interactive bootstrap renders a
+small D3D9 arena with player movement, jumping, gravity, a training dummy,
+damage, attacking and reset handling. The damage path directly compiles and
+links the original `upstream/melee-pc/src/melee/lb/lbtime.c` source through a
+small XDK time compatibility layer. It is a real Xbox 360 PowerPC XEX importing
+`xam.xex` and `xboxkrnl.exe`; it is not the full game yet.
 
 Run it with a local Xenia Canary build:
 
@@ -51,5 +53,18 @@ Run it with a local Xenia Canary build:
 ./tools/run_xenia.ps1 -XeniaPath C:\path\to\xenia_canary.exe
 ```
 
-Game subsystems will be moved behind the shared platform boundary
-incrementally after this bootstrap is validated in Xenia.
+The launcher enables Xenia's keyboard-as-controller mode. Default Canary
+bindings for the prototype are:
+
+- `A` / `D`: move
+- `;`: jump (Xbox A)
+- `L`: attack (Xbox X)
+- `X`: reset (Start)
+- `P`: exit (Xbox Y)
+
+An Xbox-compatible controller uses the left stick or D-pad, A, X, Start and Y.
+Pass `-DisableKeyboard` if keyboard emulation should remain disabled.
+
+This arena is a native input/physics/rendering integration milestone, not a
+claim that Melee gameplay has been ported. Game subsystems will continue to
+move behind the shared platform boundary incrementally.

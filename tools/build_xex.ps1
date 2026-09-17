@@ -15,16 +15,23 @@ $includeXbox = Join-Path $xedk 'include\xbox'
 $includeSys = Join-Path $xedk 'include\xbox\sys'
 $libXbox = Join-Path $xedk 'lib\xbox'
 $source = Join-Path $root 'src\xdk\main.cpp'
+$compatSource = Join-Path $root 'src\xdk\melee_time_compat.cpp'
+$compatHeader = Join-Path $root 'src\xdk\melee_xdk_compat.h'
+$lbtimeSource = Join-Path $root 'upstream\melee-pc\src\melee\lb\lbtime.c'
 $build = Join-Path $root 'build-x360\xdk'
 $dist = Join-Path $root 'dist'
 $object = Join-Path $build 'main.obj'
+$compatObject = Join-Path $build 'melee_time_compat.obj'
+$lbtimeObject = Join-Path $build 'lbtime.obj'
 $pe = Join-Path $build 'melee360.exe'
 $pdb = Join-Path $build 'melee360.pdb'
 $xex = Join-Path $dist 'default.xex'
 
 foreach ($required in @($compiler, $linker, $imagexex,
                          (Join-Path $includeXbox 'xtl.h'),
-                         (Join-Path $libXbox 'xboxkrnl.lib'))) {
+                         (Join-Path $libXbox 'xboxkrnl.lib'),
+                         $source, $compatSource, $compatHeader,
+                         $lbtimeSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -41,11 +48,30 @@ $compileArgs = @(
 & $compiler $compileArgs
 if ($LASTEXITCODE -ne 0) { throw 'XDK compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK time compatibility layer'
+$compatArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/Fo$compatObject", $compatSource
+)
+& $compiler $compatArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK time compatibility compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc lbtime.c'
+$lbtimeArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$compatHeader",
+    "/Fo$lbtimeObject", $lbtimeSource
+)
+& $compiler $lbtimeArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original lbtime.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
-    $object, 'd3d9.lib', 'xapilib.lib', 'xboxkrnl.lib'
+    $object, $compatObject, $lbtimeObject,
+    'd3d9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs
 if ($LASTEXITCODE -ne 0) { throw 'XDK PE link failed.' }

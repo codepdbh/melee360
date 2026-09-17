@@ -11,8 +11,9 @@
 </div>
 
 > [!IMPORTANT]
-> MELEE360 is an early community porting project. It is **not playable yet**
-> and does not contain Nintendo game data.
+> MELEE360 is an early community porting project. It now has a **playable
+> native XEX technology demo**, but it is not yet a playable Melee port and
+> does not contain Nintendo game data.
 
 ## About
 
@@ -40,8 +41,9 @@ LibXenon implementations.
 | HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
 | Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
-| XDK `default.xex` generation | ✅ PowerPC/D3D9 bootstrap builds and passes `imagexex /DUMP` |
-| Menus and gameplay | 🚧 Not implemented yet |
+| XDK `default.xex` generation | ✅ PowerPC/D3D9 interactive prototype builds and passes `imagexex /DUMP` |
+| Native movement/jump/attack sandbox | ✅ Running in Xenia Canary with controller and keyboard input |
+| Melee menus and gameplay | 🚧 Not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal
 `GALE01` image on the USB drive it now opens `GmTtAll.dat`, runs the original

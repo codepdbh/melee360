@@ -1,8 +1,15 @@
 #include <xtl.h>
 
+extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
+extern "C" unsigned int lbTime_8000AEE4(unsigned int a, int b);
+extern "C" unsigned int lbTime_8000AF74(unsigned int a, int b);
+
 namespace {
 
 const unsigned kMaxRects = 4096;
+const float kFloorY = 574.0f;
+const float kPlayerWidth = 38.0f;
+const float kPlayerHeight = 56.0f;
 
 struct RectBatch {
     D3DRECT rects[kMaxRects];
@@ -10,11 +17,23 @@ struct RectBatch {
     D3DCOLOR color;
 };
 
+struct GameState {
+    float playerX;
+    float playerY;
+    float velocityX;
+    float velocityY;
+    bool grounded;
+    unsigned damage;
+    DWORD attackUntil;
+    WORD previousButtons;
+};
+
 RectBatch g_green = { {}, 0, D3DCOLOR_XRGB(107, 232, 52) };
 RectBatch g_cyan = { {}, 0, D3DCOLOR_XRGB(79, 203, 247) };
 RectBatch g_white = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
 RectBatch g_muted = { {}, 0, D3DCOLOR_XRGB(139, 158, 181) };
 RectBatch g_panel = { {}, 0, D3DCOLOR_XRGB(24, 39, 61) };
+RectBatch g_dynamic = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
 
 void AddRect(RectBatch& batch, LONG x, LONG y, LONG width, LONG height)
 {
@@ -102,26 +121,41 @@ void AddText(RectBatch& batch, LONG x, LONG y, const char* text, LONG scale)
     }
 }
 
-void BuildStatusScreen()
+void AddNumber(RectBatch& batch, LONG x, LONG y, unsigned value, LONG scale)
 {
-    AddRect(g_green, 0, 100, 1280, 5);
-    AddOutline(g_panel, 72, 160, 1136, 430, 3);
-    AddRect(g_cyan, 72, 160, 8, 430);
-    AddRect(g_panel, 112, 240, 1056, 2);
-    AddRect(g_panel, 112, 410, 1008, 28);
+    char text[4];
+    text[3] = '\0';
+    text[2] = static_cast<char>('0' + value % 10);
+    text[1] = value >= 10 ? static_cast<char>('0' + (value / 10) % 10) : ' ';
+    text[0] = value >= 100 ? static_cast<char>('0' + (value / 100) % 10) : ' ';
+    AddText(batch, x, y, text, scale);
+}
 
-    AddText(g_green, 72, 34, "MELEE360", 7);
-    AddText(g_white, 480, 50, "NATIVE XEX PORT", 3);
-    AddText(g_cyan, 112, 190, "POWERPC / D3D9 / XENIA", 4);
-    AddText(g_muted, 112, 275, "CPU", 3);
-    AddText(g_muted, 390, 275, "MEMORY", 3);
-    AddText(g_muted, 750, 275, "EXECUTABLE", 3);
-    AddText(g_green, 112, 315, "OK", 5);
-    AddText(g_green, 390, 315, "OK", 5);
-    AddText(g_green, 750, 315, "DEFAULT.XEX", 5);
-    AddText(g_white, 112, 480, "FIRST NATIVE XEX MILESTONE RUNNING", 3);
-    AddText(g_muted, 112, 535, "PRESS Y TO EXIT", 2);
-    AddText(g_muted, 72, 650, "MELEE360 CLEAN-ROOM PORT", 2);
+void BuildScene(bool meleeCodePassed)
+{
+    AddRect(g_green, 0, 86, 1280, 4);
+    AddOutline(g_panel, 62, 125, 1156, 500, 3);
+    AddRect(g_cyan, 62, 125, 7, 500);
+    AddRect(g_panel, 95, 236, 1090, 2);
+    AddRect(g_panel, 95, 574, 1090, 24);
+    AddRect(g_panel, 225, 460, 230, 12);
+    AddRect(g_panel, 715, 400, 230, 12);
+
+    AddText(g_green, 62, 25, "MELEE360", 6);
+    AddText(g_white, 430, 38, "PLAYABLE XEX PROTOTYPE", 3);
+    AddText(g_cyan, 96, 151, "L STICK MOVE", 3);
+    AddText(g_cyan, 406, 151, "A JUMP", 3);
+    AddText(g_cyan, 625, 151, "X ATTACK", 3);
+    AddText(g_cyan, 901, 151, "START RESET", 3);
+    AddText(g_muted, 96, 202,
+            meleeCodePassed ? "MELEE LBTIME LINKED: OK" : "MELEE LBTIME LINKED: FAIL",
+            2);
+    AddText(g_muted, 918, 202, "Y EXIT", 2);
+    AddText(g_muted, 610, 220,
+            "KEYBOARD A D MOVE / SEMICOLON JUMP / L ATTACK / X RESET / P EXIT",
+            1);
+    AddText(g_white, 952, 290, "DAMAGE", 2);
+    AddText(g_muted, 76, 672, "NATIVE POWERPC / D3D9 / ORIGINAL LBTIME.C", 2);
 }
 
 void RenderBatch(IDirect3DDevice9* device, const RectBatch& batch)
@@ -131,17 +165,108 @@ void RenderBatch(IDirect3DDevice9* device, const RectBatch& batch)
                       1.0f, 0);
 }
 
+void DrawRect(IDirect3DDevice9* device, LONG x, LONG y, LONG width,
+              LONG height, D3DCOLOR color)
+{
+    D3DRECT rect = { x, y, x + width, y + height };
+    device->Clear(1, &rect, D3DCLEAR_TARGET, color, 1.0f, 0);
+}
+
+void ResetGame(GameState& game)
+{
+    game.playerX = 145.0f;
+    game.playerY = kFloorY - kPlayerHeight;
+    game.velocityX = 0.0f;
+    game.velocityY = 0.0f;
+    game.grounded = true;
+    game.damage = 0;
+    game.attackUntil = 0;
+}
+
+void UpdateGame(GameState& game, const XINPUT_STATE& input, float elapsed,
+                DWORD now)
+{
+    const WORD buttons = input.Gamepad.wButtons;
+    const WORD pressed = static_cast<WORD>(buttons & ~game.previousButtons);
+    game.previousButtons = buttons;
+
+    if (pressed & XINPUT_GAMEPAD_START)
+        ResetGame(game);
+
+    float direction = 0.0f;
+    if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)
+        direction = -1.0f;
+    else if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT)
+        direction = 1.0f;
+    else if (input.Gamepad.sThumbLX < -7000)
+        direction = static_cast<float>(input.Gamepad.sThumbLX) / 32768.0f;
+    else if (input.Gamepad.sThumbLX > 7000)
+        direction = static_cast<float>(input.Gamepad.sThumbLX) / 32767.0f;
+
+    game.velocityX = direction * 0.36f;
+    if ((pressed & XINPUT_GAMEPAD_A) && game.grounded) {
+        game.velocityY = -0.72f;
+        game.grounded = false;
+    }
+
+    game.velocityY += 0.00175f * elapsed;
+    game.playerX += game.velocityX * elapsed;
+    game.playerY += game.velocityY * elapsed;
+
+    if (game.playerX < 96.0f)
+        game.playerX = 96.0f;
+    if (game.playerX > 1135.0f)
+        game.playerX = 1135.0f;
+    if (game.playerY + kPlayerHeight >= kFloorY) {
+        game.playerY = kFloorY - kPlayerHeight;
+        game.velocityY = 0.0f;
+        game.grounded = true;
+    }
+
+    const float playerCenter = game.playerX + kPlayerWidth * 0.5f;
+    if ((pressed & XINPUT_GAMEPAD_X) && playerCenter > 790.0f &&
+        playerCenter < 980.0f && game.playerY > 430.0f) {
+        game.damage = lbTime_8000AF74(game.damage, 8);
+        game.attackUntil = now + 130;
+    }
+}
+
+void RenderGame(IDirect3DDevice9* device, const GameState& game, DWORD now)
+{
+    const LONG x = static_cast<LONG>(game.playerX);
+    const LONG y = static_cast<LONG>(game.playerY);
+    DrawRect(device, x + 8, y, 22, 18, D3DCOLOR_XRGB(238, 244, 252));
+    DrawRect(device, x, y + 18, 38, 30, D3DCOLOR_XRGB(79, 203, 247));
+    DrawRect(device, x + 4, y + 48, 10, 8, D3DCOLOR_XRGB(107, 232, 52));
+    DrawRect(device, x + 24, y + 48, 10, 8, D3DCOLOR_XRGB(107, 232, 52));
+
+    const BYTE red = static_cast<BYTE>(80 + (game.damage * 175) / 255);
+    DrawRect(device, 850, 510, 46, 64, D3DCOLOR_XRGB(red, 83, 97));
+    DrawRect(device, 858, 493, 30, 20, D3DCOLOR_XRGB(238, 184, 96));
+
+    if (now < game.attackUntil)
+        DrawRect(device, x + 38, y + 22, 65, 18,
+                 D3DCOLOR_XRGB(255, 224, 94));
+
+    g_dynamic.count = 0;
+    AddNumber(g_dynamic, 1004, 326, game.damage, 5);
+    RenderBatch(device, g_dynamic);
+}
+
 } // namespace
 
 void __cdecl main()
 {
-    OutputDebugStringA("[M360][XEX] starting native XDK milestone\n");
+    OutputDebugStringA("[M360][XEX] starting playable native prototype\n");
+
+    const bool meleeCodePassed =
+        lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
+        lbTime_8000AEE4(4u, -10) == 0u &&
+        lbTime_8000AF74(250u, 8) == 255u;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
-    if (!d3d) {
-        OutputDebugStringA("[M360][XEX] Direct3DCreate9 failed\n");
+    if (!d3d)
         return;
-    }
 
     D3DPRESENT_PARAMETERS present;
     ZeroMemory(&present, sizeof(present));
@@ -158,20 +283,30 @@ void __cdecl main()
     HRESULT result = d3d->CreateDevice(0, D3DDEVTYPE_HAL, 0,
         D3DCREATE_HARDWARE_VERTEXPROCESSING, &present, &device);
     if (FAILED(result) || !device) {
-        OutputDebugStringA("[M360][XEX] D3D device creation failed\n");
         d3d->Release();
         return;
     }
 
-    BuildStatusScreen();
-    OutputDebugStringA("[M360][XEX] D3D status screen ready\n");
+    BuildScene(meleeCodePassed);
+    GameState game;
+    ZeroMemory(&game, sizeof(game));
+    ResetGame(game);
+    DWORD previousTick = GetTickCount();
 
     for (;;) {
+        const DWORD now = GetTickCount();
+        DWORD tickDelta = now - previousTick;
+        previousTick = now;
+        if (tickDelta > 33)
+            tickDelta = 33;
+
         XINPUT_STATE input;
         ZeroMemory(&input, sizeof(input));
-        if (XInputGetState(0, &input) == ERROR_SUCCESS &&
-            (input.Gamepad.wButtons & XINPUT_GAMEPAD_Y))
+        XInputGetState(0, &input);
+        if (input.Gamepad.wButtons & XINPUT_GAMEPAD_Y)
             break;
+
+        UpdateGame(game, input, static_cast<float>(tickDelta), now);
 
         device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(7, 12, 24),
                       1.0f, 0);
@@ -180,10 +315,7 @@ void __cdecl main()
         RenderBatch(device, g_white);
         RenderBatch(device, g_muted);
         RenderBatch(device, g_green);
-
-        D3DRECT progress = { 112, 410, 112 + 300 +
-            static_cast<LONG>((GetTickCount() / 8) % 500), 438 };
-        device->Clear(1, &progress, D3DCLEAR_TARGET, g_green.color, 1.0f, 0);
+        RenderGame(device, game, now);
         device->Present(0, 0, 0, 0);
     }
 

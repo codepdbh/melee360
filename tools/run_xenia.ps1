@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string] $XeniaPath = '',
-    [string] $XexPath = ''
+    [string] $XexPath = '',
+    [switch] $DisableKeyboard
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,6 +19,17 @@ if (-not (Test-Path -LiteralPath $XeniaPath)) {
 }
 if (-not (Test-Path -LiteralPath $XexPath)) {
     throw "Build the XEX first with tools/build_xex.ps1: $XexPath"
+}
+
+$xeniaDirectory = Split-Path -Parent $XeniaPath
+$xeniaConfig = Join-Path $xeniaDirectory 'xenia-canary.config.toml'
+if (-not $DisableKeyboard -and (Test-Path -LiteralPath $xeniaConfig)) {
+    $configText = Get-Content -Raw -LiteralPath $xeniaConfig
+    $updatedConfig = $configText -replace '(?m)^keyboard_mode\s*=\s*\d+', 'keyboard_mode = 1'
+    if ($updatedConfig -ne $configText) {
+        Set-Content -LiteralPath $xeniaConfig -Value $updatedConfig -Encoding UTF8
+        Write-Host '[M360][XENIA] keyboard controller enabled for user 0'
+    }
 }
 
 Write-Host "[M360][XENIA] emulator: $XeniaPath"
