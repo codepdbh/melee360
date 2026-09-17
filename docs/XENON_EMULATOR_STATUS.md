@@ -10,12 +10,12 @@ substitute for hardware validation.
 | Boot | Working for emulator-safe ELF | Not tested | Direct ELF loader reaches and executes `main()` without NAND |
 | Console | Working through emulated UART | Not tested | Full platform report is visible in the emulator log |
 | Memory | Working | Not tested | 128-byte aligned allocation and big-endian check pass |
-| Video | Not tested | Not tested | Uses `xenos_init(VIDEO_MODE_AUTO)` |
-| Xenos | Unknown | Not tested | Emulator README does not promise libxenon compatibility |
+| Video | Working milestone | Not tested | Guest ELF writes a tiled 1280x720 status screen into emulated scanout RAM |
+| Xenos | Software scanout working | Not tested | Direct register initialization remains disabled in the emulator-safe build |
 | Input | Deliberately disabled in emulator-safe ELF | Not tested | Full hardware implementation remains in the XeLL ELF |
 | Audio | Deliberately disabled in emulator-safe ELF | Not tested | Full hardware implementation remains in the XeLL ELF |
 | USB | Unknown | Not tested | Initialized by platform test |
-| Filesystem | ELF not reached | Not tested | FAT enumeration and ISO header access are read-only |
+| Filesystem | Deliberately disabled in emulator-safe ELF | Not tested | Full read-only FAT/ISO implementation remains in the XeLL ELF |
 
 ## Direct ELF execution
 
@@ -28,6 +28,12 @@ The emulator-safe ELF intentionally skips direct Xenos, USB and audio startup,
 which the research emulator does not model sufficiently yet. The regular XeLL
 ELF is unchanged and retains all hardware code.
 
+For visible validation, the guest writes its own status screen through the
+cached `0x9E000000` alias of the physical Xenos scanout surface at
+`0x1E000000`. Pixels use the same 32-row tiled layout and big-endian byte order
+expected by the emulator's scanout shader. The small panel in the upper-right
+is host UI; the MELEE360 screen behind it is produced by PowerPC guest code.
+
 Verified UART output includes:
 
 ```text
@@ -36,6 +42,7 @@ POWERPC ........... OK
 ENDIAN ............ BIG
 MEMORY ............ OK
 MELEE LBTIME ...... LINKED/OK
+FRAMEBUFFER ........ MELEE360 STATUS SCREEN READY
 EMULATOR .......... POWERPC CODE RUNNING
 PORT STATUS ....... CPU/MEMORY/LBTIME OK
 ```

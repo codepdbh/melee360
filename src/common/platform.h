@@ -31,6 +31,9 @@ int platform_find_melee_iso(char *path, size_t path_size, char game_id[7], uint8
 int platform_audio_init(void);
 void platform_audio_test_tone(void);
 int platform_video_draw_test_triangle(void);
+#ifdef M360_EMULATOR_MODE
+void platform_emulator_draw_status(void);
+#endif
 unsigned long long platform_get_time(void);
 
 #endif

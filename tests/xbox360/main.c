@@ -140,6 +140,8 @@ int main(void)
     }
 
 #ifdef M360_EMULATOR_MODE
+    platform_emulator_draw_status();
+    printf("FRAMEBUFFER ........ MELEE360 STATUS SCREEN READY\n");
     printf("EMULATOR .......... POWERPC CODE RUNNING\n");
     printf("PORT STATUS ....... CPU/MEMORY/LBTIME OK\n");
     M360_LOG_INFO("emulator-safe milestone reached; waiting for host shutdown");

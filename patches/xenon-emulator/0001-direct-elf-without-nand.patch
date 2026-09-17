@@ -88,47 +88,37 @@ index 27aeb21..72df990 100644
 +  if (!std::getenv("XENON_GUI_ONLY")) {
 +    XeMain::StartCPU();
 +  }
+diff --git a/Xenon/Render/Abstractions/Renderer.cpp b/Xenon/Render/Abstractions/Renderer.cpp
+index 2aaacbf..be5ad17 100644
+--- a/Xenon/Render/Abstractions/Renderer.cpp
++++ b/Xenon/Render/Abstractions/Renderer.cpp
+@@ -144 +144,2 @@ void Renderer::Resize(u32 x, u32 y) {
+-  pixels.resize(newWidth * newHeight, COLOR(205, 205, 205, 205));
++  // Keep uncovered pixels consistent with the direct-ELF status screen.
++  pixels.resize(newWidth * newHeight, COLOR(7, 12, 24, 255));
 diff --git a/Xenon/Render/GUI/GUI.cpp b/Xenon/Render/GUI/GUI.cpp
-index b9da87b..d984d8e 100644
+index b9da87b..575d208 100644
 --- a/Xenon/Render/GUI/GUI.cpp
 +++ b/Xenon/Render/GUI/GUI.cpp
-@@ -1055,0 +1056,39 @@ void Render::GUI::Render(Texture *texture) {
+@@ -1055,0 +1056,21 @@ void Render::GUI::Render(Texture *texture) {
 +  if (Config::xcpu.elfLoader) {
 +    const ImGuiViewport *viewport = ImGui::GetMainViewport();
-+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
-+                            ImVec2(0.5f, 0.5f));
-+    ImGui::SetNextWindowSize(ImVec2(640.0f, 390.0f), ImGuiCond_Always);
++    ImGui::SetNextWindowPos(
++        ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 24.0f,
++               viewport->WorkPos.y + 24.0f),
++        ImGuiCond_Always, ImVec2(1.0f, 0.0f));
++    ImGui::SetNextWindowSize(ImVec2(370.0f, 154.0f), ImGuiCond_Always);
 +    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse |
 +                                   ImGuiWindowFlags_NoResize |
 +                                   ImGuiWindowFlags_NoMove;
 +    if (ImGui::Begin("MELEE360 - Native Xenon Port", nullptr, flags)) {
-+      ImGui::PushFont(robotRegular18);
 +      ImGui::TextColored(ImVec4(0.42f, 0.91f, 0.20f, 1.0f),
-+                         "MELEE360");
-+      ImGui::PopFont();
-+      ImGui::TextUnformatted("Native PowerPC integration build for Xbox 360");
-+      ImGui::Spacing();
-+      ImGui::Separator();
-+      ImGui::Spacing();
-+      ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
-+                         "ELF LOADED INTO EMULATED XENON RAM");
-+      ImGui::BulletText("PowerPC guest: %s",
++                         "POWERPC GUEST: %s",
 +                        XeMain::CPUStarted ? "RUNNING" : "PAUSED");
-+      ImGui::BulletText("CPU / big-endian memory: verified");
-+      ImGui::BulletText("Original Melee lbtime module: linked and executed");
-+      ImGui::BulletText("HAL title archive: parsed and relocated in target build");
 +      ImGui::Spacing();
-+      ImGui::ProgressBar(0.42f, ImVec2(-1.0f, 22.0f),
-+                         "native port integration");
-+      ImGui::Spacing();
-+      ImGui::TextWrapped(
-+          "This is the working CPU integration milestone. Native Xenos "
-+          "framebuffer emulation is still incomplete, so gameplay is not "
-+          "available yet. The full hardware build remains runnable through "
-+          "XeLL on an RGH/JTAG console.");
-+      ImGui::Spacing();
-+      ImGui::TextDisabled("Guest ELF: %s",
-+                          Config::filepaths.elfBinary.c_str());
++      ImGui::TextWrapped("The screen behind this panel is drawn directly by "
++                         "the native guest ELF in emulated Xbox 360 RAM.");
++      ImGui::ProgressBar(0.45f, ImVec2(-1.0f, 18.0f), "integration milestone");
 +    }
 +    ImGui::End();
 +  }

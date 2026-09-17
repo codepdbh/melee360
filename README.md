@@ -6,7 +6,7 @@
 
 **PowerPC · LibXenon · Xenos · XeLL**
 
-[Status](docs/STATUS.md) · [Architecture](docs/PORTING_ANALYSIS.md) · [XeLL guide](docs/XELL_USB.md)
+[Status](docs/STATUS.md) · [Architecture](docs/PORTING_ANALYSIS.md) · [XeLL guide](docs/XELL_USB.md) · [XEX path](docs/XEX_BUILD.md)
 
 </div>
 
@@ -39,7 +39,7 @@ LibXenon implementations.
 | Dolphin `DVDOpen`/`DVDRead` compatibility | ✅ Minimal synchronous slice working |
 | HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
-| Xenon emulator direct-ELF execution | ✅ CPU/memory milestone running with visible status UI |
+| Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
 | Menus and gameplay | 🚧 Not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal
@@ -92,8 +92,15 @@ pinned Xenon research emulator:
 ./tools/run_xenon_emulator.sh
 ```
 
-This verifies native PowerPC execution, memory, endian behavior and linked
-Melee code. It is not gameplay; Xenos framebuffer emulation remains pending.
+This verifies native PowerPC execution, memory, endian behavior, linked Melee
+code and a status screen written by the guest ELF into tiled Xbox 360
+framebuffer memory. It is an integration milestone, not gameplay yet.
+
+![MELEE360 native guest framebuffer running in Xenon Emulator](docs/images/xenon-emulator-guest-framebuffer.png)
+
+For the separate XDK/Xenia route, run `./tools/check_xdk.ps1` from PowerShell
+and see the [XEX build notes](docs/XEX_BUILD.md). SDK files are never copied
+into this repository.
 
 ## Run with XeLL
 
