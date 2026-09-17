@@ -41,6 +41,7 @@ LibXenon implementations.
 | HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
 | Original HSD controller pipeline (`controller.c`) | ✅ XInput bridge, normalized sticks and edge-triggered buttons running in XEX |
+| Original math/segment test (`lb_00CE.c`) | ✅ PowerPC hit-volume test drives prototype attacks |
 | Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
 | XDK `default.xex` generation | ✅ PowerPC/D3D9 interactive prototype builds and passes `imagexex /DUMP` |
 | Native movement/jump/attack sandbox | ✅ Running in Xenia Canary with controller and keyboard input |

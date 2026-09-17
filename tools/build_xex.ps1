@@ -23,6 +23,9 @@ $padHeader = Join-Path $root 'src\xdk\melee_pad_xdk.h'
 $controllerCompat = Join-Path $root 'src\xdk\controller_xdk_compat.h'
 $controllerSource = Join-Path $root 'upstream\melee-pc\src\sysdolphin\baselib\controller.c'
 $meleeSdkInclude = Join-Path $root 'upstream\melee-pc\src\sdk_include'
+$lbmathCompat = Join-Path $root 'src\xdk\lbmath_xdk_compat.h'
+$lbmathSource = Join-Path $root 'upstream\melee-pc\src\melee\lb\lb_00CE.c'
+$lbmathWrapper = Join-Path $root 'src\xdk\lbmath_xdk.cpp'
 $build = Join-Path $root 'build-x360\xdk'
 $dist = Join-Path $root 'dist'
 $object = Join-Path $build 'main.obj'
@@ -30,6 +33,7 @@ $compatObject = Join-Path $build 'melee_time_compat.obj'
 $lbtimeObject = Join-Path $build 'lbtime.obj'
 $padObject = Join-Path $build 'melee_pad_xdk.obj'
 $controllerObject = Join-Path $build 'controller.obj'
+$lbmathObject = Join-Path $build 'lb_00CE.obj'
 $pe = Join-Path $build 'melee360.exe'
 $pdb = Join-Path $build 'melee360.pdb'
 $xex = Join-Path $dist 'default.xex'
@@ -40,7 +44,8 @@ foreach ($required in @($compiler, $linker, $imagexex,
                          $source, $compatSource, $compatHeader,
                          $lbtimeSource, $padSource, $padHeader,
                          $controllerCompat, $controllerSource,
-                         $meleeSdkInclude)) {
+                         $meleeSdkInclude, $lbmathCompat, $lbmathSource,
+                         $lbmathWrapper)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -94,11 +99,22 @@ $controllerArgs = @(
 & $compiler $controllerArgs
 if ($LASTEXITCODE -ne 0) { throw 'Original controller.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling original melee-pc lb_00CE.c'
+$lbmathArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W3',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'upstream\melee-pc\src')",
+    "/Fo$lbmathObject", $lbmathWrapper
+)
+& $compiler $lbmathArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original lb_00CE.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
+    $lbmathObject,
     'd3d9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs

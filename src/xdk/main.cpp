@@ -5,6 +5,11 @@
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
 extern "C" unsigned int lbTime_8000AEE4(unsigned int a, int b);
 extern "C" unsigned int lbTime_8000AF74(unsigned int a, int b);
+extern "C" int powi(int base, int exponent);
+extern "C" int lb_8000D148(float point0X, float point0Y,
+                             float point1X, float point1Y,
+                             float point2X, float point2Y,
+                             float threshold);
 
 namespace {
 
@@ -149,7 +154,7 @@ void BuildScene(bool meleeCodePassed)
     AddText(g_cyan, 625, 151, "X ATTACK", 3);
     AddText(g_cyan, 901, 151, "START RESET", 3);
     AddText(g_muted, 96, 202,
-            meleeCodePassed ? "MELEE LBTIME LINKED: OK" : "MELEE LBTIME LINKED: FAIL",
+            meleeCodePassed ? "MELEE CORE MODULES: OK" : "MELEE CORE MODULES: FAIL",
             2);
     AddText(g_muted, 500, 202, "HSD CONTROLLER LINKED", 2);
     AddText(g_muted, 1050, 202, "Y EXIT", 2);
@@ -222,9 +227,12 @@ void UpdateGame(GameState& game, const HSD_PadStatus& input, float elapsed,
         game.grounded = true;
     }
 
-    const float playerCenter = game.playerX + kPlayerWidth * 0.5f;
-    if ((pressed & HSD_PAD_X) && playerCenter > 790.0f &&
-        playerCenter < 980.0f && game.playerY > 430.0f) {
+    const float attackStartX = game.playerX + kPlayerWidth * 0.5f;
+    const float attackY = game.playerY + 30.0f;
+    const int attackHit = lb_8000D148(
+        attackStartX, attackY, attackStartX + 88.0f, attackY,
+        873.0f, 540.0f, 38.0f);
+    if ((pressed & HSD_PAD_X) && attackHit) {
         game.damage = lbTime_8000AF74(game.damage, 8);
         game.attackUntil = now + 130;
     }
@@ -261,7 +269,9 @@ void __cdecl main()
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
         lbTime_8000AEE4(4u, -10) == 0u &&
-        lbTime_8000AF74(250u, 8) == 255u;
+        lbTime_8000AF74(250u, 8) == 255u &&
+        powi(3, 4) == 81 &&
+        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 5.0f, 0.0f, 1.0f) == 1;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
     if (!d3d)

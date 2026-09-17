@@ -53,6 +53,11 @@ implements `PADRead` over XInput, after which the original HSD code performs
 stick clamping and normalization plus button trigger, release and repeat state.
 The prototype reads `HSD_PadGameStatus`, rather than consuming XInput directly.
 
+Attack contact is evaluated by the original `lb_8000D148` segment-distance
+routine from `upstream/melee-pc/src/melee/lb/lb_00CE.c`. The source is included
+unchanged through a C-linkage XDK wrapper; only its CRT-conflicting private
+`expf`/`powf` symbol names are remapped during compilation.
+
 Run it with a local Xenia Canary build:
 
 ```powershell
