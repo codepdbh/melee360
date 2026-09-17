@@ -43,6 +43,7 @@ RectBatch g_white = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
 RectBatch g_muted = { {}, 0, D3DCOLOR_XRGB(139, 158, 181) };
 RectBatch g_panel = { {}, 0, D3DCOLOR_XRGB(24, 39, 61) };
 RectBatch g_dynamic = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
+SpriteRenderer g_renderer;
 
 void AddRect(RectBatch& batch, LONG x, LONG y, LONG width, LONG height)
 {
@@ -409,7 +410,7 @@ void __cdecl main()
         return;
     }
 
-    SpriteRenderer renderer;
+    SpriteRenderer& renderer = g_renderer;
     if (!renderer.Initialize(device)) {
         OutputDebugStringA("[M360][XEX] sprite renderer initialization failed\n");
         device->Release();
@@ -438,7 +439,7 @@ void __cdecl main()
 
         UpdateGame(game, input, static_cast<float>(tickDelta), now);
 
-        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(3, 7, 18),
+        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(12, 16, 40),
                       1.0f, 0);
         renderer.Begin();
         RenderBackdrop(renderer, now);
