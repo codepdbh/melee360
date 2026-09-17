@@ -4,6 +4,7 @@
 
 #include <melee/lb/lbtime.h>
 #include <dolphin/dvd.h>
+#include <sysdolphin/baselib/archive.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -17,6 +18,54 @@ static const char *endian_name(void)
 {
     const uint32_t marker = 0x01020304;
     return (*(const unsigned char *)&marker == 1) ? "BIG" : "LITTLE";
+}
+
+static int load_title_archive(void)
+{
+    DVDFileInfo file;
+    HSD_Archive archive;
+    unsigned char *image;
+    size_t read_size;
+    const char *first_symbol;
+    void *first_root;
+
+    if (!DVDOpen("GmTtAll.dat", &file)) {
+        M360_LOG_FS("GmTtAll.dat was not found in the mounted ISO");
+        return 0;
+    }
+
+    read_size = (file.length + 31u) & ~31u;
+    image = platform_alloc(read_size, 32);
+    if (!image) {
+        M360_LOG_MEM("could not allocate %lu bytes for GmTtAll.dat",
+                     (unsigned long)read_size);
+        DVDClose(&file);
+        return 0;
+    }
+
+    if (DVDReadPrio(&file, image, (s32)read_size, 0, 2) != (s32)read_size ||
+        HSD_ArchiveParse(&archive, image, file.length) != 0 ||
+        archive.header.nb_public == 0 || !archive.symbols) {
+        M360_LOG_FS("GmTtAll.dat read/archive parse failed");
+        platform_free(image);
+        DVDClose(&file);
+        return 0;
+    }
+
+    first_symbol = archive.symbols + archive.public_info[0].symbol;
+    first_root = HSD_ArchiveGetPublicAddress(&archive, first_symbol);
+    M360_LOG_FS("HAL DAT parsed: size=%lu data=%lu reloc=%lu public=%lu extern=%lu",
+                (unsigned long)archive.header.file_size,
+                (unsigned long)archive.header.data_size,
+                (unsigned long)archive.header.nb_reloc,
+                (unsigned long)archive.header.nb_public,
+                (unsigned long)archive.header.nb_extern);
+    M360_LOG_FS("first public symbol=%s address=%p", first_symbol, first_root);
+    printf("TITLE ARCHIVE ..... %s\n", first_root ? "PARSED/RELOCATED" : "FAIL");
+
+    platform_free(image);
+    DVDClose(&file);
+    return first_root != NULL;
 }
 
 int main(void)
@@ -77,6 +126,7 @@ int main(void)
                         (long)entry, (unsigned long)banner.length);
             printf("GAME RESOURCE ..... %s\n", banner_title);
             DVDClose(&banner);
+            load_title_archive();
         } else {
             M360_LOG_FS("Dolphin DVD API validation failed");
         }

@@ -1,7 +1,18 @@
 #include <dolphin/os.h>
 
 #include <ppc/timebase.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
+
+void OSReport(const char *message, ...)
+{
+    va_list arguments;
+
+    va_start(arguments, message);
+    vprintf(message, arguments);
+    va_end(arguments);
+}
 
 /*
  * Melee's time helpers use the GameCube OS tick rate (40.5 MHz).  Convert the

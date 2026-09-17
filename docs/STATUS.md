@@ -14,6 +14,7 @@
 - M11 First reconstructed Melee module integrated: complete (`melee/lb/lbtime.c`)
 - M12 GameCube FST reader: complete; validated against the legal GALE01 image
 - M13 Minimal Dolphin DVD API: complete (`DVDOpen`, `DVDFastOpen`, sync/async read)
+- M14 HAL archive loading: complete for `GmTtAll.dat` (`HSD_ArchiveParse` and public-symbol lookup)
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
@@ -37,3 +38,9 @@ The first Dolphin DVD compatibility slice now runs on the same GCM reader.
 Host validation opens `/opening.bnr` as entry 537 through
 `DVDConvertPathToEntrynum`/`DVDFastOpen`, reads it with `DVDReadPrio`, and
 checks its `BNR1` signature. These symbols are present in the PowerPC link map.
+
+The Xbox build now compiles the upstream HAL `archive.c` implementation through
+a Xenon compatibility wrapper. On boot it reads `GmTtAll.dat` from the legal
+ISO, applies all 1,909 pointer relocations and resolves its first public root.
+Host validation independently checks the 381,781-byte archive layout, 13
+public roots and first symbol (`ScTitle_cam_int1_camanim`).

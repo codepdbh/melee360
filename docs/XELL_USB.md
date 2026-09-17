@@ -38,6 +38,17 @@ No hacen falta `KV.bin`, una NAND, el archivo `xbox360-bios-v10.bin` ni un
 - Lectura del mando Xbox 360.
 - Tono corto de aproximadamente 440 Hz.
 - Mensaje de detección de `GALE01` si se incluyó la ISO.
+- Título `SUPER SMASH BROS. Melee` leído desde `opening.bnr`.
+- `TITLE ARCHIVE ..... PARSED/RELOCATED` al cargar `GmTtAll.dat` y aplicar su
+  tabla de 1.909 reubicaciones.
+
+Las líneas clave de una prueba completa son:
+
+```text
+MELEE LBTIME ...... LINKED/OK
+GAME RESOURCE ..... SUPER SMASH BROS. Melee
+TITLE ARCHIVE ..... PARSED/RELOCATED
+```
 
 Si la pantalla queda negra o XeLL vuelve al cargador, fotografiar la última
 línea visible de XeLL y anotar el modelo de placa y la conexión de vídeo. Esa

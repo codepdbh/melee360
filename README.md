@@ -37,11 +37,14 @@ LibXenon implementations.
 | FAT filesystem and `GALE01` detection | ✅ Compiled |
 | GameCube FST and resource lookup | ✅ Host-tested and linked |
 | Dolphin `DVDOpen`/`DVDRead` compatibility | ✅ Minimal synchronous slice working |
+| HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
 | Menus and gameplay | 🚧 Not implemented yet |
 
-The current `xenon.elf` is a platform and integration test used to validate
-each native subsystem before larger portions of the game are linked.
+The current `xenon.elf` is a platform and integration test. With a legal
+`GALE01` image on the USB drive it now opens `GmTtAll.dat`, runs the original
+HAL archive parser, applies its relocation table and resolves the first public
+title-screen resource.
 
 ## Architecture
 
