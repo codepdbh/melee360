@@ -40,6 +40,7 @@ LibXenon implementations.
 | HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
 | Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
+| XDK `default.xex` generation | ✅ PowerPC/D3D9 bootstrap builds and passes `imagexex /DUMP` |
 | Menus and gameplay | 🚧 Not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal
@@ -99,8 +100,9 @@ framebuffer memory. It is an integration milestone, not gameplay yet.
 ![MELEE360 native guest framebuffer running in Xenon Emulator](docs/images/xenon-emulator-guest-framebuffer.png)
 
 For the separate XDK/Xenia route, run `./tools/check_xdk.ps1` from PowerShell
-and see the [XEX build notes](docs/XEX_BUILD.md). SDK files are never copied
-into this repository.
+followed by `./tools/build_xex.ps1`, then see the
+[XEX build notes](docs/XEX_BUILD.md). SDK files are never copied into this
+repository.
 
 ## Run with XeLL
 

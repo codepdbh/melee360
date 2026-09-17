@@ -30,12 +30,26 @@ to use.
 
 ## Current machine
 
-The detected SDK is version `2.0.21256.3`, installed as `Minimum`. It includes
-`imagexex.exe` but not the compiler, XTL headers or Xbox import libraries.
-Consequently it can inspect/build XEX images only after a suitable PE exists;
-it cannot yet compile the MELEE360 XEX target.
+The detected SDK is version `2.0.21256.3`, installed as `Full`. The PowerPC
+compiler, XTL headers, Xbox import libraries, linker and `imagexex.exe` all pass
+the local toolchain check.
 
-Once the complete C/C++ feature set is available, the next target is a small
-`default.xex` bootstrap that reproduces the same CPU/memory/status-screen
-milestone as `dist/xenon-emulator.elf`. Game subsystems will then be moved
-behind the shared platform boundary incrementally.
+Build the native D3D9 bootstrap from PowerShell:
+
+```powershell
+./tools/build_xex.ps1
+```
+
+This produces `dist/default.xex`. The initial bootstrap renders a MELEE360
+status screen, an animated progress bar and controller-exit handling. It is a
+real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`; it is not the
+full game yet.
+
+Run it with a local Xenia Canary build:
+
+```powershell
+./tools/run_xenia.ps1 -XeniaPath C:\path\to\xenia_canary.exe
+```
+
+Game subsystems will be moved behind the shared platform boundary
+incrementally after this bootstrap is validated in Xenia.
