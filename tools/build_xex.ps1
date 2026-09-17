@@ -11,6 +11,7 @@ if (-not $xedk -or -not (Test-Path -LiteralPath $xedk)) {
 $compiler = Join-Path $xedk 'bin\win32\cl.exe'
 $linker = Join-Path $xedk 'bin\win32\link.exe'
 $imagexex = Join-Path $xedk 'bin\win32\imagexex.exe'
+$shaderCompiler = Join-Path $xedk 'bin\win32\fxc.exe'
 $includeXbox = Join-Path $xedk 'include\xbox'
 $includeSys = Join-Path $xedk 'include\xbox\sys'
 $libXbox = Join-Path $xedk 'lib\xbox'
@@ -26,6 +27,10 @@ $meleeSdkInclude = Join-Path $root 'upstream\melee-pc\src\sdk_include'
 $lbmathCompat = Join-Path $root 'src\xdk\lbmath_xdk_compat.h'
 $lbmathSource = Join-Path $root 'upstream\melee-pc\src\melee\lb\lb_00CE.c'
 $lbmathWrapper = Join-Path $root 'src\xdk\lbmath_xdk.cpp'
+$spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
+$spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
+$vertexShaderSource = Join-Path $root 'src\xdk\shaders\sprite_vs.hlsl'
+$pixelShaderSource = Join-Path $root 'src\xdk\shaders\sprite_ps.hlsl'
 $build = Join-Path $root 'build-x360\xdk'
 $dist = Join-Path $root 'dist'
 $object = Join-Path $build 'main.obj'
@@ -34,24 +39,46 @@ $lbtimeObject = Join-Path $build 'lbtime.obj'
 $padObject = Join-Path $build 'melee_pad_xdk.obj'
 $controllerObject = Join-Path $build 'controller.obj'
 $lbmathObject = Join-Path $build 'lb_00CE.obj'
+$spriteObject = Join-Path $build 'sprite_renderer.obj'
+$vertexShaderHeader = Join-Path $build 'sprite_vs.h'
+$pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
 $pdb = Join-Path $build 'melee360.pdb'
 $xex = Join-Path $dist 'default.xex'
 
-foreach ($required in @($compiler, $linker, $imagexex,
+foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          (Join-Path $includeXbox 'xtl.h'),
                          (Join-Path $libXbox 'xboxkrnl.lib'),
                          $source, $compatSource, $compatHeader,
                          $lbtimeSource, $padSource, $padHeader,
                          $controllerCompat, $controllerSource,
                          $meleeSdkInclude, $lbmathCompat, $lbmathSource,
-                         $lbmathWrapper)) {
+                         $lbmathWrapper, $spriteSource, $spriteHeader,
+                         $vertexShaderSource, $pixelShaderSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
 }
 
 New-Item -ItemType Directory -Path $build, $dist -Force | Out-Null
+
+Write-Host '[M360][XEX] compiling D3D9 sprite shaders'
+& $shaderCompiler '/nologo' '/Tvs_3_0' '/Emain' "/Fh$vertexShaderHeader" `
+    '/Vng_melee360SpriteVS' $vertexShaderSource
+if ($LASTEXITCODE -ne 0) { throw 'Sprite vertex shader compilation failed.' }
+& $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$pixelShaderHeader" `
+    '/Vng_melee360SpritePS' $pixelShaderSource
+if ($LASTEXITCODE -ne 0) { throw 'Sprite pixel shader compilation failed.' }
+
+Write-Host '[M360][XEX] compiling D3D9 sprite renderer'
+$spriteArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$build",
+    "/Fo$spriteObject", $spriteSource
+)
+& $compiler $spriteArgs
+if ($LASTEXITCODE -ne 0) { throw 'Sprite renderer compilation failed.' }
 
 Write-Host '[M360][XEX] compiling PowerPC source'
 $compileArgs = @(
@@ -114,7 +141,7 @@ $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
-    $lbmathObject,
+    $lbmathObject, $spriteObject,
     'd3d9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs

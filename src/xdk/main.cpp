@@ -1,6 +1,7 @@
 #include <xtl.h>
 
 #include "melee_pad_xdk.h"
+#include "sprite_renderer.h"
 
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
 extern "C" unsigned int lbTime_8000AEE4(unsigned int a, int b);
@@ -165,18 +166,74 @@ void BuildScene(bool meleeCodePassed)
     AddText(g_muted, 76, 672, "NATIVE POWERPC / D3D9 / ORIGINAL LBTIME.C", 2);
 }
 
-void RenderBatch(IDirect3DDevice9* device, const RectBatch& batch)
+SpriteColor ToSpriteColor(D3DCOLOR color, float alpha = 1.0f)
 {
-    if (batch.count)
-        device->Clear(batch.count, batch.rects, D3DCLEAR_TARGET, batch.color,
-                      1.0f, 0);
+    SpriteColor result = {
+        static_cast<float>((color >> 16) & 255) / 255.0f,
+        static_cast<float>((color >> 8) & 255) / 255.0f,
+        static_cast<float>(color & 255) / 255.0f,
+        alpha
+    };
+    return result;
 }
 
-void DrawRect(IDirect3DDevice9* device, LONG x, LONG y, LONG width,
-              LONG height, D3DCOLOR color)
+void RenderBatch(SpriteRenderer& renderer, const RectBatch& batch)
 {
-    D3DRECT rect = { x, y, x + width, y + height };
-    device->Clear(1, &rect, D3DCLEAR_TARGET, color, 1.0f, 0);
+    const SpriteColor color = ToSpriteColor(batch.color);
+    for (unsigned i = 0; i < batch.count; ++i) {
+        const D3DRECT& rect = batch.rects[i];
+        renderer.AddQuad(static_cast<float>(rect.x1),
+                         static_cast<float>(rect.y1),
+                         static_cast<float>(rect.x2 - rect.x1),
+                         static_cast<float>(rect.y2 - rect.y1), color);
+    }
+}
+
+void DrawRect(SpriteRenderer& renderer, LONG x, LONG y, LONG width,
+              LONG height, D3DCOLOR color, float alpha = 1.0f)
+{
+    renderer.AddQuad(static_cast<float>(x), static_cast<float>(y),
+                     static_cast<float>(width), static_cast<float>(height),
+                     ToSpriteColor(color, alpha));
+}
+
+void RenderBackdrop(SpriteRenderer& renderer, DWORD now)
+{
+    const SpriteColor skyTop = { 0.035f, 0.020f, 0.120f, 1.0f };
+    const SpriteColor skyBottom = { 0.010f, 0.100f, 0.160f, 1.0f };
+    const SpriteColor horizonTop = { 0.10f, 0.20f, 0.30f, 0.45f };
+    const SpriteColor horizonBottom = { 0.01f, 0.04f, 0.09f, 0.0f };
+    renderer.AddGradientQuad(0.0f, 0.0f, 1280.0f, 720.0f,
+                             skyTop, skyBottom);
+    renderer.AddGradientQuad(0.0f, 300.0f, 1280.0f, 320.0f,
+                             horizonTop, horizonBottom);
+
+    const D3DCOLOR starColor = D3DCOLOR_XRGB(153, 220, 255);
+    for (unsigned i = 0; i < 34; ++i) {
+        const LONG x = static_cast<LONG>((i * 193u + 71u) % 1240u) + 20;
+        const LONG y = static_cast<LONG>((i * 83u + 37u) % 310u) + 95;
+        const LONG size = ((i + now / 350) % 5 == 0) ? 3 : 2;
+        DrawRect(renderer, x, y, size, size, starColor, 0.72f);
+    }
+
+    const D3DCOLOR moon = D3DCOLOR_XRGB(171, 231, 245);
+    DrawRect(renderer, 1045, 285, 74, 12, moon, 0.16f);
+    DrawRect(renderer, 1032, 297, 100, 34, moon, 0.16f);
+    DrawRect(renderer, 1025, 331, 114, 42, moon, 0.16f);
+    DrawRect(renderer, 1032, 373, 100, 34, moon, 0.16f);
+    DrawRect(renderer, 1045, 407, 74, 12, moon, 0.16f);
+
+    const D3DCOLOR skyline = D3DCOLOR_XRGB(10, 25, 48);
+    for (unsigned building = 0; building < 18; ++building) {
+        const LONG x = 70 + static_cast<LONG>(building) * 68;
+        const LONG height = 45 + static_cast<LONG>((building * 47) % 105);
+        DrawRect(renderer, x, 574 - height, 52, height, skyline, 0.82f);
+    }
+
+    const SpriteColor panelTop = { 0.025f, 0.045f, 0.095f, 0.92f };
+    const SpriteColor panelBottom = { 0.008f, 0.018f, 0.045f, 0.96f };
+    renderer.AddGradientQuad(62.0f, 125.0f, 1156.0f, 500.0f,
+                             panelTop, panelBottom);
 }
 
 void ResetGame(GameState& game)
@@ -238,26 +295,44 @@ void UpdateGame(GameState& game, const HSD_PadStatus& input, float elapsed,
     }
 }
 
-void RenderGame(IDirect3DDevice9* device, const GameState& game, DWORD now)
+void RenderGame(SpriteRenderer& renderer, const GameState& game, DWORD now)
 {
     const LONG x = static_cast<LONG>(game.playerX);
     const LONG y = static_cast<LONG>(game.playerY);
-    DrawRect(device, x + 8, y, 22, 18, D3DCOLOR_XRGB(238, 244, 252));
-    DrawRect(device, x, y + 18, 38, 30, D3DCOLOR_XRGB(79, 203, 247));
-    DrawRect(device, x + 4, y + 48, 10, 8, D3DCOLOR_XRGB(107, 232, 52));
-    DrawRect(device, x + 24, y + 48, 10, 8, D3DCOLOR_XRGB(107, 232, 52));
+    DrawRect(renderer, x - 8, 568, 54, 7, D3DCOLOR_XRGB(0, 0, 0), 0.40f);
+    DrawRect(renderer, x + 7, y - 2, 24, 20,
+             D3DCOLOR_XRGB(232, 244, 255));
+    DrawRect(renderer, x + 2, y + 16, 34, 31,
+             D3DCOLOR_XRGB(48, 164, 234));
+    DrawRect(renderer, x - 4, y + 20, 8, 22,
+             D3DCOLOR_XRGB(92, 221, 255));
+    DrawRect(renderer, x + 35, y + 20, 8, 22,
+             D3DCOLOR_XRGB(92, 221, 255));
+    DrawRect(renderer, x + 5, y + 47, 11, 9,
+             D3DCOLOR_XRGB(107, 232, 52));
+    DrawRect(renderer, x + 23, y + 47, 11, 9,
+             D3DCOLOR_XRGB(107, 232, 52));
+    DrawRect(renderer, x + 12, y + 5, 4, 4,
+             D3DCOLOR_XRGB(14, 31, 55));
+    DrawRect(renderer, x + 23, y + 5, 4, 4,
+             D3DCOLOR_XRGB(14, 31, 55));
 
     const BYTE red = static_cast<BYTE>(80 + (game.damage * 175) / 255);
-    DrawRect(device, 850, 510, 46, 64, D3DCOLOR_XRGB(red, 83, 97));
-    DrawRect(device, 858, 493, 30, 20, D3DCOLOR_XRGB(238, 184, 96));
+    DrawRect(renderer, 840, 568, 66, 7, D3DCOLOR_XRGB(0, 0, 0), 0.40f);
+    DrawRect(renderer, 850, 510, 46, 64, D3DCOLOR_XRGB(red, 64, 90));
+    DrawRect(renderer, 844, 520, 8, 36, D3DCOLOR_XRGB(212, 79, 91));
+    DrawRect(renderer, 894, 520, 8, 36, D3DCOLOR_XRGB(212, 79, 91));
+    DrawRect(renderer, 858, 490, 30, 22, D3DCOLOR_XRGB(245, 190, 103));
+    DrawRect(renderer, 864, 497, 4, 4, D3DCOLOR_XRGB(35, 24, 35));
+    DrawRect(renderer, 878, 497, 4, 4, D3DCOLOR_XRGB(35, 24, 35));
 
     if (now < game.attackUntil)
-        DrawRect(device, x + 38, y + 22, 65, 18,
-                 D3DCOLOR_XRGB(255, 224, 94));
+        DrawRect(renderer, x + 38, y + 22, 65, 18,
+                 D3DCOLOR_XRGB(255, 224, 94), 0.82f);
 
     g_dynamic.count = 0;
     AddNumber(g_dynamic, 1004, 326, game.damage, 5);
-    RenderBatch(device, g_dynamic);
+    RenderBatch(renderer, g_dynamic);
 }
 
 } // namespace
@@ -296,6 +371,14 @@ void __cdecl main()
         return;
     }
 
+    SpriteRenderer renderer;
+    if (!renderer.Initialize(device)) {
+        OutputDebugStringA("[M360][XEX] sprite renderer initialization failed\n");
+        device->Release();
+        d3d->Release();
+        return;
+    }
+
     BuildScene(meleeCodePassed);
     M360_HSDPadInit();
     GameState game;
@@ -317,17 +400,21 @@ void __cdecl main()
 
         UpdateGame(game, input, static_cast<float>(tickDelta), now);
 
-        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(7, 12, 24),
+        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(3, 7, 18),
                       1.0f, 0);
-        RenderBatch(device, g_panel);
-        RenderBatch(device, g_cyan);
-        RenderBatch(device, g_white);
-        RenderBatch(device, g_muted);
-        RenderBatch(device, g_green);
-        RenderGame(device, game, now);
+        renderer.Begin();
+        RenderBackdrop(renderer, now);
+        RenderBatch(renderer, g_panel);
+        RenderBatch(renderer, g_cyan);
+        RenderBatch(renderer, g_white);
+        RenderBatch(renderer, g_muted);
+        RenderBatch(renderer, g_green);
+        RenderGame(renderer, game, now);
+        renderer.End(device);
         device->Present(0, 0, 0, 0);
     }
 
+    renderer.Shutdown();
     device->Release();
     d3d->Release();
 }

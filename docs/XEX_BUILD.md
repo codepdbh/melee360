@@ -79,3 +79,14 @@ Pass `-DisableKeyboard` if keyboard emulation should remain disabled.
 This arena is a native input/physics/rendering integration milestone, not a
 claim that Melee gameplay has been ported. Game subsystems will continue to
 move behind the shared platform boundary incrementally.
+
+## Graphics pipeline
+
+`tools/build_xex.ps1` compiles the HLSL sources in `src/xdk/shaders` with the
+Xbox 360 shader compiler. The generated microcode headers are placed under
+`build-x360/xdk` and embedded in the XEX; they are not committed.
+
+`src/xdk/sprite_renderer.cpp` owns the D3D9 vertex shader, pixel shader and
+vertex declaration. It batches all UI glyphs, arena geometry, gradients and
+character primitives into one `D3DPT_QUADLIST` submission per frame with alpha
+blending. Only the initial back-buffer clear remains a D3D clear operation.

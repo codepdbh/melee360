@@ -44,6 +44,7 @@ LibXenon implementations.
 | Original math/segment test (`lb_00CE.c`) | ✅ PowerPC hit-volume test drives prototype attacks |
 | Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
 | XDK `default.xex` generation | ✅ PowerPC/D3D9 interactive prototype builds and passes `imagexex /DUMP` |
+| D3D9 shader/quads renderer | ✅ Runtime-batched 2D geometry with vertex/pixel shaders, gradients and alpha blending |
 | Native movement/jump/attack sandbox | ✅ Running in Xenia Canary with controller and keyboard input |
 | Melee menus and gameplay | 🚧 Not implemented yet |
 
@@ -107,6 +108,10 @@ For the separate XDK/Xenia route, run `./tools/check_xdk.ps1` from PowerShell
 followed by `./tools/build_xex.ps1`, then see the
 [XEX build notes](docs/XEX_BUILD.md). SDK files are never copied into this
 repository.
+
+The XEX renderer compiles its HLSL shaders with the installed XDK and batches
+the complete 2D scene into native `D3DPT_QUADLIST` geometry. Generated shader
+microcode stays inside the ignored build directory.
 
 ## Run with XeLL
 
