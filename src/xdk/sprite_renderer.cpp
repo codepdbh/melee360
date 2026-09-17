@@ -130,7 +130,7 @@ bool BuildAtlas(IDirect3DDevice9* device, IDirect3DTexture9** atlas)
 
 SpriteRenderer::SpriteRenderer()
     : quadCount_(0), vertexShader_(0), pixelShader_(0), declaration_(0),
-      atlas_(0), externalAtlas_(false)
+      atlas_(0), bannerTexture_(0), bannerQueued_(false), externalAtlas_(false)
 {
 }
 
@@ -169,6 +169,7 @@ bool SpriteRenderer::Initialize(IDirect3DDevice9* device)
 void SpriteRenderer::Begin()
 {
     quadCount_ = 0;
+    bannerQueued_ = false;
 }
 
 void SpriteRenderer::AddQuad(float x, float y, float width, float height,
@@ -225,9 +226,59 @@ void SpriteRenderer::AddSprite(float x, float y, float width, float height,
     ++quadCount_;
 }
 
+bool SpriteRenderer::UploadBanner(IDirect3DDevice9* device,
+                                  const unsigned* pixels)
+{
+    if (!pixels)
+        return false;
+    if (bannerTexture_) {
+        bannerTexture_->Release();
+        bannerTexture_ = 0;
+    }
+    if (FAILED(device->CreateTexture(96, 32, 1, 0,
+            D3DFMT_LIN_A8R8G8B8, D3DPOOL_MANAGED, &bannerTexture_, 0)))
+        return false;
+    D3DLOCKED_RECT locked;
+    if (FAILED(bannerTexture_->LockRect(0, &locked, 0, 0)))
+        return false;
+    for (unsigned y = 0; y < 32; ++y) {
+        memcpy(reinterpret_cast<BYTE*>(locked.pBits) + y * locked.Pitch,
+               pixels + y * 96, 96 * sizeof(unsigned));
+    }
+    bannerTexture_->UnlockRect(0);
+    return true;
+}
+
+void SpriteRenderer::AddBanner(float x, float y, float width, float height)
+{
+    if (!bannerTexture_)
+        return;
+    const float positions[4][2] = {
+        { x, y }, { x + width, y },
+        { x + width, y + height }, { x, y + height }
+    };
+    const float texcoords[4][2] = {
+        { 0.0f, 0.0f }, { 1.0f, 0.0f },
+        { 1.0f, 1.0f }, { 0.0f, 1.0f }
+    };
+    for (unsigned i = 0; i < 4; ++i) {
+        bannerVertices_[i].x = positions[i][0];
+        bannerVertices_[i].y = positions[i][1];
+        bannerVertices_[i].z = 0.0f;
+        bannerVertices_[i].w = 1.0f;
+        bannerVertices_[i].red = 1.0f;
+        bannerVertices_[i].green = 1.0f;
+        bannerVertices_[i].blue = 1.0f;
+        bannerVertices_[i].alpha = 1.0f;
+        bannerVertices_[i].u = texcoords[i][0];
+        bannerVertices_[i].v = texcoords[i][1];
+    }
+    bannerQueued_ = true;
+}
+
 void SpriteRenderer::End(IDirect3DDevice9* device)
 {
-    if (!quadCount_)
+    if (!quadCount_ && !bannerQueued_)
         return;
 
     device->SetVertexShader(vertexShader_);
@@ -238,19 +289,28 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
     device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     device->SetRenderState(D3DRS_ZENABLE, FALSE);
-    device->SetTexture(0, atlas_);
     device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
     device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
     device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
     device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-    device->DrawPrimitiveUP(D3DPT_QUADLIST, quadCount_, vertices_,
-                            sizeof(Vertex));
+    if (quadCount_) {
+        device->SetTexture(0, atlas_);
+        device->DrawPrimitiveUP(D3DPT_QUADLIST, quadCount_, vertices_,
+                                sizeof(Vertex));
+    }
+    if (bannerQueued_) {
+        device->SetTexture(0, bannerTexture_);
+        device->DrawPrimitiveUP(D3DPT_QUADLIST, 1, bannerVertices_,
+                                sizeof(Vertex));
+    }
 }
 
 void SpriteRenderer::Shutdown()
 {
     if (atlas_)
         atlas_->Release();
+    if (bannerTexture_)
+        bannerTexture_->Release();
     if (declaration_)
         declaration_->Release();
     if (pixelShader_)
@@ -261,6 +321,7 @@ void SpriteRenderer::Shutdown()
     pixelShader_ = 0;
     vertexShader_ = 0;
     atlas_ = 0;
+    bannerTexture_ = 0;
     externalAtlas_ = false;
 }
 

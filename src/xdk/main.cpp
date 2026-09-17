@@ -1,6 +1,7 @@
 #include <xtl.h>
 
 #include "melee_pad_xdk.h"
+#include "melee_boot_xdk.h"
 #include "sprite_renderer.h"
 
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
@@ -141,35 +142,66 @@ void AddNumber(RectBatch& batch, LONG x, LONG y, unsigned value, LONG scale)
     AddText(batch, x, y, text, scale);
 }
 
-void BuildScene(bool meleeCodePassed, bool externalAtlasLoaded)
+void AddUnsigned(RectBatch& batch, LONG x, LONG y, unsigned value, LONG scale)
+{
+    char digits[11];
+    char text[11];
+    unsigned count = 0;
+    do {
+        digits[count++] = static_cast<char>('0' + value % 10);
+        value /= 10;
+    } while (value && count < 10);
+    for (unsigned i = 0; i < count; ++i)
+        text[i] = digits[count - i - 1];
+    text[count] = '\0';
+    AddText(batch, x, y, text, scale);
+}
+
+void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
 {
     AddRect(g_green, 0, 86, 1280, 4);
     AddOutline(g_panel, 62, 125, 1156, 500, 3);
     AddRect(g_cyan, 62, 125, 7, 500);
-    AddRect(g_panel, 95, 236, 1090, 2);
-    AddRect(g_panel, 95, 574, 1090, 24);
-    AddRect(g_panel, 225, 460, 230, 12);
-    AddRect(g_panel, 715, 400, 230, 12);
+    AddRect(g_panel, 95, 270, 1090, 2);
+    AddOutline(g_panel, 335, 292, 610, 224, 3);
 
     AddText(g_green, 62, 25, "MELEE360", 6);
-    AddText(g_white, 430, 38, "TEXTURED XEX PROTOTYPE", 3);
-    AddText(g_cyan, 96, 151, "L STICK MOVE", 3);
-    AddText(g_cyan, 406, 151, "A JUMP", 3);
-    AddText(g_cyan, 625, 151, "X ATTACK", 3);
-    AddText(g_cyan, 901, 151, "START RESET", 3);
-    AddText(g_muted, 96, 202,
-            meleeCodePassed ? "MELEE CORE MODULES: OK" : "MELEE CORE MODULES: FAIL",
+    AddText(g_white, 430, 38, "GALE01 NATIVE BOOT", 3);
+
+    AddText(g_cyan, 96, 146, "DISC", 2);
+    AddText(boot.discValid ? g_green : g_white, 220, 146,
+            boot.discValid ? boot.gameId : "FAILED", 2);
+    AddText(g_cyan, 390, 146, "FST", 2);
+    AddText(boot.fstMounted ? g_green : g_white, 480, 146,
+            boot.fstMounted ? "MOUNTED" : "FAILED", 2);
+    if (boot.fstMounted)
+        AddUnsigned(g_muted, 650, 146, boot.entryCount, 2);
+    AddText(g_muted, 755, 146, "ENTRIES", 2);
+
+    AddText(g_cyan, 96, 188, "OPENING BANNER", 2);
+    AddText(boot.bannerDecoded ? g_green : g_white, 350, 188,
+            boot.bannerDecoded ? "DECODED" : "FAILED", 2);
+    AddText(g_cyan, 600, 188, "GMTTALL.DAT", 2);
+    AddText(boot.titleArchiveValid ? g_green : g_white, 835, 188,
+            boot.titleArchiveValid ? "PARSED" : "FAILED", 2);
+
+    AddText(g_cyan, 96, 230, "MELEE MODULES", 2);
+    AddText(meleeCodePassed ? g_green : g_white, 350, 230,
+            meleeCodePassed ? "LINKED" : "FAILED", 2);
+    AddText(g_muted, 600, 230, "PUBLIC ROOT", 2);
+    AddText(g_white, 835, 230,
+            boot.titleArchiveValid ? boot.firstPublicSymbol : "UNAVAILABLE", 1);
+
+    AddText(g_muted, 96, 550, "TITLE", 2);
+    AddText(g_white, 220, 550,
+            boot.title[0] ? boot.title : "SUPER SMASH BROS. MELEE", 2);
+    AddText(g_muted, 96, 590,
+            boot.titleArchiveValid ? "REAL ISO DATA LOADED / NEXT: HAL RUNTIME INIT"
+                                   : boot.error,
             2);
-    AddText(g_muted, 500, 202, "HSD CONTROLLER LINKED", 2);
-    AddText(g_muted, 1050, 202, "Y EXIT", 2);
-    AddText(g_muted, 610, 220,
-            "KEYBOARD A D MOVE / SEMICOLON JUMP / L ATTACK / X RESET / P EXIT",
-            1);
-    AddText(g_muted, 96, 220,
-            externalAtlasLoaded ? "EXTERNAL ATLAS: OK" : "INTERNAL ATLAS: FALLBACK",
-            1);
-    AddText(g_white, 952, 290, "DAMAGE", 2);
-    AddText(g_muted, 76, 672, "NATIVE POWERPC / D3D9 / ORIGINAL LBTIME.C", 2);
+    AddText(g_muted, 76, 672,
+            "NATIVE POWERPC / GAMECUBE FST / RGB5A3 / HAL ARCHIVE", 2);
+    AddText(g_muted, 1080, 590, "Y EXIT", 1);
 }
 
 SpriteColor ToSpriteColor(D3DCOLOR color, float alpha = 1.0f)
@@ -378,7 +410,7 @@ void RenderGame(SpriteRenderer& renderer, const GameState& game, DWORD now)
 
 void __cdecl main()
 {
-    OutputDebugStringA("[M360][XEX] starting playable native prototype\n");
+    OutputDebugStringA("[M360][XEX] starting native Melee boot pipeline\n");
 
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
@@ -418,26 +450,22 @@ void __cdecl main()
         return;
     }
 
-    BuildScene(meleeCodePassed, renderer.UsesExternalAtlas());
+    MeleeBootStatus boot;
+    const bool bootSucceeded = M360_BootMelee("game:\\melee.iso", &boot);
+    if (boot.bannerDecoded)
+        renderer.UploadBanner(device, boot.bannerPixels);
+    BuildScene(meleeCodePassed, boot);
     M360_HSDPadInit();
-    GameState game;
-    ZeroMemory(&game, sizeof(game));
-    ResetGame(game);
-    DWORD previousTick = GetTickCount();
+    OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
+                                     : "[M360][BOOT] GALE01 boot failed\n");
 
     for (;;) {
         const DWORD now = GetTickCount();
-        DWORD tickDelta = now - previousTick;
-        previousTick = now;
-        if (tickDelta > 33)
-            tickDelta = 33;
 
         HSD_PadRenewStatus();
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
         if (input.button & HSD_PAD_Y)
             break;
-
-        UpdateGame(game, input, static_cast<float>(tickDelta), now);
 
         device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(12, 16, 40),
                       1.0f, 0);
@@ -448,7 +476,8 @@ void __cdecl main()
         RenderBatch(renderer, g_white);
         RenderBatch(renderer, g_muted);
         RenderBatch(renderer, g_green);
-        RenderGame(renderer, game, now);
+        if (boot.bannerDecoded)
+            renderer.AddBanner(352.0f, 308.0f, 576.0f, 192.0f);
         renderer.End(device);
         device->Present(0, 0, 0, 0);
     }

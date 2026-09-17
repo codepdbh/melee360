@@ -23,6 +23,8 @@ public:
     void AddSprite(float x, float y, float width, float height,
                    float u0, float v0, float u1, float v1,
                    const SpriteColor& tint);
+    bool UploadBanner(IDirect3DDevice9* device, const unsigned* pixels);
+    void AddBanner(float x, float y, float width, float height);
     void End(IDirect3DDevice9* device);
     void Shutdown();
     bool UsesExternalAtlas() const;
@@ -48,6 +50,9 @@ private:
     IDirect3DPixelShader9* pixelShader_;
     IDirect3DVertexDeclaration9* declaration_;
     IDirect3DTexture9* atlas_;
+    IDirect3DTexture9* bannerTexture_;
+    Vertex bannerVertices_[4];
+    bool bannerQueued_;
     bool externalAtlas_;
 };
 
