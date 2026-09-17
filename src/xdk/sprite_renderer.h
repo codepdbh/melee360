@@ -25,6 +25,7 @@ public:
                    const SpriteColor& tint);
     void End(IDirect3DDevice9* device);
     void Shutdown();
+    bool UsesExternalAtlas() const;
 
 private:
     struct Vertex {
@@ -47,6 +48,7 @@ private:
     IDirect3DPixelShader9* pixelShader_;
     IDirect3DVertexDeclaration9* declaration_;
     IDirect3DTexture9* atlas_;
+    bool externalAtlas_;
 };
 
 #endif

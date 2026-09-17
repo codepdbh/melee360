@@ -31,6 +31,7 @@ $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $vertexShaderSource = Join-Path $root 'src\xdk\shaders\sprite_vs.hlsl'
 $pixelShaderSource = Join-Path $root 'src\xdk\shaders\sprite_ps.hlsl'
+$atlasGenerator = Join-Path $root 'tools\generate_sprite_atlas.ps1'
 $build = Join-Path $root 'build-x360\xdk'
 $dist = Join-Path $root 'dist'
 $object = Join-Path $build 'main.obj'
@@ -54,13 +55,16 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $controllerCompat, $controllerSource,
                          $meleeSdkInclude, $lbmathCompat, $lbmathSource,
                          $lbmathWrapper, $spriteSource, $spriteHeader,
-                         $vertexShaderSource, $pixelShaderSource)) {
+                         $vertexShaderSource, $pixelShaderSource,
+                         $atlasGenerator)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
 }
 
 New-Item -ItemType Directory -Path $build, $dist -Force | Out-Null
+
+& $atlasGenerator -OutputPath (Join-Path $dist 'assets\sprite_atlas.png')
 
 Write-Host '[M360][XEX] compiling D3D9 sprite shaders'
 & $shaderCompiler '/nologo' '/Tvs_3_0' '/Emain' "/Fh$vertexShaderHeader" `
@@ -142,7 +146,7 @@ $linkArgs = @(
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject,
-    'd3d9.lib', 'xapilib.lib', 'xboxkrnl.lib'
+    'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs
 if ($LASTEXITCODE -ne 0) { throw 'XDK PE link failed.' }

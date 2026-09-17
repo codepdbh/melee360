@@ -1,5 +1,7 @@
 #include "sprite_renderer.h"
 
+#include <d3dx9.h>
+
 #include "sprite_ps.h"
 #include "sprite_vs.h"
 
@@ -101,7 +103,7 @@ bool BuildAtlas(IDirect3DDevice9* device, IDirect3DTexture9** atlas)
 
 SpriteRenderer::SpriteRenderer()
     : quadCount_(0), vertexShader_(0), pixelShader_(0), declaration_(0),
-      atlas_(0)
+      atlas_(0), externalAtlas_(false)
 {
 }
 
@@ -127,6 +129,13 @@ bool SpriteRenderer::Initialize(IDirect3DDevice9* device)
     };
     if (FAILED(device->CreateVertexDeclaration(elements, &declaration_)))
         return false;
+    if (SUCCEEDED(D3DXCreateTextureFromFile(
+            device, "game:\\assets\\sprite_atlas.png", &atlas_))) {
+        externalAtlas_ = true;
+        OutputDebugStringA("[M360][XEX] loaded external sprite atlas\n");
+        return true;
+    }
+    OutputDebugStringA("[M360][XEX] external atlas missing; using fallback\n");
     return BuildAtlas(device, &atlas_);
 }
 
@@ -225,4 +234,10 @@ void SpriteRenderer::Shutdown()
     pixelShader_ = 0;
     vertexShader_ = 0;
     atlas_ = 0;
+    externalAtlas_ = false;
+}
+
+bool SpriteRenderer::UsesExternalAtlas() const
+{
+    return externalAtlas_;
 }

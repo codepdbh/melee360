@@ -138,7 +138,7 @@ void AddNumber(RectBatch& batch, LONG x, LONG y, unsigned value, LONG scale)
     AddText(batch, x, y, text, scale);
 }
 
-void BuildScene(bool meleeCodePassed)
+void BuildScene(bool meleeCodePassed, bool externalAtlasLoaded)
 {
     AddRect(g_green, 0, 86, 1280, 4);
     AddOutline(g_panel, 62, 125, 1156, 500, 3);
@@ -161,6 +161,9 @@ void BuildScene(bool meleeCodePassed)
     AddText(g_muted, 1050, 202, "Y EXIT", 2);
     AddText(g_muted, 610, 220,
             "KEYBOARD A D MOVE / SEMICOLON JUMP / L ATTACK / X RESET / P EXIT",
+            1);
+    AddText(g_muted, 96, 220,
+            externalAtlasLoaded ? "EXTERNAL ATLAS: OK" : "INTERNAL ATLAS: FALLBACK",
             1);
     AddText(g_white, 952, 290, "DAMAGE", 2);
     AddText(g_muted, 76, 672, "NATIVE POWERPC / D3D9 / ORIGINAL LBTIME.C", 2);
@@ -367,7 +370,7 @@ void __cdecl main()
         return;
     }
 
-    BuildScene(meleeCodePassed);
+    BuildScene(meleeCodePassed, renderer.UsesExternalAtlas());
     M360_HSDPadInit();
     GameState game;
     ZeroMemory(&game, sizeof(game));

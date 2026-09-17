@@ -96,3 +96,8 @@ repository milestone, the atlas is generated at runtime and contains original
 placeholder fighter and training-dummy artwork plus a white texel used for
 solid-color geometry. This validates UV coordinates, point sampling and alpha
 transparency without distributing copyrighted game artwork.
+
+The build also generates `dist/assets/sprite_atlas.png`. At runtime the XEX
+loads it from `game:\assets\sprite_atlas.png` through D3DX9 and reports
+`EXTERNAL ATLAS: OK` in the HUD. If the file is absent, rendering continues
+with the equivalent in-memory fallback atlas.
