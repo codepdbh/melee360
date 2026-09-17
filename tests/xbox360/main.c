@@ -139,6 +139,15 @@ int main(void)
         platform_audio_test_tone();
     }
 
+#ifdef M360_EMULATOR_MODE
+    printf("EMULATOR .......... POWERPC CODE RUNNING\n");
+    printf("PORT STATUS ....... CPU/MEMORY/LBTIME OK\n");
+    M360_LOG_INFO("emulator-safe milestone reached; waiting for host shutdown");
+    for (;;) {
+        __asm__ volatile("or 27,27,27");
+    }
+#endif
+
     printf("Press A to log input; Guide or Y exits\n");
     memset(&previous_pad, 0, sizeof(previous_pad));
 

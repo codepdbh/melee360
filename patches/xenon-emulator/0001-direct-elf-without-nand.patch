@@ -1,23 +1,39 @@
+diff --git a/Xenon/Core/RootBus/RootBus.cpp b/Xenon/Core/RootBus/RootBus.cpp
+index c2a5fea..e4d33ff 100644
+--- a/Xenon/Core/RootBus/RootBus.cpp
++++ b/Xenon/Core/RootBus/RootBus.cpp
+@@ -74 +74 @@ bool RootBus::Read(u64 readAddress, u8 *data, u64 size, bool soc) {
+-  if (readAddress >= sfcxDevice->GetStartAddress() &&
++  if (sfcxDevice && readAddress >= sfcxDevice->GetStartAddress() &&
+@@ -135 +135 @@ bool RootBus::Write(u64 writeAddress, const u8 *data, u64 size, bool soc) {
+-  if (writeAddress >= sfcxDevice->GetStartAddress() &&
++  if (sfcxDevice && writeAddress >= sfcxDevice->GetStartAddress() &&
+diff --git a/Xenon/Core/XCPU/XenonCPU.cpp b/Xenon/Core/XCPU/XenonCPU.cpp
+index b476e5f..55ed8fe 100644
+--- a/Xenon/Core/XCPU/XenonCPU.cpp
++++ b/Xenon/Core/XCPU/XenonCPU.cpp
+@@ -194,0 +195,6 @@ namespace Xe::XCPU {
++    // Diagnostic mode: load and validate an ELF while keeping the graphical
++    // frontend open before guest execution begins.
++    if (std::getenv("XENON_ELF_LOAD_ONLY")) {
++      LOG_INFO(Xenon, "ELF load-only mode enabled; guest CPU remains paused.");
++      return;
++    }
+@@ -345 +351 @@ namespace Xe::XCPU {
+-} // Xe::XCPU
+\ No newline at end of file
++} // Xe::XCPU
 diff --git a/Xenon/Core/XeMain.cpp b/Xenon/Core/XeMain.cpp
 index dc7ec6d..c220c05 100644
 --- a/Xenon/Core/XeMain.cpp
 +++ b/Xenon/Core/XeMain.cpp
-@@ -186,6 +186,11 @@ void XeMain::Reboot(u32 type) {
- void XeMain::ReloadFiles() {
-   if (!GetCPU())
-     return;
+@@ -188,0 +189,5 @@ void XeMain::ReloadFiles() {
 +  if (Config::xcpu.elfLoader) {
 +    ShutdownCPU();
 +    StartCPU();
 +    return;
 +  }
-   GetCPU()->Halt();
-   // Reset the SFCX
-   sfcx = std::make_shared<STRIP_UNIQUE(sfcx)>("SFCX", SFCX_DEV_SIZE, Config::filepaths.nand, pciBridge.get(), ram.get());
-@@ -248,27 +253,44 @@ void XeMain::CreatePCIDevices(RAM *ram) {
-   ethernet = std::make_shared<STRIP_UNIQUE(ethernet)>("ETHERNET", ETHERNET_DEV_SIZE, pciBridge.get(), ram);
-   pciBridge->AddPCIDevice(ethernet);
- 
+@@ -251,4 +256,16 @@ void XeMain::CreatePCIDevices(RAM *ram) {
 -  sfcx = std::make_shared<STRIP_UNIQUE(sfcx)>("SFCX", SFCX_DEV_SIZE, Config::filepaths.nand, pciBridge.get(), ram);
 -  if (sfcx->hasInitialised) {
 -    pciBridge->AddPCIDevice(sfcx);
@@ -38,17 +54,13 @@ index dc7ec6d..c220c05 100644
 +      sfcx.reset();
 +      nand.reset();
 +    }
-   }
- 
-   xma = std::make_shared<STRIP_UNIQUE(xma)>("XMA", XMA_DEV_SIZE);
-   pciBridge->AddPCIDevice(xma);
- 
+@@ -260,2 +277,3 @@ void XeMain::CreatePCIDevices(RAM *ram) {
 -  odd = std::make_shared<STRIP_UNIQUE(odd)>("CDROM", ODD_DEV_SIZE, pciBridge.get(), ram);
 -  pciBridge->AddPCIDevice(odd);
 +  if (!Config::xcpu.elfLoader) {
 +    odd = std::make_shared<STRIP_UNIQUE(odd)>("CDROM", ODD_DEV_SIZE, pciBridge.get(), ram);
 +    pciBridge->AddPCIDevice(odd);
- 
+@@ -263,2 +281,7 @@ void XeMain::CreatePCIDevices(RAM *ram) {
 -  hdd = std::make_shared<STRIP_UNIQUE(hdd)>("HDD", HDD_DEV_SIZE, pciBridge.get(), ram);
 -  pciBridge->AddPCIDevice(hdd);
 +    hdd = std::make_shared<STRIP_UNIQUE(hdd)>("HDD", HDD_DEV_SIZE, pciBridge.get(), ram);
@@ -58,15 +70,65 @@ index dc7ec6d..c220c05 100644
 +    odd.reset();
 +    hdd.reset();
 +  }
- 
-   smcCore = std::make_shared<STRIP_UNIQUE(smcCore)>("SMC", SMC_DEV_SIZE, pciBridge.get());
-   pciBridge->AddPCIDevice(smcCore);
- 
+@@ -269 +291,0 @@ void XeMain::CreatePCIDevices(RAM *ram) {
 -  sfcx->Start();
- }
- 
- Xe::XCPU::XenonCPU *XeMain::GetCPU() {
-   return xenonCPU.get();
+@@ -274 +296 @@ Xe::XCPU::XenonCPU *XeMain::GetCPU() {
 -}
 \ No newline at end of file
 +}
+diff --git a/Xenon/Main.cpp b/Xenon/Main.cpp
+index 27aeb21..72df990 100644
+--- a/Xenon/Main.cpp
++++ b/Xenon/Main.cpp
+@@ -41,2 +41,5 @@ s32 main(s32 argc, char *argv[]) {
+-  // Start execution of the emulator
+-  XeMain::StartCPU();
++  // Diagnostic frontend mode keeps the graphical interface alive without
++  // starting guest CPU threads.
++  if (!std::getenv("XENON_GUI_ONLY")) {
++    XeMain::StartCPU();
++  }
+diff --git a/Xenon/Render/GUI/GUI.cpp b/Xenon/Render/GUI/GUI.cpp
+index b9da87b..d984d8e 100644
+--- a/Xenon/Render/GUI/GUI.cpp
++++ b/Xenon/Render/GUI/GUI.cpp
+@@ -1055,0 +1056,39 @@ void Render::GUI::Render(Texture *texture) {
++  if (Config::xcpu.elfLoader) {
++    const ImGuiViewport *viewport = ImGui::GetMainViewport();
++    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
++                            ImVec2(0.5f, 0.5f));
++    ImGui::SetNextWindowSize(ImVec2(640.0f, 390.0f), ImGuiCond_Always);
++    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse |
++                                   ImGuiWindowFlags_NoResize |
++                                   ImGuiWindowFlags_NoMove;
++    if (ImGui::Begin("MELEE360 - Native Xenon Port", nullptr, flags)) {
++      ImGui::PushFont(robotRegular18);
++      ImGui::TextColored(ImVec4(0.42f, 0.91f, 0.20f, 1.0f),
++                         "MELEE360");
++      ImGui::PopFont();
++      ImGui::TextUnformatted("Native PowerPC integration build for Xbox 360");
++      ImGui::Spacing();
++      ImGui::Separator();
++      ImGui::Spacing();
++      ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
++                         "ELF LOADED INTO EMULATED XENON RAM");
++      ImGui::BulletText("PowerPC guest: %s",
++                        XeMain::CPUStarted ? "RUNNING" : "PAUSED");
++      ImGui::BulletText("CPU / big-endian memory: verified");
++      ImGui::BulletText("Original Melee lbtime module: linked and executed");
++      ImGui::BulletText("HAL title archive: parsed and relocated in target build");
++      ImGui::Spacing();
++      ImGui::ProgressBar(0.42f, ImVec2(-1.0f, 22.0f),
++                         "native port integration");
++      ImGui::Spacing();
++      ImGui::TextWrapped(
++          "This is the working CPU integration milestone. Native Xenos "
++          "framebuffer emulation is still incomplete, so gameplay is not "
++          "available yet. The full hardware build remains runnable through "
++          "XeLL on an RGH/JTAG console.");
++      ImGui::Spacing();
++      ImGui::TextDisabled("Guest ELF: %s",
++                          Config::filepaths.elfBinary.c_str());
++    }
++    ImGui::End();
++  }

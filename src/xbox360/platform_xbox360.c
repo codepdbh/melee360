@@ -25,6 +25,15 @@ extern int m360_xenos_draw_triangle(struct XenosDevice *device);
 
 int platform_init(void)
 {
+#ifdef M360_EMULATOR_MODE
+    /*
+     * The research Xenon emulator can execute PowerPC code and RAM accesses,
+     * but does not yet model enough of libxenon's direct Xenos/USB startup.
+     * Keep the normal XeLL build untouched while allowing a CPU-visible
+     * integration test to reach main() under emulation.
+     */
+    return 0;
+#else
 #ifndef M360_DISABLE_VIDEO
     struct XenosSurface *framebuffer;
 
@@ -44,6 +53,7 @@ int platform_init(void)
     usb_init();
     usb_do_poll();
     return 0;
+#endif
 }
 
 void platform_shutdown(void)
@@ -63,11 +73,19 @@ void platform_free(void *pointer)
 
 void platform_input_poll(void)
 {
+#ifndef M360_EMULATOR_MODE
     usb_do_poll();
+#endif
 }
 
 int platform_input_get(unsigned port, struct m360_input_state *state)
 {
+#ifdef M360_EMULATOR_MODE
+    (void)port;
+    if (state)
+        memset(state, 0, sizeof(*state));
+    return 0;
+#else
     struct controller_data_s pad;
     if (!state || port >= 4 || !get_controller_data(&pad, (int)port))
         return 0;
@@ -84,17 +102,22 @@ int platform_input_get(unsigned port, struct m360_input_state *state)
         (pad.left ? M360_BUTTON_LEFT : 0) | (pad.right ? M360_BUTTON_RIGHT : 0) |
         (pad.logo ? M360_BUTTON_GUIDE : 0);
     return 1;
+#endif
 }
 
 extern int bdev_enum(int handle, const char **name);
 
 int platform_filesystem_init(void)
 {
+#ifdef M360_EMULATOR_MODE
+    return -1;
+#else
 #ifndef M360_SAFE_MODE
     xenon_ata_init();
     xenon_atapi_init();
 #endif
     return fatInitDefault() ? 0 : -1;
+#endif
 }
 
 int platform_find_melee_iso(char *path, size_t path_size, char game_id[7], uint8_t *revision)

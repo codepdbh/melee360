@@ -3,13 +3,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EMU="$ROOT/tools/xenon-emulator/build/m360-headless/Xenon"
-ELF="$ROOT/build-x360/melee360-test.elf32"
+ELF="${2:-$ROOT/dist/xenon-emulator.elf}"
 RUN_HOME="$ROOT/build-x360/xenon-home"
 CONFIG="$RUN_HOME/.local/share/Xenon/config.toml"
 SECONDS_TO_RUN="${1:-10}"
 
 [[ -x "$EMU" ]] || { echo '[M360][EMU][ERROR] headless Xenon emulator is not built' >&2; exit 1; }
-[[ -f "$ELF" ]] || { echo '[M360][EMU][ERROR] platform test ELF is missing' >&2; exit 1; }
+[[ -f "$ELF" ]] || { echo "[M360][EMU][ERROR] ELF is missing: $ELF" >&2; exit 1; }
 mkdir -p "$RUN_HOME/.local/share"
 
 if [[ ! -f "$CONFIG" ]]; then

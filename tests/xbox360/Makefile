@@ -9,6 +9,7 @@ include $(DEVKITXENON)/rules
 MAKEFILE_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 TARGET := $(abspath $(MAKEFILE_DIR)/../../build-x360/melee360-test)
 BUILD := build
+EMULATOR ?= 0
 MELEE_PC := ../../upstream/melee-pc
 MELEE_LB := $(MELEE_PC)/src/melee/lb
 SOURCES := ../../src/common ../../src/xbox360 . $(MELEE_LB)
@@ -19,6 +20,9 @@ CFLAGS := -g -O2 -Wall -Wextra $(MACHDEP) $(INCLUDE) \
           -include $(abspath $(MAKEFILE_DIR)/../../src/xbox360/melee_disc_compat.h) \
           -DTARGET_PC=1 -DMELEE_PC=1 \
           -DM360_BUILD_ID=\"$(shell git -C $(MAKEFILE_DIR)/../.. rev-parse --short HEAD 2>/dev/null || echo working-tree)\"
+ifeq ($(EMULATOR),1)
+CFLAGS += -DM360_EMULATOR_MODE=1 -DM360_DISABLE_VIDEO=1 -DM360_DISABLE_AUDIO=1
+endif
 CXXFLAGS := $(CFLAGS)
 LDFLAGS = -g $(MACHDEP) -Wl,--gc-sections -Wl,-Map,$(OUTPUT).map
 LIBS := -lxenon -lm -lfat

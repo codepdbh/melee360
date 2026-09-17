@@ -39,6 +39,7 @@ LibXenon implementations.
 | Dolphin `DVDOpen`/`DVDRead` compatibility | ✅ Minimal synchronous slice working |
 | HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
+| Xenon emulator direct-ELF execution | ✅ CPU/memory milestone running with visible status UI |
 | Menus and gameplay | 🚧 Not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal
@@ -81,6 +82,18 @@ The official `free60/libxenon` container produces:
 ```text
 dist/xenon.elf
 ```
+
+An emulator-safe integration ELF can also be built and run with the patched,
+pinned Xenon research emulator:
+
+```bash
+./tools/setup_xenon_emulator.sh
+./tools/build_xenon_emulator_elf.sh
+./tools/run_xenon_emulator.sh
+```
+
+This verifies native PowerPC execution, memory, endian behavior and linked
+Melee code. It is not gameplay; Xenos framebuffer emulation remains pending.
 
 ## Run with XeLL
 
