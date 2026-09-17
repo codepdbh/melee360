@@ -31,8 +31,10 @@ struct GameState {
     float velocityX;
     float velocityY;
     bool grounded;
+    bool facingRight;
     unsigned damage;
     DWORD attackUntil;
+    DWORD hitUntil;
 };
 
 RectBatch g_green = { {}, 0, D3DCOLOR_XRGB(107, 232, 52) };
@@ -246,8 +248,10 @@ void ResetGame(GameState& game)
     game.velocityX = 0.0f;
     game.velocityY = 0.0f;
     game.grounded = true;
+    game.facingRight = true;
     game.damage = 0;
     game.attackUntil = 0;
+    game.hitUntil = 0;
 }
 
 void UpdateGame(GameState& game, const HSD_PadStatus& input, float elapsed,
@@ -268,6 +272,10 @@ void UpdateGame(GameState& game, const HSD_PadStatus& input, float elapsed,
         direction = input.nml_stickX;
 
     game.velocityX = direction * 0.36f;
+    if (direction > 0.01f)
+        game.facingRight = true;
+    else if (direction < -0.01f)
+        game.facingRight = false;
     if ((pressed & HSD_PAD_A) && game.grounded) {
         game.velocityY = -0.72f;
         game.grounded = false;
@@ -292,9 +300,12 @@ void UpdateGame(GameState& game, const HSD_PadStatus& input, float elapsed,
     const int attackHit = lb_8000D148(
         attackStartX, attackY, attackStartX + 88.0f, attackY,
         873.0f, 540.0f, 38.0f);
-    if ((pressed & HSD_PAD_X) && attackHit) {
-        game.damage = lbTime_8000AF74(game.damage, 8);
-        game.attackUntil = now + 130;
+    if (pressed & HSD_PAD_X) {
+        game.attackUntil = now + 160;
+        if (attackHit) {
+            game.damage = lbTime_8000AF74(game.damage, 8);
+            game.hitUntil = now + 180;
+        }
     }
 }
 
@@ -304,9 +315,28 @@ void RenderGame(SpriteRenderer& renderer, const GameState& game, DWORD now)
     const LONG y = static_cast<LONG>(game.playerY);
     DrawRect(renderer, x - 8, 568, 54, 7, D3DCOLOR_XRGB(0, 0, 0), 0.40f);
     const SpriteColor white = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float frameX = 8.0f;
+    float frameY = 0.0f;
+    if (now < game.attackUntil) {
+        frameX = 176.0f;
+        frameY = 64.0f;
+    } else if (!game.grounded) {
+        frameX = 120.0f;
+        frameY = 64.0f;
+    } else if (game.velocityX < -0.01f || game.velocityX > 0.01f) {
+        frameX = 64.0f;
+        frameY = 64.0f;
+    }
+    float playerU0 = frameX / 256.0f;
+    float playerU1 = (frameX + 48.0f) / 256.0f;
+    if (!game.facingRight) {
+        const float swap = playerU0;
+        playerU0 = playerU1;
+        playerU1 = swap;
+    }
     renderer.AddSprite(static_cast<float>(x - 13), static_cast<float>(y - 8),
-                       65.0f, 64.0f, 8.0f / 128.0f, 0.0f,
-                       56.0f / 128.0f, 1.0f, white);
+                       65.0f, 64.0f, playerU0, frameY / 128.0f,
+                       playerU1, (frameY + 64.0f) / 128.0f, white);
 
     const float damageTint = static_cast<float>(game.damage) / 637.5f;
     const SpriteColor targetTint = {
@@ -314,12 +344,29 @@ void RenderGame(SpriteRenderer& renderer, const GameState& game, DWORD now)
     };
     DrawRect(renderer, 840, 568, 66, 7, D3DCOLOR_XRGB(0, 0, 0), 0.40f);
     renderer.AddSprite(849.0f, 510.0f, 48.0f, 64.0f,
-                       68.0f / 128.0f, 0.0f,
-                       116.0f / 128.0f, 1.0f, targetTint);
+                       68.0f / 256.0f, 0.0f,
+                       116.0f / 256.0f, 64.0f / 128.0f, targetTint);
 
     if (now < game.attackUntil)
         DrawRect(renderer, x + 38, y + 22, 65, 18,
                  D3DCOLOR_XRGB(255, 224, 94), 0.82f);
+
+    if (now < game.hitUntil) {
+        const float progress = 1.0f -
+            static_cast<float>(game.hitUntil - now) / 180.0f;
+        static const int directions[8][2] = {
+            {-34,-22}, {-14,-42}, {12,-38}, {36,-18},
+            {-38,10}, {-18,31}, {16,34}, {40,12}
+        };
+        for (unsigned i = 0; i < 8; ++i) {
+            const LONG sparkX = 873 + static_cast<LONG>(directions[i][0] * progress);
+            const LONG sparkY = 535 + static_cast<LONG>(directions[i][1] * progress);
+            DrawRect(renderer, sparkX, sparkY, 7, 7,
+                     (i & 1) ? D3DCOLOR_XRGB(255, 91, 146)
+                             : D3DCOLOR_XRGB(255, 230, 83),
+                     1.0f - progress * 0.7f);
+        }
+    }
 
     g_dynamic.count = 0;
     AddNumber(g_dynamic, 1004, 326, game.damage, 5);

@@ -11,7 +11,7 @@ $directory = Split-Path -Parent $OutputPath
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
 
 $bitmap = [System.Drawing.Bitmap]::new(
-    128, 64, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    256, 128, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
 $graphics.Clear([System.Drawing.Color]::Transparent)
@@ -49,6 +49,20 @@ try {
     $graphics.FillRectangle($green, 20, 50, 10, 11)
     $graphics.FillRectangle($green, 35, 50, 10, 11)
     $graphics.FillRectangle($scarf, 12, 25, 41, 3)
+
+    $sourceFrame = [System.Drawing.Rectangle]::new(8, 0, 48, 64)
+    foreach ($destination in @(
+        [System.Drawing.Rectangle]::new(64, 64, 48, 64),
+        [System.Drawing.Rectangle]::new(120, 64, 48, 64),
+        [System.Drawing.Rectangle]::new(176, 64, 48, 64))) {
+        $graphics.DrawImage($bitmap, $destination, $sourceFrame,
+                            [System.Drawing.GraphicsUnit]::Pixel)
+    }
+    $graphics.FillRectangle($green, 68, 108, 10, 12)
+    $graphics.FillRectangle($green, 95, 112, 10, 9)
+    $graphics.FillRectangle($green, 128, 116, 10, 8)
+    $graphics.FillRectangle($green, 151, 116, 10, 8)
+    $graphics.FillRectangle($gold, 215, 91, 26, 9)
 
     $graphics.FillEllipse($dummyDark, 78, 1, 28, 29)
     $graphics.FillEllipse($dummyFace, 80, 2, 24, 27)

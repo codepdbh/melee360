@@ -7,8 +7,8 @@
 
 namespace {
 
-const unsigned kAtlasWidth = 128;
-const unsigned kAtlasHeight = 64;
+const unsigned kAtlasWidth = 256;
+const unsigned kAtlasHeight = 128;
 
 void FillRect(DWORD* pixels, unsigned pitch, int x, int y, int width,
               int height, DWORD color)
@@ -33,6 +33,19 @@ void FillEllipse(DWORD* pixels, unsigned pitch, int centerX, int centerY,
                 destination[centerX + x] = color;
             }
         }
+    }
+}
+
+void CopyRegion(DWORD* pixels, unsigned pitch, int sourceX, int sourceY,
+                int destinationX, int destinationY, int width, int height)
+{
+    for (int y = 0; y < height; ++y) {
+        DWORD* source = reinterpret_cast<DWORD*>(
+            reinterpret_cast<BYTE*>(pixels) + (sourceY + y) * pitch);
+        DWORD* destination = reinterpret_cast<DWORD*>(
+            reinterpret_cast<BYTE*>(pixels) + (destinationY + y) * pitch);
+        for (int x = 0; x < width; ++x)
+            destination[destinationX + x] = source[sourceX + x];
     }
 }
 
@@ -74,6 +87,20 @@ bool BuildAtlas(IDirect3DDevice9* device, IDirect3DTexture9** atlas)
              D3DCOLOR_ARGB(255, 107, 232, 52));
     FillRect(pixels, locked.Pitch, 12, 25, 41, 3,
              D3DCOLOR_ARGB(230, 255, 85, 137));
+
+    CopyRegion(pixels, locked.Pitch, 8, 0, 64, 64, 48, 64);
+    CopyRegion(pixels, locked.Pitch, 8, 0, 120, 64, 48, 64);
+    CopyRegion(pixels, locked.Pitch, 8, 0, 176, 64, 48, 64);
+    FillRect(pixels, locked.Pitch, 68, 108, 10, 12,
+             D3DCOLOR_ARGB(255, 107, 232, 52));
+    FillRect(pixels, locked.Pitch, 95, 112, 10, 9,
+             D3DCOLOR_ARGB(255, 107, 232, 52));
+    FillRect(pixels, locked.Pitch, 128, 116, 10, 8,
+             D3DCOLOR_ARGB(255, 107, 232, 52));
+    FillRect(pixels, locked.Pitch, 151, 116, 10, 8,
+             D3DCOLOR_ARGB(255, 107, 232, 52));
+    FillRect(pixels, locked.Pitch, 215, 91, 26, 9,
+             D3DCOLOR_ARGB(255, 255, 226, 89));
 
     /* Original training dummy sprite, stored in columns 68..115. */
     FillEllipse(pixels, locked.Pitch, 92, 15, 12, 13,

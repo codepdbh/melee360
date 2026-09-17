@@ -101,3 +101,8 @@ The build also generates `dist/assets/sprite_atlas.png`. At runtime the XEX
 loads it from `game:\assets\sprite_atlas.png` through D3DX9 and reports
 `EXTERNAL ATLAS: OK` in the HUD. If the file is absent, rendering continues
 with the equivalent in-memory fallback atlas.
+
+The atlas currently contains separate original frames for idle, movement,
+airborne and attack states. The render loop selects a frame from gameplay
+state, flips UV coordinates for facing direction and emits short-lived alpha
+blended particles when the reconstructed segment hit test connects.
