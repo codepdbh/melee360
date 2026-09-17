@@ -13,6 +13,7 @@
 - M10 ISO located and validated: complete on host; target-side validation awaits hardware media
 - M11 First reconstructed Melee module integrated: complete (`melee/lb/lbtime.c`)
 - M12 GameCube FST reader: complete; validated against the legal GALE01 image
+- M13 Minimal Dolphin DVD API: complete (`DVDOpen`, `DVDFastOpen`, sync/async read)
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
@@ -31,3 +32,8 @@ The portable GCM reader mounts the filesystem table directly from a raw ISO,
 resolves nested paths, bounds-checks names and reads file extents. Its host
 test validated 1,212 entries and the `BNR1` header of `opening.bnr`; the same
 implementation is linked into the Xbox 360 ELF.
+
+The first Dolphin DVD compatibility slice now runs on the same GCM reader.
+Host validation opens `/opening.bnr` as entry 537 through
+`DVDConvertPathToEntrynum`/`DVDFastOpen`, reads it with `DVDReadPrio`, and
+checks its `BNR1` signature. These symbols are present in the PowerPC link map.

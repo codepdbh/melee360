@@ -11,6 +11,8 @@ OUT="$ROOT/build-x360/host-tests/test_gcm"
 }
 
 mkdir -p "$(dirname "$OUT")"
-cc -std=c11 -Wall -Wextra -Werror -I"$ROOT/src/common" \
-    "$ROOT/src/common/gcm.c" "$ROOT/tests/host/test_gcm.c" -o "$OUT"
+cc -std=c11 -Wall -Wextra -Werror -DTARGET_PC=1 -DMELEE_PC=1 \
+    -I"$ROOT/src/common" -I"$ROOT/upstream/melee-pc/extern/aurora/include" \
+    "$ROOT/src/common/gcm.c" "$ROOT/src/common/dvd_compat.c" \
+    "$ROOT/tests/host/test_gcm.c" -o "$OUT"
 "$OUT" "$ISO"

@@ -1,8 +1,9 @@
 #include "platform.h"
 #include "m360_log.h"
-#include "gcm.h"
+#include "dvd_compat.h"
 
 #include <melee/lb/lbtime.h>
+#include <dolphin/dvd.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -58,26 +59,24 @@ int main(void)
     printf("AUDIO ............. %s\n\n", audio_ready ? "OK" : "DISABLED/FAIL");
     printf("BUILD ............. %s\n\n", M360_BUILD_ID);
     if (fs_ready && platform_find_melee_iso(iso_path, sizeof(iso_path), game_id, &revision)) {
-        struct m360_gcm gcm;
-        struct m360_gcm_file banner;
-        FILE *image;
+        DVDFileInfo banner;
+        unsigned char banner_header[32] __attribute__((aligned(32)));
+        s32 entry;
 
         M360_LOG_FS("found %s Game ID=%s revision=%u", iso_path, game_id, revision);
-        image = fopen(iso_path, "rb");
-        if (image && m360_gcm_mount(&gcm, image) == 0) {
-            if (m360_gcm_find(&gcm, "opening.bnr", &banner))
-                M360_LOG_FS("GCM FST entries=%lu opening.bnr offset=%lu size=%lu",
-                            (unsigned long)gcm.entry_count,
-                            (unsigned long)banner.offset,
-                            (unsigned long)banner.size);
-            else
-                M360_LOG_FS("GCM mounted but opening.bnr was not found");
-            m360_gcm_unmount(&gcm);
+        if (m360_dvd_mount_image(iso_path) == 0 &&
+            (entry = DVDConvertPathToEntrynum("/opening.bnr")) >= 0 &&
+            DVDFastOpen(entry, &banner) &&
+            DVDReadPrio(&banner, banner_header, sizeof(banner_header), 0, 2) ==
+                (s32)sizeof(banner_header) &&
+            memcmp(banner_header, "BNR1", 4) == 0) {
+            M360_LOG_FS("Dolphin DVD API entry=%ld opening.bnr size=%lu magic=BNR1",
+                        (long)entry, (unsigned long)banner.length);
+            DVDClose(&banner);
         } else {
-            M360_LOG_FS("failed to mount GCM filesystem");
+            M360_LOG_FS("Dolphin DVD API validation failed");
         }
-        if (image)
-            fclose(image);
+        m360_dvd_unmount_image();
     } else {
         M360_LOG_FS("GALE01 ISO not found in known read-only locations");
     }

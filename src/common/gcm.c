@@ -123,6 +123,7 @@ int m360_gcm_find(const struct m360_gcm *gcm, const char *path,
                 }
                 if (is_directory)
                     return 0;
+                file->entry_index = index;
                 file->offset = read_be32(entry + 4);
                 file->size = read_be32(entry + 8);
                 return 1;
@@ -133,6 +134,22 @@ int m360_gcm_find(const struct m360_gcm *gcm, const char *path,
             return 0;
     }
     return 0;
+}
+
+int m360_gcm_file_by_index(const struct m360_gcm *gcm, uint32_t entry_index,
+                           struct m360_gcm_file *file)
+{
+    const uint8_t *entry;
+
+    if (!gcm || !gcm->fst || !file)
+        return 0;
+    entry = entry_at(gcm, entry_index);
+    if (!entry || (read_be32(entry) >> 24) != 0)
+        return 0;
+    file->entry_index = entry_index;
+    file->offset = read_be32(entry + 4);
+    file->size = read_be32(entry + 8);
+    return 1;
 }
 
 size_t m360_gcm_read(const struct m360_gcm *gcm,

@@ -36,6 +36,7 @@ LibXenon implementations.
 | Basic PCM audio | ✅ Compiled |
 | FAT filesystem and `GALE01` detection | ✅ Compiled |
 | GameCube FST and resource lookup | ✅ Host-tested and linked |
+| Dolphin `DVDOpen`/`DVDRead` compatibility | ✅ Minimal synchronous slice working |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
 | Menus and gameplay | 🚧 Not implemented yet |
 
