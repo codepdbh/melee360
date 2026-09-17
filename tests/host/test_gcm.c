@@ -48,6 +48,7 @@ int main(int argc, char **argv)
         DVDFileInfo info;
         s32 entry;
         unsigned char async_banner[4];
+        char title[65];
 
         if (m360_dvd_mount_image(argv[1]) != 0 ||
             (entry = DVDConvertPathToEntrynum("/opening.bnr")) < 0 ||
@@ -60,14 +61,16 @@ int main(int argc, char **argv)
                               read_complete, 2) ||
             async_result != (s32)sizeof(async_banner) ||
             memcmp(async_banner, "BNR1", 4) != 0 ||
+            DVDReadPrio(&info, title, 64, 0x1860, 2) != 64 ||
+            (title[64] = '\0', strcmp(title, "SUPER SMASH BROS. Melee") != 0) ||
             !DVDClose(&info) || !DVDOpen("opening.bnr", &info) ||
             info.length != file.size || !DVDClose(&info)) {
             fprintf(stderr, "Dolphin DVD compatibility validation failed\n");
             m360_dvd_unmount_image();
             return 1;
         }
-        printf("DVD API OK: entry=%d length=%u read=BNR1\n", entry,
-               info.length);
+        printf("DVD API OK: entry=%d length=%u read=BNR1 title=%s\n", entry,
+               info.length, title);
         m360_dvd_unmount_image();
     }
     return 0;

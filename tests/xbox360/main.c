@@ -61,6 +61,7 @@ int main(void)
     if (fs_ready && platform_find_melee_iso(iso_path, sizeof(iso_path), game_id, &revision)) {
         DVDFileInfo banner;
         unsigned char banner_header[32] __attribute__((aligned(32)));
+        char banner_title[65] __attribute__((aligned(32)));
         s32 entry;
 
         M360_LOG_FS("found %s Game ID=%s revision=%u", iso_path, game_id, revision);
@@ -69,9 +70,12 @@ int main(void)
             DVDFastOpen(entry, &banner) &&
             DVDReadPrio(&banner, banner_header, sizeof(banner_header), 0, 2) ==
                 (s32)sizeof(banner_header) &&
-            memcmp(banner_header, "BNR1", 4) == 0) {
+            memcmp(banner_header, "BNR1", 4) == 0 &&
+            DVDReadPrio(&banner, banner_title, 64, 0x1860, 2) == 64) {
+            banner_title[64] = '\0';
             M360_LOG_FS("Dolphin DVD API entry=%ld opening.bnr size=%lu magic=BNR1",
                         (long)entry, (unsigned long)banner.length);
+            printf("GAME RESOURCE ..... %s\n", banner_title);
             DVDClose(&banner);
         } else {
             M360_LOG_FS("Dolphin DVD API validation failed");
