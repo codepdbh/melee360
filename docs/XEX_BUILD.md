@@ -47,6 +47,12 @@ links the original `upstream/melee-pc/src/melee/lb/lbtime.c` source through a
 small XDK time compatibility layer. It is a real Xbox 360 PowerPC XEX importing
 `xam.xex` and `xboxkrnl.exe`; it is not the full game yet.
 
+Controller input also passes through the original
+`upstream/melee-pc/src/sysdolphin/baselib/controller.c`. The Xbox adapter
+implements `PADRead` over XInput, after which the original HSD code performs
+stick clamping and normalization plus button trigger, release and repeat state.
+The prototype reads `HSD_PadGameStatus`, rather than consuming XInput directly.
+
 Run it with a local Xenia Canary build:
 
 ```powershell

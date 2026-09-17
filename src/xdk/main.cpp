@@ -1,5 +1,7 @@
 #include <xtl.h>
 
+#include "melee_pad_xdk.h"
+
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
 extern "C" unsigned int lbTime_8000AEE4(unsigned int a, int b);
 extern "C" unsigned int lbTime_8000AF74(unsigned int a, int b);
@@ -25,7 +27,6 @@ struct GameState {
     bool grounded;
     unsigned damage;
     DWORD attackUntil;
-    WORD previousButtons;
 };
 
 RectBatch g_green = { {}, 0, D3DCOLOR_XRGB(107, 232, 52) };
@@ -150,7 +151,8 @@ void BuildScene(bool meleeCodePassed)
     AddText(g_muted, 96, 202,
             meleeCodePassed ? "MELEE LBTIME LINKED: OK" : "MELEE LBTIME LINKED: FAIL",
             2);
-    AddText(g_muted, 918, 202, "Y EXIT", 2);
+    AddText(g_muted, 500, 202, "HSD CONTROLLER LINKED", 2);
+    AddText(g_muted, 1050, 202, "Y EXIT", 2);
     AddText(g_muted, 610, 220,
             "KEYBOARD A D MOVE / SEMICOLON JUMP / L ATTACK / X RESET / P EXIT",
             1);
@@ -183,28 +185,25 @@ void ResetGame(GameState& game)
     game.attackUntil = 0;
 }
 
-void UpdateGame(GameState& game, const XINPUT_STATE& input, float elapsed,
+void UpdateGame(GameState& game, const HSD_PadStatus& input, float elapsed,
                 DWORD now)
 {
-    const WORD buttons = input.Gamepad.wButtons;
-    const WORD pressed = static_cast<WORD>(buttons & ~game.previousButtons);
-    game.previousButtons = buttons;
+    const M360U32 buttons = input.button;
+    const M360U32 pressed = input.trigger;
 
-    if (pressed & XINPUT_GAMEPAD_START)
+    if (pressed & HSD_PAD_START)
         ResetGame(game);
 
     float direction = 0.0f;
-    if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)
+    if (buttons & HSD_PAD_DPADLEFT)
         direction = -1.0f;
-    else if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT)
+    else if (buttons & HSD_PAD_DPADRIGHT)
         direction = 1.0f;
-    else if (input.Gamepad.sThumbLX < -7000)
-        direction = static_cast<float>(input.Gamepad.sThumbLX) / 32768.0f;
-    else if (input.Gamepad.sThumbLX > 7000)
-        direction = static_cast<float>(input.Gamepad.sThumbLX) / 32767.0f;
+    else if (input.nml_stickX < -0.08f || input.nml_stickX > 0.08f)
+        direction = input.nml_stickX;
 
     game.velocityX = direction * 0.36f;
-    if ((pressed & XINPUT_GAMEPAD_A) && game.grounded) {
+    if ((pressed & HSD_PAD_A) && game.grounded) {
         game.velocityY = -0.72f;
         game.grounded = false;
     }
@@ -224,7 +223,7 @@ void UpdateGame(GameState& game, const XINPUT_STATE& input, float elapsed,
     }
 
     const float playerCenter = game.playerX + kPlayerWidth * 0.5f;
-    if ((pressed & XINPUT_GAMEPAD_X) && playerCenter > 790.0f &&
+    if ((pressed & HSD_PAD_X) && playerCenter > 790.0f &&
         playerCenter < 980.0f && game.playerY > 430.0f) {
         game.damage = lbTime_8000AF74(game.damage, 8);
         game.attackUntil = now + 130;
@@ -288,6 +287,7 @@ void __cdecl main()
     }
 
     BuildScene(meleeCodePassed);
+    M360_HSDPadInit();
     GameState game;
     ZeroMemory(&game, sizeof(game));
     ResetGame(game);
@@ -300,10 +300,9 @@ void __cdecl main()
         if (tickDelta > 33)
             tickDelta = 33;
 
-        XINPUT_STATE input;
-        ZeroMemory(&input, sizeof(input));
-        XInputGetState(0, &input);
-        if (input.Gamepad.wButtons & XINPUT_GAMEPAD_Y)
+        HSD_PadRenewStatus();
+        const HSD_PadStatus& input = HSD_PadGameStatus[0];
+        if (input.button & HSD_PAD_Y)
             break;
 
         UpdateGame(game, input, static_cast<float>(tickDelta), now);
