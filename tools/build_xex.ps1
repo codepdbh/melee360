@@ -57,6 +57,13 @@ $splineSource = Join-Path $baselibDir 'spline.c'
 $splineWrapper = Join-Path $root 'src\xdk\spline_xdk.cpp'
 $fobjSource = Join-Path $baselibDir 'fobj.c'
 $randomSource = Join-Path $baselibDir 'random.c'
+$hsdAnimCompat = Join-Path $root 'src\xdk\hsdanim_xdk_compat.h'
+$hsdAnimWrapper = Join-Path $root 'src\xdk\hsdanim_xdk.cpp'
+$aobjSource = Join-Path $baselibDir 'aobj.c'
+$dobjSource = Join-Path $baselibDir 'dobj.c'
+$robjSource = Join-Path $baselibDir 'robj.c'
+$utilSource = Join-Path $baselibDir 'util.c'
+$bytecodeSource = Join-Path $baselibDir 'bytecode.c'
 $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
@@ -100,6 +107,12 @@ $quatlibObject = Join-Path $build 'quatlib.obj'
 $splineObject = Join-Path $build 'spline.obj'
 $fobjObject = Join-Path $build 'fobj.obj'
 $randomObject = Join-Path $build 'random.obj'
+$hsdAnimWrapperObject = Join-Path $build 'hsdanim_xdk.obj'
+$aobjObject = Join-Path $build 'aobj.obj'
+$dobjObject = Join-Path $build 'dobj.obj'
+$robjObject = Join-Path $build 'robj.obj'
+$utilObject = Join-Path $build 'util.obj'
+$bytecodeObject = Join-Path $build 'bytecode.obj'
 $vertexShaderHeader = Join-Path $build 'sprite_vs.h'
 $pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
@@ -126,7 +139,9 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $gobjGXLinkSource, $gobjInitSource, $gobjSource,
                          $hsdMathCompat, $hsdMathWrapper, $mtxSource,
                          $quatlibSource, $splineSource, $splineWrapper, $fobjSource,
-                         $randomSource)) {
+                         $randomSource, $hsdAnimCompat, $hsdAnimWrapper,
+                         $aobjSource, $dobjSource, $robjSource,
+                         $utilSource, $bytecodeSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -381,6 +396,36 @@ if ($LASTEXITCODE -ne 0) { throw 'Original fobj.c compilation failed.' }
 & $compiler ($hsdMathArgs + @("/Fo$randomObject", $randomSource))
 if ($LASTEXITCODE -ne 0) { throw 'Original random.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK HSD anim bridge'
+$hsdAnimWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$hsdAnimWrapperObject", $hsdAnimWrapper
+)
+& $compiler $hsdAnimWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK HSD anim bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc aobj/dobj/robj/util/bytecode.c'
+$hsdAnimArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdAnimCompat") + $hsdCommonInc
+
+& $compiler ($hsdAnimArgs + @("/Fo$aobjObject", $aobjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original aobj.c compilation failed.' }
+
+& $compiler ($hsdAnimArgs + @("/Fo$dobjObject", $dobjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original dobj.c compilation failed.' }
+
+& $compiler ($hsdAnimArgs + @("/Fo$robjObject", $robjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original robj.c compilation failed.' }
+
+& $compiler ($hsdAnimArgs + @("/Fo$utilObject", $utilSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original util.c compilation failed.' }
+
+& $compiler ($hsdAnimArgs + @("/Fo$bytecodeObject", $bytecodeSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original bytecode.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
@@ -395,6 +440,8 @@ $linkArgs = @(
     $gobjObject,
     $hsdMathWrapperObject, $mtxObject, $quatlibObject, $splineObject,
     $fobjObject, $randomObject,
+    $hsdAnimWrapperObject, $aobjObject, $dobjObject, $robjObject,
+    $utilObject, $bytecodeObject,
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs
