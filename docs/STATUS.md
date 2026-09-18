@@ -18,6 +18,7 @@
 - M15 HSD heap allocator: complete (`sysdolphin/baselib/memory.c`, `HSD_MemAlloc`/`HSD_Free`)
 - M16 HSD class/hash/debug/objalloc/id cluster: complete (`hash.c`, `debug.c`, `class.c`, `object.c`, `objalloc.c`, `id.c`); real `HSD_Assert`/`OSPanic` bridging
 - M17 HSD gobj (game object) cluster: complete (`list.c`, `gobjobject.c`, `gobjuserdata.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c`, `gobjinit.c`, `gobj.c`); cobj/fog/jobj/lobj not ported yet, stubbed as opaque types plus no-op render/teardown callbacks
+- M18 HSD math/animation-data foundation: complete (`mtx.c`, `quatlib.c`, `spline.c`, `fobj.c`, `random.c`); Dolphin `PSMTX*`/`PSVEC*` primitives implemented as scalar float math; `util.c` deferred (needs GX types)
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic

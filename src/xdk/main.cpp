@@ -33,11 +33,140 @@ extern "C" {
 #include "gobjuserdata.h"
 }
 
+#include "hsdmath_xdk_compat.h"
+extern "C" {
+#include "fobj.h"
+#include "mtx.h"
+#include "quatlib.h"
+#include "random.h"
+#include "spline.h"
+}
+
 namespace {
 
 void SelfTestUserDataRemoveFunc(void* data)
 {
     *static_cast<int*>(data) = 1;
+}
+
+struct FObjProbe {
+    int calls;
+    float value;
+};
+
+void SelfTestFObjUpdate(void* obj, enum_t type, HSD_ObjData* fval)
+{
+    FObjProbe* probe = static_cast<FObjProbe*>(obj);
+    (void) type;
+    probe->calls++;
+    probe->value = fval->fv;
+}
+
+bool SelfTestNear(float a, float b, float eps)
+{
+    const float d = a - b;
+    return d <= eps && d >= -eps;
+}
+
+bool SelfTestMtxNear(Mtx a, Mtx b, float eps)
+{
+    for (int r = 0; r < 3; ++r) {
+        for (int c = 0; c < 4; ++c) {
+            if (!SelfTestNear(a[r][c], b[r][c], eps))
+                return false;
+        }
+    }
+    return true;
+}
+
+bool SelfTestHsdMath()
+{
+    Vec3 scale = { 2.0f, 3.0f, 0.5f };
+    Vec3 rot = { 0.3f, -0.4f, 0.5f };
+    Vec3 trans = { 10.0f, -20.0f, 30.0f };
+    Mtx m, inv, prod, ident;
+    HSD_MtxSRT(m, &scale, &rot, &trans, NULL);
+    HSD_MtxInverse(m, inv);
+    PSMTXConcat(m, inv, prod);
+    PSMTXIdentity(ident);
+    const bool mtxOk = SelfTestMtxNear(prod, ident, 1e-3f);
+
+    Vec3 back;
+    HSD_MtxGetRotation(m, &back);
+    const bool rotOk = SelfTestNear(back.x, rot.x, 1e-4f) &&
+                       SelfTestNear(back.y, rot.y, 1e-4f) &&
+                       SelfTestNear(back.z, rot.z, 1e-4f);
+
+    Quaternion q, qm;
+    Mtx viaQuat, viaEuler;
+    EulerToQuat(&rot, &q);
+    HSD_MtxQuat(viaQuat, &q);
+    HSD_MkRotationMtx(viaEuler, &rot);
+    MatToQuat(viaQuat, &qm);
+    const bool quatOk = SelfTestMtxNear(viaQuat, viaEuler, 1e-4f) &&
+                        SelfTestNear(qm.w, q.w, 1e-4f) &&
+                        SelfTestNear(qm.x, q.x, 1e-4f);
+
+    Quaternion identQ = { 0.0f, 0.0f, 0.0f, 1.0f };
+    Quaternion quarterQ = { 0.0f, 0.0f, 0.70710678f, 0.70710678f };
+    Quaternion mid;
+    HSD_QuatLib_8037EF28(&identQ, &quarterQ, &mid, 0.5f);
+    const bool slerpOk = SelfTestNear(mid.z, 0.38268343f, 1e-4f) &&
+                         SelfTestNear(mid.w, 0.92387953f, 1e-4f);
+
+    static DiscVec3 cv[4];
+    cv[0].x = 0.0f; cv[0].y = 0.0f; cv[0].z = 0.0f;
+    cv[1].x = 2.0f; cv[1].y = 4.0f; cv[1].z = 6.0f;
+    cv[2].x = 10.0f; cv[2].y = 4.0f; cv[2].z = -6.0f;
+    cv[3].x = 10.0f; cv[3].y = 4.0f; cv[3].z = -6.0f;
+    HSD_Spline spline;
+    spline.type = 0;
+    spline.numcv = 3;
+    spline.tension = 0.0f;
+    spline.cv = cv;
+    spline.totalLength = 0.0f;
+    spline.segLength = NULL;
+    spline.segPoly = NULL;
+    Vec3 point;
+    splGetSplinePoint(&point, &spline, 0.25f);
+    const bool splineOk = SelfTestNear(point.x, 1.0f, 1e-4f) &&
+                          SelfTestNear(point.y, 2.0f, 1e-4f) &&
+                          SelfTestNear(point.z, 3.0f, 1e-4f) &&
+                          SelfTestNear(splGetHelmite(0.1f, 5.0f, 0.0f, 10.0f,
+                                                     0.0f, 0.0f),
+                                       5.0f, 1e-4f);
+
+    static unsigned char stream[10] = { 0x12, 0x00, 0x00, 0x00, 0x00, 10,
+                                        0x00, 0x00, 0xC8, 0x42 };
+    static HSD_FObjDesc desc;
+    desc.next = NULL;
+    desc.length = sizeof(stream);
+    desc.startframe = 0.0f;
+    desc.type = 12;
+    desc.frac_value = HSD_A_FRAC_FLOAT;
+    desc.frac_slope = HSD_A_FRAC_FLOAT;
+    desc.dummy0 = 0;
+    desc.ad = stream;
+    HSD_FObjInitAllocData();
+    HSD_FObj* fobj = HSD_FObjLoadDesc(&desc);
+    bool fobjOk = false;
+    if (fobj != NULL) {
+        FObjProbe probe = { 0, 0.0f };
+        HSD_FObjReqAnimAll(fobj, 0.0f);
+        HSD_FObjInterpretAnim(fobj, &probe, SelfTestFObjUpdate, 0.0f);
+        const bool startOk = probe.calls == 1 && SelfTestNear(probe.value, 0.0f, 1e-4f);
+        for (int i = 0; i < 5; ++i)
+            HSD_FObjInterpretAnim(fobj, &probe, SelfTestFObjUpdate, 1.0f);
+        fobjOk = startOk && SelfTestNear(probe.value, 50.0f, 1e-3f);
+        HSD_FObjRemoveAll(fobj);
+    }
+
+    *HSD_RandSeedPtr = 1;
+    const int rand0 = HSD_Rand();
+    const int rand1 = HSD_Rand();
+    const bool randOk = rand0 == 41 && rand1 == 51235;
+
+    return mtxOk && rotOk && quatOk && slerpOk && splineOk && fobjOk && randOk;
 }
 
 const unsigned kMaxRects = 4096;
@@ -500,13 +629,19 @@ void __cdecl main()
         }
     }
 
+    const bool hsdMathPassed = SelfTestHsdMath();
+    OutputDebugStringA(hsdMathPassed
+                           ? "[M360][MATH] HSD math self-test passed\n"
+                           : "[M360][MATH] HSD math self-test FAILED\n");
+
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
         lbTime_8000AEE4(4u, -10) == 0u &&
         lbTime_8000AF74(250u, 8) == 255u &&
         powi(3, 4) == 81 &&
-        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 5.0f, 0.0f, 1.0f) == 1 &&
-        memoryPassed && hsdClassPassed && gobjPassed;
+        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, 0.0f, 1.0f) == 1 &&
+        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 50.0f, 50.0f, 1.0f) == 0 &&
+        memoryPassed && hsdClassPassed && gobjPassed && hsdMathPassed;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
     if (!d3d)

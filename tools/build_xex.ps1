@@ -49,6 +49,14 @@ $gobjPLinkSource = Join-Path $baselibDir 'gobjplink.c'
 $gobjGXLinkSource = Join-Path $baselibDir 'gobjgxlink.c'
 $gobjInitSource = Join-Path $baselibDir 'gobjinit.c'
 $gobjSource = Join-Path $baselibDir 'gobj.c'
+$hsdMathCompat = Join-Path $root 'src\xdk\hsdmath_xdk_compat.h'
+$hsdMathWrapper = Join-Path $root 'src\xdk\hsdmath_xdk.cpp'
+$mtxSource = Join-Path $baselibDir 'mtx.c'
+$quatlibSource = Join-Path $baselibDir 'quatlib.c'
+$splineSource = Join-Path $baselibDir 'spline.c'
+$splineWrapper = Join-Path $root 'src\xdk\spline_xdk.cpp'
+$fobjSource = Join-Path $baselibDir 'fobj.c'
+$randomSource = Join-Path $baselibDir 'random.c'
 $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
@@ -86,6 +94,12 @@ $gobjPLinkObject = Join-Path $build 'gobjplink.obj'
 $gobjGXLinkObject = Join-Path $build 'gobjgxlink.obj'
 $gobjInitObject = Join-Path $build 'gobjinit.obj'
 $gobjObject = Join-Path $build 'gobj.obj'
+$hsdMathWrapperObject = Join-Path $build 'hsdmath_xdk.obj'
+$mtxObject = Join-Path $build 'mtx.obj'
+$quatlibObject = Join-Path $build 'quatlib.obj'
+$splineObject = Join-Path $build 'spline.obj'
+$fobjObject = Join-Path $build 'fobj.obj'
+$randomObject = Join-Path $build 'random.obj'
 $vertexShaderHeader = Join-Path $build 'sprite_vs.h'
 $pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
@@ -109,7 +123,10 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $gobjCompat, $gobjWrapper, $listSource,
                          $gobjObjectSource, $gobjUserDataSource,
                          $gobjProcSource, $gobjPLinkSource,
-                         $gobjGXLinkSource, $gobjInitSource, $gobjSource)) {
+                         $gobjGXLinkSource, $gobjInitSource, $gobjSource,
+                         $hsdMathCompat, $hsdMathWrapper, $mtxSource,
+                         $quatlibSource, $splineSource, $splineWrapper, $fobjSource,
+                         $randomSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -331,6 +348,39 @@ if ($LASTEXITCODE -ne 0) { throw 'Original gobjinit.c compilation failed.' }
 & $compiler ($gobjArgs + @("/Fo$gobjObject", $gobjSource))
 if ($LASTEXITCODE -ne 0) { throw 'Original gobj.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK HSD math bridge'
+$hsdMathWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$hsdMathWrapperObject", $hsdMathWrapper
+)
+& $compiler $hsdMathWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK HSD math bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc mtx/quatlib/spline/fobj/random.c'
+$hsdMathArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdMathCompat") + $hsdCommonInc
+
+& $compiler ($hsdMathArgs + @("/Fo$mtxObject", $mtxSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original mtx.c compilation failed.' }
+
+& $compiler ($hsdMathArgs + @("/Fo$quatlibObject", $quatlibSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original quatlib.c compilation failed.' }
+
+$splineArgs = @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W3',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$(Join-Path $root 'src\xdk')") +
+    $hsdCommonInc + @("/Fo$splineObject", $splineWrapper)
+& $compiler $splineArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original spline.c compilation failed.' }
+
+& $compiler ($hsdMathArgs + @("/Fo$fobjObject", $fobjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original fobj.c compilation failed.' }
+
+& $compiler ($hsdMathArgs + @("/Fo$randomObject", $randomSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original random.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
@@ -343,6 +393,8 @@ $linkArgs = @(
     $gobjWrapperObject, $listObject, $gobjObjectObject, $gobjUserDataObject,
     $gobjProcObject, $gobjPLinkObject, $gobjGXLinkObject, $gobjInitObject,
     $gobjObject,
+    $hsdMathWrapperObject, $mtxObject, $quatlibObject, $splineObject,
+    $fobjObject, $randomObject,
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs
