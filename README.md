@@ -51,6 +51,7 @@ LibXenon implementations.
 | Native movement/jump/attack sandbox | ✅ Running in Xenia Canary with controller and keyboard input |
 | Original HSD heap allocator (`memory.c`) | ✅ Real free-list heap linked (`HSD_MemAlloc`/`HSD_Free`), host-validated with a burn-in test |
 | Original HSD class/hash/debug/objalloc/id cluster | ✅ RTTI class hierarchy, hash search, real `HSD_Assert`/`OSPanic`, pool allocator and ID table linked and host-validated |
+| Original HSD gobj (game object) cluster | ✅ `list`/`gobj`/`gobjproc`/`gobjplink`/`gobjgxlink`/`gobjobject`/`gobjuserdata`/`gobjinit` linked and host-validated; cobj/fog/jobj/lobj stubbed pending their own ports |
 | Melee menus and gameplay | 🚧 Not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal

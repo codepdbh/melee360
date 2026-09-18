@@ -24,7 +24,21 @@ extern "C" {
 #include "object.h"
 }
 
+#include "gobj_xdk_compat.h"
+extern "C" {
+#include "list.h"
+#include "gobj.h"
+#include "gobjplink.h"
+#include "gobjproc.h"
+#include "gobjuserdata.h"
+}
+
 namespace {
+
+void SelfTestUserDataRemoveFunc(void* data)
+{
+    *static_cast<int*>(data) = 1;
+}
 
 const unsigned kMaxRects = 4096;
 const float kFloorY = 574.0f;
@@ -461,13 +475,38 @@ void __cdecl main()
         }
     }
 
+    bool gobjPassed = false;
+    {
+        HSD_ListInitAllocData();
+
+        HSD_GObjLibInitDataType gobjInit;
+        HSD_GObjSetInitDefaults(&gobjInit);
+        HSD_GObjInit(&gobjInit);
+
+        HSD_GObj* gobj = GObj_Create(1, 0, 0);
+        if (gobj != NULL) {
+            int userDataRemoved = 0;
+            GObj_InitUserData(gobj, 0, SelfTestUserDataRemoveFunc,
+                              &userDataRemoved);
+
+            const bool linkedAtHead = HSD_GObjPLinkHead[0] == gobj;
+            const bool userDataVisible =
+                HSD_GObjGetUserData(gobj) == &userDataRemoved;
+
+            HSD_GObjFree(gobj);
+
+            gobjPassed = linkedAtHead && userDataVisible &&
+                         userDataRemoved == 1 && HSD_GObjPLinkHead[0] == NULL;
+        }
+    }
+
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
         lbTime_8000AEE4(4u, -10) == 0u &&
         lbTime_8000AF74(250u, 8) == 255u &&
         powi(3, 4) == 81 &&
         lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 5.0f, 0.0f, 1.0f) == 1 &&
-        memoryPassed && hsdClassPassed;
+        memoryPassed && hsdClassPassed && gobjPassed;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
     if (!d3d)

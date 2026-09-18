@@ -39,6 +39,16 @@ $classSource = Join-Path $baselibDir 'class.c'
 $objectSource = Join-Path $baselibDir 'object.c'
 $objallocSource = Join-Path $baselibDir 'objalloc.c'
 $idSource = Join-Path $baselibDir 'id.c'
+$gobjCompat = Join-Path $root 'src\xdk\gobj_xdk_compat.h'
+$gobjWrapper = Join-Path $root 'src\xdk\gobj_xdk.cpp'
+$listSource = Join-Path $baselibDir 'list.c'
+$gobjObjectSource = Join-Path $baselibDir 'gobjobject.c'
+$gobjUserDataSource = Join-Path $baselibDir 'gobjuserdata.c'
+$gobjProcSource = Join-Path $baselibDir 'gobjproc.c'
+$gobjPLinkSource = Join-Path $baselibDir 'gobjplink.c'
+$gobjGXLinkSource = Join-Path $baselibDir 'gobjgxlink.c'
+$gobjInitSource = Join-Path $baselibDir 'gobjinit.c'
+$gobjSource = Join-Path $baselibDir 'gobj.c'
 $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
@@ -67,6 +77,15 @@ $classObject = Join-Path $build 'class.obj'
 $objectObject = Join-Path $build 'object.obj'
 $objallocObject = Join-Path $build 'objalloc.obj'
 $idObject = Join-Path $build 'id.obj'
+$gobjWrapperObject = Join-Path $build 'gobj_xdk.obj'
+$listObject = Join-Path $build 'list.obj'
+$gobjObjectObject = Join-Path $build 'gobjobject.obj'
+$gobjUserDataObject = Join-Path $build 'gobjuserdata.obj'
+$gobjProcObject = Join-Path $build 'gobjproc.obj'
+$gobjPLinkObject = Join-Path $build 'gobjplink.obj'
+$gobjGXLinkObject = Join-Path $build 'gobjgxlink.obj'
+$gobjInitObject = Join-Path $build 'gobjinit.obj'
+$gobjObject = Join-Path $build 'gobj.obj'
 $vertexShaderHeader = Join-Path $build 'sprite_vs.h'
 $pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
@@ -86,7 +105,11 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $gcmSource, $memoryCompat, $memorySource,
                          $memoryWrapper, $hsdClassCompat, $hsdClassWrapper,
                          $hashSource, $debugSource, $classSource,
-                         $objectSource, $objallocSource, $idSource)) {
+                         $objectSource, $objallocSource, $idSource,
+                         $gobjCompat, $gobjWrapper, $listSource,
+                         $gobjObjectSource, $gobjUserDataSource,
+                         $gobjProcSource, $gobjPLinkSource,
+                         $gobjGXLinkSource, $gobjInitSource, $gobjSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -269,6 +292,45 @@ $idArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
 & $compiler $idArgs
 if ($LASTEXITCODE -ne 0) { throw 'Original id.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK gobj bridge'
+$gobjWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')",
+    "/Fo$gobjWrapperObject", $gobjWrapper
+)
+& $compiler $gobjWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK gobj bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc list/gobj*.c'
+$gobjArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$gobjCompat") + $hsdCommonInc
+
+& $compiler ($gobjArgs + @("/Fo$listObject", $listSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original list.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjObjectObject", $gobjObjectSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobjobject.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjUserDataObject", $gobjUserDataSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobjuserdata.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjProcObject", $gobjProcSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobjproc.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjPLinkObject", $gobjPLinkSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobjplink.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjGXLinkObject", $gobjGXLinkSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobjgxlink.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjInitObject", $gobjInitSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobjinit.c compilation failed.' }
+
+& $compiler ($gobjArgs + @("/Fo$gobjObject", $gobjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original gobj.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
@@ -278,6 +340,9 @@ $linkArgs = @(
     $memoryObject, $memoryWrapperObject,
     $hsdClassWrapperObject, $hashObject, $debugObject, $classObject,
     $objectObject, $objallocObject, $idObject,
+    $gobjWrapperObject, $listObject, $gobjObjectObject, $gobjUserDataObject,
+    $gobjProcObject, $gobjPLinkObject, $gobjGXLinkObject, $gobjInitObject,
+    $gobjObject,
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs
