@@ -108,6 +108,72 @@ void PSMTXQuat(Mtx m, QuaternionPtr q)
     m[2][3] = 0.0f;
 }
 
+u32 PSMTXInverse(Mtx src, Mtx inv)
+{
+    const f32 det = src[0][0] * (src[1][1] * src[2][2] - src[2][1] * src[1][2]) -
+                    src[0][1] * (src[1][0] * src[2][2] - src[2][0] * src[1][2]) +
+                    src[0][2] * (src[1][0] * src[2][1] - src[2][0] * src[1][1]);
+    if (det == 0.0f) {
+        return 0;
+    }
+
+    const f32 r = 1.0f / det;
+    Mtx tmp;
+    tmp[0][0] = (src[1][1] * src[2][2] - src[2][1] * src[1][2]) * r;
+    tmp[0][1] = -(src[0][1] * src[2][2] - src[2][1] * src[0][2]) * r;
+    tmp[0][2] = (src[0][1] * src[1][2] - src[1][1] * src[0][2]) * r;
+    tmp[1][0] = -(src[1][0] * src[2][2] - src[2][0] * src[1][2]) * r;
+    tmp[1][1] = (src[0][0] * src[2][2] - src[2][0] * src[0][2]) * r;
+    tmp[1][2] = -(src[0][0] * src[1][2] - src[1][0] * src[0][2]) * r;
+    tmp[2][0] = (src[1][0] * src[2][1] - src[2][0] * src[1][1]) * r;
+    tmp[2][1] = -(src[0][0] * src[2][1] - src[2][0] * src[0][1]) * r;
+    tmp[2][2] = (src[0][0] * src[1][1] - src[1][0] * src[0][1]) * r;
+    for (int i = 0; i < 3; ++i) {
+        tmp[i][3] = -(tmp[i][0] * src[0][3] + tmp[i][1] * src[1][3] +
+                      tmp[i][2] * src[2][3]);
+    }
+    PSMTXCopy(tmp, inv);
+    return 1;
+}
+
+void PSMTXMultVec(Mtx44 m, Vec* src, Vec* dst)
+{
+    const f32 x = src->x;
+    const f32 y = src->y;
+    const f32 z = src->z;
+    dst->x = m[0][0] * x + m[0][1] * y + m[0][2] * z + m[0][3];
+    dst->y = m[1][0] * x + m[1][1] * y + m[1][2] * z + m[1][3];
+    dst->z = m[2][0] * x + m[2][1] * y + m[2][2] * z + m[2][3];
+}
+
+void PSMTXRotAxisRad(Mtx m, Vec* axis, f32 rad)
+{
+    Vec n;
+    PSVECNormalize(axis, &n);
+    const f32 s = sinf(rad);
+    const f32 c = cosf(rad);
+    const f32 t = 1.0f - c;
+    m[0][0] = t * n.x * n.x + c;
+    m[0][1] = t * n.x * n.y - s * n.z;
+    m[0][2] = t * n.x * n.z + s * n.y;
+    m[0][3] = 0.0f;
+    m[1][0] = t * n.x * n.y + s * n.z;
+    m[1][1] = t * n.y * n.y + c;
+    m[1][2] = t * n.y * n.z - s * n.x;
+    m[1][3] = 0.0f;
+    m[2][0] = t * n.x * n.z - s * n.y;
+    m[2][1] = t * n.y * n.z + s * n.x;
+    m[2][2] = t * n.z * n.z + c;
+    m[2][3] = 0.0f;
+}
+
+void PSVECAdd(Vec* a, Vec* b, Vec* a_b)
+{
+    a_b->x = a->x + b->x;
+    a_b->y = a->y + b->y;
+    a_b->z = a->z + b->z;
+}
+
 void PSVECSubtract(Vec* a, Vec* b, Vec* a_b)
 {
     a_b->x = a->x - b->x;

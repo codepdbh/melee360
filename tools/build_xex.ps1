@@ -64,6 +64,10 @@ $dobjSource = Join-Path $baselibDir 'dobj.c'
 $robjSource = Join-Path $baselibDir 'robj.c'
 $utilSource = Join-Path $baselibDir 'util.c'
 $bytecodeSource = Join-Path $baselibDir 'bytecode.c'
+$hsdJObjCompat = Join-Path $root 'src\xdk\hsdjobj_xdk_compat.h'
+$hsdJObjWrapper = Join-Path $root 'src\xdk\hsdjobj_xdk.cpp'
+$jobjSource = Join-Path $baselibDir 'jobj.c'
+$wobjSource = Join-Path $baselibDir 'wobj.c'
 $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
@@ -113,6 +117,9 @@ $dobjObject = Join-Path $build 'dobj.obj'
 $robjObject = Join-Path $build 'robj.obj'
 $utilObject = Join-Path $build 'util.obj'
 $bytecodeObject = Join-Path $build 'bytecode.obj'
+$hsdJObjWrapperObject = Join-Path $build 'hsdjobj_xdk.obj'
+$jobjObject = Join-Path $build 'jobj.obj'
+$wobjObject = Join-Path $build 'wobj.obj'
 $vertexShaderHeader = Join-Path $build 'sprite_vs.h'
 $pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
@@ -141,7 +148,8 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $quatlibSource, $splineSource, $splineWrapper, $fobjSource,
                          $randomSource, $hsdAnimCompat, $hsdAnimWrapper,
                          $aobjSource, $dobjSource, $robjSource,
-                         $utilSource, $bytecodeSource)) {
+                         $utilSource, $bytecodeSource, $hsdJObjCompat,
+                         $hsdJObjWrapper, $jobjSource, $wobjSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -426,6 +434,27 @@ if ($LASTEXITCODE -ne 0) { throw 'Original util.c compilation failed.' }
 & $compiler ($hsdAnimArgs + @("/Fo$bytecodeObject", $bytecodeSource))
 if ($LASTEXITCODE -ne 0) { throw 'Original bytecode.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK HSD jobj bridge'
+$hsdJObjWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$hsdJObjWrapperObject", $hsdJObjWrapper
+)
+& $compiler $hsdJObjWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK HSD jobj bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc jobj/wobj.c'
+$hsdJObjArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdJObjCompat") + $hsdCommonInc
+
+& $compiler ($hsdJObjArgs + @("/Fo$jobjObject", $jobjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original jobj.c compilation failed.' }
+
+& $compiler ($hsdJObjArgs + @("/Fo$wobjObject", $wobjSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original wobj.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
@@ -442,6 +471,7 @@ $linkArgs = @(
     $fobjObject, $randomObject,
     $hsdAnimWrapperObject, $aobjObject, $dobjObject, $robjObject,
     $utilObject, $bytecodeObject,
+    $hsdJObjWrapperObject, $jobjObject, $wobjObject,
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs

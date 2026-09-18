@@ -1,15 +1,33 @@
 #include "gobj_xdk_compat.h"
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4201)
+#endif
+
+#include "class.h"
 #include "gobj.h"
 #include "gobjplink.h"
 #include "gobjproc.h"
 #include "gobjuserdata.h"
+#include "gobjobject.h"
 #include "list.h"
 
 #include <stdio.h>
 #include <string.h>
 
 extern void M360_HSD_HeapInit(void);
+extern int M360_HsdJObjStubDispCount(void);
+extern void HSD_FObjInitAllocData(void);
+extern void HSD_AObjInitAllocData(void);
+extern void HSD_RObjInitAllocData(void);
+extern void HSD_IDSetup(void);
+extern void HSD_IDInitAllocData(void);
+extern void HSD_VecInitAllocData(void);
+extern void HSD_MtxInitAllocData(void);
+extern void* HSD_JObjAlloc(void);
+extern void HSD_JObjAddChild(void* jobj, void* child);
+extern void HSD_JObjSetFlags(void* jobj, u32 flags);
+extern HSD_ClassInfo hsdJObj;
 
 static int fail_count = 0;
 
@@ -228,11 +246,43 @@ static void test_userdata_attach_and_destroy(void)
     CHECK(plink_count(2) == 0);
 }
 
+static void test_jobj_kind_gobj(void)
+{
+    s32 base = hsdJObj.head.nb_exist;
+    HSD_GObj* gobj = GObj_Create(0x40, 3, 0);
+    void* root = HSD_JObjAlloc();
+    void* kid = HSD_JObjAlloc();
+    int disp0 = M360_HsdJObjStubDispCount();
+
+    CHECK(gobj != NULL && root != NULL && kid != NULL);
+    HSD_JObjAddChild(root, kid);
+    HSD_JObjSetFlags(root, 0x40000);
+    HSD_GObjObject_80390A70(gobj, HSD_GObj_JObjKind, root);
+    CHECK(gobj->hsd_obj == root && gobj->obj_kind == HSD_GObj_JObjKind);
+    CHECK(hsdJObj.head.nb_exist == (u32) base + 2);
+
+    HSD_GObj_JObjCallback(gobj, 0);
+    CHECK(M360_HsdJObjStubDispCount() == disp0 + 1);
+    HSD_GObj_JObjCallback(gobj, 2);
+    CHECK(M360_HsdJObjStubDispCount() == disp0 + 1);
+
+    HSD_GObjFree(gobj);
+    CHECK(hsdJObj.head.nb_exist == (u32) base);
+    CHECK(plink_count(3) == 0);
+}
+
 int main(void)
 {
     M360_HSD_HeapInit();
     HSD_LogInit();
     HSD_ListInitAllocData();
+    HSD_FObjInitAllocData();
+    HSD_AObjInitAllocData();
+    HSD_RObjInitAllocData();
+    HSD_IDSetup();
+    HSD_IDInitAllocData();
+    HSD_VecInitAllocData();
+    HSD_MtxInitAllocData();
 
     {
         HSD_GObjLibInitDataType init;
@@ -247,6 +297,7 @@ int main(void)
     test_gobj_create_and_plink_order();
     test_gobjproc_attach_detach();
     test_userdata_attach_and_destroy();
+    test_jobj_kind_gobj();
 
     if (fail_count) {
         fprintf(stderr, "[M360][GOBJ] %d check(s) failed\n", fail_count);

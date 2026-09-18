@@ -14,10 +14,6 @@
 typedef void (*Event)(void);
 
 typedef struct M360AnimStubState {
-    int jobjLoadJoint;
-    int jobjSetupMatrixSub;
-    int jobjMakeMatrix;
-    int jobjReleaseChild;
     int mobjSetCurrent;
     int mobjRemoveAnimByFlags;
     int mobjAddAnim;
@@ -36,7 +32,6 @@ typedef struct M360AnimStubState {
     f32 lastFrame;
     void* lastPtr;
     void* lastPtr2;
-    HSD_JObj* jobjLoadJointResult;
     HSD_MObj* mobjLoadDescResult;
     HSD_PObj* pobjLoadDescResult;
 } M360AnimStubState;

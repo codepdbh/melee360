@@ -29,12 +29,13 @@
 #define UNK_T void*
 #endif
 
-/* cobj.h / fog.h / jobj.h / lobj.h are NOT ported yet (separate, much larger
+/* cobj.h / fog.h / lobj.h are NOT ported yet, and jobj.h is short-circuited
+ * here even though jobj.c is real since M20 (separate, much larger
  * future subsystems). gobj.c only ever references their types as opaque
  * pointers (already forward-declared in forward.h) and calls a handful of
  * their functions from render/teardown callbacks that our host test never
  * exercises. Short-circuit the headers and declare just those functions
- * here, stubbed as no-ops in gobj_xdk.cpp. */
+ * here (no-op stubs in gobj_xdk.cpp, real jobj.c, or hsdjobj_xdk.cpp). */
 #define _cobj_h_
 #define SYSDOLPHIN_BASELIB_FOG_H
 #define _jobj_h_
@@ -54,7 +55,7 @@ void HSD_LObj_803668EC(HSD_LObj* lobj);
 void HSD_LObjSetupInit(HSD_CObj* cobj);
 void HSD_LObjRemoveAll(HSD_LObj* lobj);
 
-/* --- stubbed jobj.h API actually referenced by gobj.c --- */
+/* --- jobj.h API actually referenced by gobj.c (real, from jobj.c) --- */
 void HSD_JObjDispAll(HSD_JObj* jobj, void* unused, u32 flags, int arg3);
 void HSD_JObjRemoveAll(HSD_JObj* jobj);
 

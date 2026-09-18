@@ -48,6 +48,14 @@ if command -v cc >/dev/null 2>&1 && command -v c++ >/dev/null 2>&1; then
             -c "$BASELIB/$f.c" -o "$OBJ/$f.o"
     done
 
+    c++ -std=c++17 -Wall -Wextra -Werror "${INC[@]}" \
+        -c "$ROOT/src/xdk/hsdjobj_xdk.cpp" -o "$OBJ/hsdjobj_xdk.o"
+    for f in jobj wobj; do
+        cc -std=c11 -Wall "${INC[@]}" \
+            -include "$ROOT/src/xdk/hsdjobj_xdk_compat.h" \
+            -c "$BASELIB/$f.c" -o "$OBJ/$f.o"
+    done
+
     cc -std=c11 -Wall -Wextra -Werror -I"$BASELIB" "${INC[@]}" \
         -include "$ROOT/src/xdk/hsdanim_xdk_compat.h" \
         -c "$ROOT/tests/host/test_hsdanim.c" -o "$OBJ/test_hsdanim.o"
@@ -58,7 +66,8 @@ if command -v cc >/dev/null 2>&1 && command -v c++ >/dev/null 2>&1; then
         "$OBJ/mtx.o" "$OBJ/quatlib.o" "$OBJ/spline.o" "$OBJ/fobj.o" \
         "$OBJ/random.o" "$OBJ/hsdanim_xdk.o" "$OBJ/list.o" "$OBJ/aobj.o" \
         "$OBJ/dobj.o" "$OBJ/robj.o" "$OBJ/util.o" "$OBJ/bytecode.o" \
-        "$OBJ/test_hsdanim.o" -lm -o "$OUT"
+        "$OBJ/hsdjobj_xdk.o" "$OBJ/jobj.o" "$OBJ/wobj.o" \
+        "$OBJ/test_hsdanim.o" -lm -no-pie -o "$OUT"
     "$OUT"
     exit 0
 fi
@@ -101,9 +110,14 @@ for %%f in (list aobj dobj robj util bytecode) do (
     cl %CC_UP% /FI%ROOT%\src\xdk\hsdanim_xdk_compat.h /c %BL%\%%f.c /Fo%OBJ%\%%f.obj || exit /b 1
 )
 
+cl %CC_NEW% /TP /EHsc /c %ROOT%\src\xdk\hsdjobj_xdk.cpp /Fo%OBJ%\hsdjobj_xdk.obj || exit /b 1
+for %%f in (jobj wobj) do (
+    cl %CC_UP% /FI%ROOT%\src\xdk\hsdjobj_xdk_compat.h /c %BL%\%%f.c /Fo%OBJ%\%%f.obj || exit /b 1
+)
+
 cl %CC_NEW% /TC /I%BL% /FI%ROOT%\src\xdk\hsdanim_xdk_compat.h /c %ROOT%\tests\host\test_hsdanim.c /Fo%OBJ%\test_hsdanim.obj || exit /b 1
 
-link /nologo /OUT:%OBJ%\test_hsdanim.exe %OBJ%\memory.obj %OBJ%\memory_xdk.obj %OBJ%\hsd_class_xdk.obj %OBJ%\hash.obj %OBJ%\debug.obj %OBJ%\class.obj %OBJ%\object.obj %OBJ%\objalloc.obj %OBJ%\id.obj %OBJ%\hsdmath_xdk.obj %OBJ%\mtx.obj %OBJ%\quatlib.obj %OBJ%\spline.obj %OBJ%\fobj.obj %OBJ%\random.obj %OBJ%\hsdanim_xdk.obj %OBJ%\list.obj %OBJ%\aobj.obj %OBJ%\dobj.obj %OBJ%\robj.obj %OBJ%\util.obj %OBJ%\bytecode.obj %OBJ%\test_hsdanim.obj || exit /b 1
+link /nologo /LARGEADDRESSAWARE:NO /DYNAMICBASE:NO /OUT:%OBJ%\test_hsdanim.exe %OBJ%\memory.obj %OBJ%\memory_xdk.obj %OBJ%\hsd_class_xdk.obj %OBJ%\hash.obj %OBJ%\debug.obj %OBJ%\class.obj %OBJ%\object.obj %OBJ%\objalloc.obj %OBJ%\id.obj %OBJ%\hsdmath_xdk.obj %OBJ%\mtx.obj %OBJ%\quatlib.obj %OBJ%\spline.obj %OBJ%\fobj.obj %OBJ%\random.obj %OBJ%\hsdanim_xdk.obj %OBJ%\list.obj %OBJ%\aobj.obj %OBJ%\dobj.obj %OBJ%\robj.obj %OBJ%\util.obj %OBJ%\bytecode.obj %OBJ%\hsdjobj_xdk.obj %OBJ%\jobj.obj %OBJ%\wobj.obj %OBJ%\test_hsdanim.obj || exit /b 1
 %OBJ%\test_hsdanim.exe
 exit /b %errorlevel%
 BATCH

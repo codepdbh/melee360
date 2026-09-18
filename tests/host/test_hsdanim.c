@@ -483,11 +483,11 @@ static HSD_JObj* new_jobj(void)
     return j;
 }
 
-static void test_jobj_standin(void)
+static void test_jobj_class_and_refs(void)
 {
     HSD_ClassInfo* info = HSD_CLASS_INFO(&hsdJObj);
     HSD_JObj* j;
-    u32 before;
+    HSD_JObj* kid;
 
     j = new_jobj();
     CHECK(j != NULL);
@@ -512,27 +512,29 @@ static void test_jobj_standin(void)
     CHECK(info->head.nb_exist == 0);
 
     j = new_jobj();
-    before = (u32) g_m360AnimStub.jobjReleaseChild;
     HSD_JObjUnref(j);
     CHECK(info->head.nb_exist == 0);
-    CHECK((u32) g_m360AnimStub.jobjReleaseChild == before);
 
     j = new_jobj();
+    kid = new_jobj();
+    HSD_JObjAddChild(j, kid);
     ref_INC(j);
     ref_INC(j);
     HSD_JObjUnref(j);
-    CHECK(ref_CNT(j) == 1 && info->head.nb_exist == 1);
+    CHECK(ref_CNT(j) == 1 && info->head.nb_exist == 2);
     HSD_JObjUnref(j);
-    CHECK(ref_CNT(j) == 0 && info->head.nb_exist == 1);
+    CHECK(ref_CNT(j) == 0 && info->head.nb_exist == 2 && j->child == kid);
     HSD_JObjRefThis(j);
     HSD_JObjUnref(j);
     CHECK(info->head.nb_exist == 1 && iref_CNT(j) == 1 && ref_CNT(j) == -1);
-    CHECK((u32) g_m360AnimStub.jobjReleaseChild == before + 1);
+    CHECK(j->child == NULL);
     HSD_JObjUnrefThis(j);
     CHECK(info->head.nb_exist == 0);
     HSD_JObjUnref(NULL);
     CHECK(HSD_JObjGetFlags(NULL) == 0);
 }
+
+static HSD_Joint g_obj_joint;
 
 static void test_aobj_loaddesc_objid(void)
 {
@@ -558,27 +560,37 @@ static void test_aobj_loaddesc_objid(void)
     j = new_jobj();
     HSD_IDInsertToTable(NULL, 0x1234, j);
     fill_adesc(&ad, &fd, 0, 5.0f, 0x1234);
-    g_m360AnimStub.jobjLoadJoint = 0;
     a = HSD_AObjLoadDesc(&ad);
     CHECK(a->hsd_obj == HSD_OBJ(j));
     CHECK(ref_CNT(j) == 1);
-    CHECK(g_m360AnimStub.jobjLoadJoint == 0);
+    CHECK(info->head.nb_exist == 1);
     HSD_AObjRemove(a);
     CHECK(ref_CNT(j) == 0 && info->head.nb_exist == 1);
     HSD_IDRemoveByIDFromTable(NULL, 0x1234);
 
-    fresh = new_jobj();
-    g_m360AnimStub.jobjLoadJointResult = fresh;
-    fill_adesc(&ad, &fd, 0, 5.0f, 0x5678);
-    a = HSD_AObjLoadDesc(&ad);
-    CHECK(g_m360AnimStub.jobjLoadJoint == 1);
-    CHECK((uintptr_t) g_m360AnimStub.lastPtr == 0x5678u);
-    CHECK(a->hsd_obj == HSD_OBJ(fresh));
-    CHECK(ref_CNT(fresh) == 0);
-    CHECK(info->head.nb_exist == 2);
-    HSD_AObjRemove(a);
-    CHECK(info->head.nb_exist == 1);
-    g_m360AnimStub.jobjLoadJointResult = NULL;
+    memset(&g_obj_joint, 0, sizeof(g_obj_joint));
+    g_obj_joint.scale.x = 1.0f;
+    g_obj_joint.scale.y = 1.0f;
+    g_obj_joint.scale.z = 1.0f;
+    if ((uintptr_t) &g_obj_joint <= 0xFFFFFFFFu) {
+        s32 found = 1;
+        fill_adesc(&ad, &fd, 0, 5.0f, (u32) (uintptr_t) &g_obj_joint);
+        a = HSD_AObjLoadDesc(&ad);
+        fresh = (HSD_JObj*) a->hsd_obj;
+        CHECK(fresh != NULL && HSD_CLASS_METHOD(fresh) == info);
+        CHECK(fresh->id == (uintptr_t) &g_obj_joint);
+        CHECK(HSD_IDGetDataFromTable(NULL, (uintptr_t) &g_obj_joint, NULL) ==
+              fresh);
+        CHECK(ref_CNT(fresh) == 0);
+        CHECK(info->head.nb_exist == 2);
+        HSD_AObjRemove(a);
+        CHECK(info->head.nb_exist == 1);
+        HSD_IDGetDataFromTable(NULL, (uintptr_t) &g_obj_joint, &found);
+        CHECK(found == 0);
+    } else {
+        printf("[M360][ANIM] obj_id joint load skipped: host joint address "
+               "does not fit the 32-bit obj_id field\n");
+    }
     hsdDelete(j);
     CHECK(info->head.nb_exist == 0);
     CHECK(using_count(HSD_AObjGetAllocData()) == 0);
@@ -971,6 +983,14 @@ static void robj_flags_init(HSD_RObj* r, u32 flags, HSD_JObj* j)
 static HSD_JObj* plain_jobj_at(f32 x, f32 y, f32 z)
 {
     HSD_JObj* j = (HSD_JObj*) zalloc(sizeof(HSD_JObj));
+    hsdIsDescendantOf(&hsdJObj, &hsdObj);
+    j->object.parent.class_info = HSD_CLASS_INFO(&hsdJObj);
+    j->scale.x = 1.0f;
+    j->scale.y = 1.0f;
+    j->scale.z = 1.0f;
+    j->translate.x = x;
+    j->translate.y = y;
+    j->translate.z = z;
     PSMTXIdentity(j->mtx);
     j->mtx[0][3] = x;
     j->mtx[1][3] = y;
@@ -1041,14 +1061,16 @@ static void test_robj_constraints(void)
     CHECK_NEAR(pos.x, 2.0, EPS);
     r2.flags |= 0x80000000u;
 
-    g_m360AnimStub.jobjSetupMatrixSub = 0;
+    j1->mtx[0][3] = 99.0f;
     j1->flags = JOBJ_MTX_DIRTY;
     HSD_RObjGetGlobalPosition(&r1, 1, &pos);
-    CHECK(g_m360AnimStub.jobjSetupMatrixSub == 1);
-    CHECK(g_m360AnimStub.lastPtr == j1);
+    CHECK(!(j1->flags & JOBJ_MTX_DIRTY));
+    CHECK_NEAR(j1->mtx[0][3], 2.0, EPS);
+    j1->mtx[0][3] = 99.0f;
     j1->flags = JOBJ_MTX_DIRTY | JOBJ_USER_DEF_MTX;
     HSD_RObjGetGlobalPosition(&r1, 1, &pos);
-    CHECK(g_m360AnimStub.jobjSetupMatrixSub == 1);
+    CHECK((j1->flags & JOBJ_MTX_DIRTY) && j1->mtx[0][3] == 99.0f);
+    j1->mtx[0][3] = 2.0f;
     j1->flags = 0;
 
     r3.flags = 0;
@@ -1202,15 +1224,15 @@ static void test_robj_limits(void)
         r[i].next = &r[i + 1];
     }
 
-    g_m360AnimStub.jobjMakeMatrix = 0;
+    obj->mtx[0][3] = -1000.0f;
     HSD_RObjUpdateAll(&r[0], obj, upd_cb);
     CHECK(log.n == 0);
     CHECK_NEAR(obj->rotate.x, -0.5, 1e-6);
     CHECK_NEAR(obj->rotate.y, 1.5, 1e-6);
     CHECK_NEAR(obj->rotate.z, 0.3, 1e-6);
     CHECK_NEAR(obj->translate.x, 6.0, 1e-6);
-    CHECK(g_m360AnimStub.jobjMakeMatrix == 1);
-    CHECK(g_m360AnimStub.lastPtr == obj);
+    CHECK_NEAR(obj->mtx[0][3], 6.0, 1e-6);
+    CHECK_NEAR(obj->mtx[1][3], 1.0, 1e-6);
 
     memset(r, 0, sizeof(r));
     obj->rotate.z = 0.3f;
@@ -1222,26 +1244,26 @@ static void test_robj_limits(void)
     r[2].u.limit = -5.0f;
     r[0].next = &r[1];
     r[1].next = &r[2];
-    g_m360AnimStub.jobjMakeMatrix = 0;
+    obj->mtx[0][3] = -1000.0f;
     HSD_RObjUpdateAll(&r[0], obj, upd_cb);
     CHECK_NEAR(obj->rotate.z, 0.1, 1e-6);
     CHECK_NEAR(obj->translate.x, 2.0, 1e-6);
     CHECK_NEAR(obj->rotate.y, 1.5, 1e-6);
-    CHECK(g_m360AnimStub.jobjMakeMatrix == 1);
+    CHECK_NEAR(obj->mtx[0][3], 2.0, 1e-6);
 
     memset(r, 0, sizeof(r));
     r[0].flags = REFTYPE_LIMIT | 13;
     r[0].u.limit = 100.0f;
-    g_m360AnimStub.jobjMakeMatrix = 0;
+    obj->mtx[0][3] = -1000.0f;
     HSD_RObjUpdateAll(&r[0], obj, upd_cb);
-    CHECK(g_m360AnimStub.jobjMakeMatrix == 0);
+    CHECK(obj->mtx[0][3] == -1000.0f);
 
     memset(r, 0, sizeof(r));
     r[0].flags = REFTYPE_LIMIT | 3;
     r[0].u.limit = -5.0f;
-    g_m360AnimStub.jobjMakeMatrix = 0;
+    obj->mtx[0][3] = -1000.0f;
     HSD_RObjUpdateAll(&r[0], obj, upd_cb);
-    CHECK(g_m360AnimStub.jobjMakeMatrix == 1);
+    CHECK_NEAR(obj->mtx[0][3], 2.0, 1e-6);
 
     memset(r, 0, sizeof(r));
     obj->translate.y = 1.0f;
@@ -1302,10 +1324,10 @@ static void test_robj_load_and_eval(void)
     j3 = new_jobj();
     j1->rotate.x = 0.5f;
     j1->translate.x = 7.0f;
-    j2->mtx[0][3] = 9.0f;
-    j3->mtx[0][0] = 2.0f;
-    j3->mtx[1][1] = 3.0f;
-    j3->mtx[2][2] = 4.0f;
+    j2->translate.x = 9.0f;
+    j3->scale.x = 2.0f;
+    j3->scale.y = 3.0f;
+    j3->scale.z = 4.0f;
     HSD_IDInsertToTable(NULL, 101, j1);
     HSD_IDInsertToTable(NULL, 102, j2);
     HSD_IDInsertToTable(NULL, 103, j3);
@@ -2017,6 +2039,8 @@ int main(void)
     HSD_RObjInitAllocData();
     HSD_IDSetup();
     HSD_IDInitAllocData();
+    HSD_VecInitAllocData();
+    HSD_MtxInitAllocData();
     init_streams();
 
     printf("[M360][ANIM] object sizes host: AObj=%u DObj=%u RObj=%u "
@@ -2030,7 +2054,7 @@ int main(void)
     test_aobj_stepping();
     test_aobj_loop();
     test_aobj_fobj_shapes();
-    test_jobj_standin();
+    test_jobj_class_and_refs();
     test_aobj_loaddesc_objid();
     test_foreach_anim();
     test_robj_constraints();

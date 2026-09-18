@@ -2,13 +2,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="$ROOT/build-x360/host-tests/test_gobj"
 OBJ="$ROOT/build-x360/host-tests"
 BASELIB="$ROOT/upstream/melee-pc/src/sysdolphin/baselib"
 
 mkdir -p "$OBJ"
 
 if command -v cc >/dev/null 2>&1 && command -v c++ >/dev/null 2>&1; then
+    OUT="$OBJ/test_hsdjobj"
     INC=(-I"$ROOT/src/xdk" -I"$ROOT/upstream/melee-pc/src"
          -I"$ROOT/upstream/melee-pc/src/sdk_include")
 
@@ -42,7 +42,7 @@ if command -v cc >/dev/null 2>&1 && command -v c++ >/dev/null 2>&1; then
 
     c++ -std=c++17 -Wall -Wextra -Werror "${INC[@]}" \
         -c "$ROOT/src/xdk/hsdanim_xdk.cpp" -o "$OBJ/hsdanim_xdk.o"
-    for f in aobj dobj robj util bytecode; do
+    for f in list aobj dobj robj util bytecode; do
         cc -std=c11 -Wall "${INC[@]}" \
             -include "$ROOT/src/xdk/hsdanim_xdk_compat.h" \
             -c "$BASELIB/$f.c" -o "$OBJ/$f.o"
@@ -50,35 +50,24 @@ if command -v cc >/dev/null 2>&1 && command -v c++ >/dev/null 2>&1; then
 
     c++ -std=c++17 -Wall -Wextra -Werror "${INC[@]}" \
         -c "$ROOT/src/xdk/hsdjobj_xdk.cpp" -o "$OBJ/hsdjobj_xdk.o"
-    cc -std=c11 -Wall "${INC[@]}" \
-        -include "$ROOT/src/xdk/hsdjobj_xdk_compat.h" \
-        -c "$BASELIB/jobj.c" -o "$OBJ/jobj.o"
-
-    c++ -std=c++17 -Wall -Wextra -Werror "${INC[@]}" \
-        -c "$ROOT/src/xdk/gobj_xdk.cpp" -o "$OBJ/gobj_xdk.o"
-
-    for f in list gobjobject gobjuserdata gobjproc gobjplink gobjgxlink gobjinit gobj; do
-        cc -std=c11 -Wall -Wextra -Werror "${INC[@]}" \
-            -include "$ROOT/src/xdk/gobj_xdk_compat.h" \
+    for f in jobj wobj; do
+        cc -std=c11 -Wall "${INC[@]}" \
+            -include "$ROOT/src/xdk/hsdjobj_xdk_compat.h" \
             -c "$BASELIB/$f.c" -o "$OBJ/$f.o"
     done
 
     cc -std=c11 -Wall -Wextra -Werror -I"$BASELIB" "${INC[@]}" \
-        -include "$ROOT/src/xdk/gobj_xdk_compat.h" \
-        "$ROOT/tests/host/test_gobj.c" \
-        -c -o "$OBJ/test_gobj.o"
+        -include "$ROOT/src/xdk/hsdjobj_xdk_compat.h" \
+        -c "$ROOT/tests/host/test_hsdjobj.c" -o "$OBJ/test_hsdjobj.o"
 
     c++ "$OBJ/memory.o" "$OBJ/memory_xdk.o" "$OBJ/hsd_class_xdk.o" \
         "$OBJ/hash.o" "$OBJ/debug.o" "$OBJ/class.o" "$OBJ/object.o" \
         "$OBJ/objalloc.o" "$OBJ/id.o" "$OBJ/hsdmath_xdk.o" \
         "$OBJ/mtx.o" "$OBJ/quatlib.o" "$OBJ/spline.o" "$OBJ/fobj.o" \
-        "$OBJ/random.o" "$OBJ/hsdanim_xdk.o" "$OBJ/aobj.o" \
+        "$OBJ/random.o" "$OBJ/hsdanim_xdk.o" "$OBJ/list.o" "$OBJ/aobj.o" \
         "$OBJ/dobj.o" "$OBJ/robj.o" "$OBJ/util.o" "$OBJ/bytecode.o" \
-        "$OBJ/hsdjobj_xdk.o" "$OBJ/jobj.o" "$OBJ/gobj_xdk.o" \
-        "$OBJ/list.o" "$OBJ/gobjobject.o" "$OBJ/gobjuserdata.o" \
-        "$OBJ/gobjproc.o" "$OBJ/gobjplink.o" "$OBJ/gobjgxlink.o" \
-        "$OBJ/gobjinit.o" "$OBJ/gobj.o" "$OBJ/test_gobj.o" \
-        -lm -o "$OUT"
+        "$OBJ/hsdjobj_xdk.o" "$OBJ/jobj.o" "$OBJ/wobj.o" \
+        "$OBJ/test_hsdjobj.o" -lm -o "$OUT"
     "$OUT"
     exit 0
 fi
@@ -87,7 +76,7 @@ VCVARS="C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build
 WROOT="$(cygpath -w "$ROOT")"
 WOBJ="$(cygpath -w "$OBJ")\msvc"
 mkdir -p "$OBJ/msvc"
-BAT="$OBJ/msvc/test_gobj.bat"
+BAT="$OBJ/msvc/test_hsdjobj.bat"
 
 cat > "$BAT" <<BATCH
 @echo off
@@ -117,22 +106,19 @@ for %%f in (mtx quatlib fobj random) do (
 cl %COMMON% /TP /EHsc /W3 %INC% /c %ROOT%\src\xdk\spline_xdk.cpp /Fo%OBJ%\spline.obj || exit /b 1
 
 cl %CC_NEW% /TP /EHsc /c %ROOT%\src\xdk\hsdanim_xdk.cpp /Fo%OBJ%\hsdanim_xdk.obj || exit /b 1
-for %%f in (aobj dobj robj util bytecode) do (
+for %%f in (list aobj dobj robj util bytecode) do (
     cl %CC_UP% /FI%ROOT%\src\xdk\hsdanim_xdk_compat.h /c %BL%\%%f.c /Fo%OBJ%\%%f.obj || exit /b 1
 )
 
 cl %CC_NEW% /TP /EHsc /c %ROOT%\src\xdk\hsdjobj_xdk.cpp /Fo%OBJ%\hsdjobj_xdk.obj || exit /b 1
-cl %CC_UP% /FI%ROOT%\src\xdk\hsdjobj_xdk_compat.h /c %BL%\jobj.c /Fo%OBJ%\jobj.obj || exit /b 1
-
-cl %CC_NEW% /TP /EHsc /c %ROOT%\src\xdk\gobj_xdk.cpp /Fo%OBJ%\gobj_xdk.obj || exit /b 1
-for %%f in (list gobjobject gobjuserdata gobjproc gobjplink gobjgxlink gobjinit gobj) do (
-    cl %CC_UP% /FI%ROOT%\src\xdk\gobj_xdk_compat.h /c %BL%\%%f.c /Fo%OBJ%\%%f.obj || exit /b 1
+for %%f in (jobj wobj) do (
+    cl %CC_UP% /FI%ROOT%\src\xdk\hsdjobj_xdk_compat.h /c %BL%\%%f.c /Fo%OBJ%\%%f.obj || exit /b 1
 )
 
-cl %CC_NEW% /TC /I%BL% /FI%ROOT%\src\xdk\gobj_xdk_compat.h /c %ROOT%\tests\host\test_gobj.c /Fo%OBJ%\test_gobj.obj || exit /b 1
+cl %CC_NEW% /TC /I%BL% /FI%ROOT%\src\xdk\hsdjobj_xdk_compat.h /c %ROOT%\tests\host\test_hsdjobj.c /Fo%OBJ%\test_hsdjobj.obj || exit /b 1
 
-link /nologo /OUT:%OBJ%\test_gobj.exe %OBJ%\memory.obj %OBJ%\memory_xdk.obj %OBJ%\hsd_class_xdk.obj %OBJ%\hash.obj %OBJ%\debug.obj %OBJ%\class.obj %OBJ%\object.obj %OBJ%\objalloc.obj %OBJ%\id.obj %OBJ%\hsdmath_xdk.obj %OBJ%\mtx.obj %OBJ%\quatlib.obj %OBJ%\spline.obj %OBJ%\fobj.obj %OBJ%\random.obj %OBJ%\hsdanim_xdk.obj %OBJ%\aobj.obj %OBJ%\dobj.obj %OBJ%\robj.obj %OBJ%\util.obj %OBJ%\bytecode.obj %OBJ%\hsdjobj_xdk.obj %OBJ%\jobj.obj %OBJ%\gobj_xdk.obj %OBJ%\list.obj %OBJ%\gobjobject.obj %OBJ%\gobjuserdata.obj %OBJ%\gobjproc.obj %OBJ%\gobjplink.obj %OBJ%\gobjgxlink.obj %OBJ%\gobjinit.obj %OBJ%\gobj.obj %OBJ%\test_gobj.obj || exit /b 1
-%OBJ%\test_gobj.exe
+link /nologo /OUT:%OBJ%\test_hsdjobj.exe %OBJ%\memory.obj %OBJ%\memory_xdk.obj %OBJ%\hsd_class_xdk.obj %OBJ%\hash.obj %OBJ%\debug.obj %OBJ%\class.obj %OBJ%\object.obj %OBJ%\objalloc.obj %OBJ%\id.obj %OBJ%\hsdmath_xdk.obj %OBJ%\mtx.obj %OBJ%\quatlib.obj %OBJ%\spline.obj %OBJ%\fobj.obj %OBJ%\random.obj %OBJ%\hsdanim_xdk.obj %OBJ%\list.obj %OBJ%\aobj.obj %OBJ%\dobj.obj %OBJ%\robj.obj %OBJ%\util.obj %OBJ%\bytecode.obj %OBJ%\hsdjobj_xdk.obj %OBJ%\jobj.obj %OBJ%\wobj.obj %OBJ%\test_hsdjobj.obj || exit /b 1
+%OBJ%\test_hsdjobj.exe
 exit /b %errorlevel%
 BATCH
 

@@ -32,77 +32,9 @@ extern "C" {
 
 M360AnimStubState g_m360AnimStub;
 
-/* ---- M19 STUB SECTION: jobj/mobj/pobj are not ported yet ---------------
- * Every function below stands in for an unported neighbour. All are
- * counting no-ops except the flagged verbatim ports. */
-
-static void JObjInfoInitStandIn(void);
-HSD_JObjInfo hsdJObj = { JObjInfoInitStandIn };
-
-static void JObjReleaseChildStub(HSD_JObj* jobj)
-{
-    (void) jobj;
-    g_m360AnimStub.jobjReleaseChild++;
-}
-
-static void JObjInfoInitStandIn(void)
-{
-    hsdInitClassInfo(HSD_CLASS_INFO(&hsdJObj), HSD_CLASS_INFO(&hsdObj),
-                     (char*) "sysdolphin_base_library", (char*) "hsd_jobj",
-                     sizeof(HSD_JObjInfo), sizeof(HSD_JObj));
-    HSD_JOBJ_INFO(&hsdJObj)->release_child = JObjReleaseChildStub;
-}
-
-HSD_JObj* HSD_JObjLoadJoint(HSD_Joint* joint)
-{
-    g_m360AnimStub.jobjLoadJoint++;
-    g_m360AnimStub.lastPtr = joint;
-    return g_m360AnimStub.jobjLoadJointResult;
-}
-
-void HSD_JObjSetupMatrixSub(HSD_JObj* jobj)
-{
-    g_m360AnimStub.jobjSetupMatrixSub++;
-    g_m360AnimStub.lastPtr = jobj;
-}
-
-void HSD_JObjMakeMatrix(HSD_JObj* jobj)
-{
-    g_m360AnimStub.jobjMakeMatrix++;
-    g_m360AnimStub.lastPtr = jobj;
-}
-
-/* Verbatim copies of HSD_JObjGetFlags and the two reference-counting entry
- * points from jobj.c. */
-u32 HSD_JObjGetFlags(HSD_JObj* jobj)
-{
-    if (jobj != NULL) {
-        return jobj->flags;
-    }
-    return 0;
-}
-
-void HSD_JObjUnref(HSD_JObj* jobj)
-{
-    if (jobj != NULL && ref_DEC(jobj)) {
-        if (iref_CNT(jobj) - 1 < 0) {
-            hsdDelete(jobj);
-        } else {
-            iref_INC(jobj);
-            HSD_JOBJ_METHOD(jobj)->release_child(jobj);
-            if (iref_DEC(jobj)) {
-                hsdDelete(jobj);
-            }
-        }
-    }
-}
-
-void HSD_JObjUnrefThis(HSD_JObj* jobj)
-{
-    if (jobj != NULL && iref_DEC(jobj) && ref_CNT(jobj) < 0) {
-        hsdDelete(jobj);
-    }
-}
+/* ---- M19 STUB SECTION: mobj/pobj are not ported yet ---------------------
+ * Every function below stands in for an unported neighbour and is a
+ * counting no-op. jobj is real since M20 (jobj.c). */
 
 void HSD_MObjSetCurrent(HSD_MObj* mobj)
 {

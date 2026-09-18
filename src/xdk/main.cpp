@@ -16,6 +16,7 @@ extern "C" void M360_HSD_HeapInit(void);
 extern "C" void* HSD_MemAlloc(int size);
 extern "C" void HSD_Free(void* ptr);
 extern "C" int M360_HsdAnimSelfTest(void);
+extern "C" int M360_HsdJObjSelfTest(void);
 
 #include "hsd_class_xdk_compat.h"
 extern "C" {
@@ -648,7 +649,7 @@ void __cdecl main()
         lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, 0.0f, 1.0f) == 1 &&
         lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 50.0f, 50.0f, 1.0f) == 0 &&
         memoryPassed && hsdClassPassed && gobjPassed && hsdMathPassed &&
-        hsdAnimPassed;
+        hsdAnimPassed && hsdJObjPassed;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
     if (!d3d)
