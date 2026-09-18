@@ -12,6 +12,17 @@ extern "C" int lb_8000D148(float point0X, float point0Y,
                              float point1X, float point1Y,
                              float point2X, float point2Y,
                              float threshold);
+extern "C" void M360_HSD_HeapInit(void);
+extern "C" void* HSD_MemAlloc(int size);
+extern "C" void HSD_Free(void* ptr);
+
+#include "hsd_class_xdk_compat.h"
+extern "C" {
+#include "class.h"
+#include "id.h"
+#include "objalloc.h"
+#include "object.h"
+}
 
 namespace {
 
@@ -412,12 +423,51 @@ void __cdecl main()
 {
     OutputDebugStringA("[M360][XEX] starting native Melee boot pipeline\n");
 
+    M360_HSD_HeapInit();
+
+    bool memoryPassed = false;
+    void* memoryProbe = HSD_MemAlloc(256);
+    if (memoryProbe) {
+        unsigned char* probeBytes = static_cast<unsigned char*>(memoryProbe);
+        for (int i = 0; i < 256; ++i)
+            probeBytes[i] = 0x5A;
+        memoryPassed = probeBytes[255] == 0x5A;
+        HSD_Free(memoryProbe);
+    }
+
+    bool hsdClassPassed = false;
+    {
+        void* obj = hsdNew(&hsdObj);
+        if (obj != NULL && HSD_CLASS_METHOD(obj) == &hsdObj &&
+            hsdIsDescendantOf(&hsdObj, &hsdClass))
+        {
+            hsdDelete(obj);
+
+            static HSD_ObjAllocData s_selfTestPool;
+            HSD_ObjAllocInit(&s_selfTestPool, sizeof(IDEntry), 4);
+            void* slot = HSD_ObjAlloc(&s_selfTestPool);
+            if (slot != NULL) {
+                HSD_ObjFree(&s_selfTestPool, slot);
+
+                HSD_IDSetup();
+                HSD_IDInitAllocData();
+                int probeValue = 0x360;
+                HSD_IDInsertToTable(NULL, 42, &probeValue);
+                s32 idSuccess = 0;
+                void* idData = HSD_IDGetDataFromTable(NULL, 42, &idSuccess);
+                hsdClassPassed = idSuccess && idData == &probeValue;
+                HSD_IDRemoveByIDFromTable(NULL, 42);
+            }
+        }
+    }
+
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
         lbTime_8000AEE4(4u, -10) == 0u &&
         lbTime_8000AF74(250u, 8) == 255u &&
         powi(3, 4) == 81 &&
-        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 5.0f, 0.0f, 1.0f) == 1;
+        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 5.0f, 0.0f, 1.0f) == 1 &&
+        memoryPassed && hsdClassPassed;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
     if (!d3d)

@@ -27,6 +27,18 @@ $meleeSdkInclude = Join-Path $root 'upstream\melee-pc\src\sdk_include'
 $lbmathCompat = Join-Path $root 'src\xdk\lbmath_xdk_compat.h'
 $lbmathSource = Join-Path $root 'upstream\melee-pc\src\melee\lb\lb_00CE.c'
 $lbmathWrapper = Join-Path $root 'src\xdk\lbmath_xdk.cpp'
+$memoryCompat = Join-Path $root 'src\xdk\memory_xdk_compat.h'
+$memorySource = Join-Path $root 'upstream\melee-pc\src\sysdolphin\baselib\memory.c'
+$memoryWrapper = Join-Path $root 'src\xdk\memory_xdk.cpp'
+$hsdClassCompat = Join-Path $root 'src\xdk\hsd_class_xdk_compat.h'
+$hsdClassWrapper = Join-Path $root 'src\xdk\hsd_class_xdk.cpp'
+$baselibDir = Join-Path $root 'upstream\melee-pc\src\sysdolphin\baselib'
+$hashSource = Join-Path $baselibDir 'hash.c'
+$debugSource = Join-Path $baselibDir 'debug.c'
+$classSource = Join-Path $baselibDir 'class.c'
+$objectSource = Join-Path $baselibDir 'object.c'
+$objallocSource = Join-Path $baselibDir 'objalloc.c'
+$idSource = Join-Path $baselibDir 'id.c'
 $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
@@ -46,6 +58,15 @@ $lbmathObject = Join-Path $build 'lb_00CE.obj'
 $spriteObject = Join-Path $build 'sprite_renderer.obj'
 $bootObject = Join-Path $build 'melee_boot_xdk.obj'
 $gcmObject = Join-Path $build 'gcm.obj'
+$memoryObject = Join-Path $build 'memory.obj'
+$memoryWrapperObject = Join-Path $build 'memory_xdk.obj'
+$hsdClassWrapperObject = Join-Path $build 'hsd_class_xdk.obj'
+$hashObject = Join-Path $build 'hash.obj'
+$debugObject = Join-Path $build 'debug.obj'
+$classObject = Join-Path $build 'class.obj'
+$objectObject = Join-Path $build 'object.obj'
+$objallocObject = Join-Path $build 'objalloc.obj'
+$idObject = Join-Path $build 'id.obj'
 $vertexShaderHeader = Join-Path $build 'sprite_vs.h'
 $pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
@@ -62,7 +83,10 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $lbmathWrapper, $spriteSource, $spriteHeader,
                          $vertexShaderSource, $pixelShaderSource,
                          $atlasGenerator, $bootSource, $bootHeader,
-                         $gcmSource)) {
+                         $gcmSource, $memoryCompat, $memorySource,
+                         $memoryWrapper, $hsdClassCompat, $hsdClassWrapper,
+                         $hashSource, $debugSource, $classSource,
+                         $objectSource, $objallocSource, $idSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -121,7 +145,9 @@ Write-Host '[M360][XEX] compiling PowerPC source'
 $compileArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
     '/D_XBOX', '/DXBOX', '/DNDEBUG',
-    "/I$includeXbox", "/I$includeSys", "/Fo$object", $source
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
+    "/I$baselibDir", "/I$(Join-Path $root 'upstream\melee-pc\src')",
+    "/I$meleeSdkInclude", "/Fo$object", $source
 )
 & $compiler $compileArgs
 if ($LASTEXITCODE -ne 0) { throw 'XDK compilation failed.' }
@@ -173,12 +199,85 @@ $lbmathArgs = @(
 & $compiler $lbmathArgs
 if ($LASTEXITCODE -ne 0) { throw 'Original lb_00CE.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK HSD heap allocator bridge'
+$memoryWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys",
+    "/Fo$memoryWrapperObject", $memoryWrapper
+)
+& $compiler $memoryWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK HSD heap allocator bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc memory.c'
+$memoryArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$memoryCompat",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$memoryObject", $memorySource
+)
+& $compiler $memoryArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original memory.c compilation failed.' }
+
+Write-Host '[M360][XEX] compiling XDK HSD class/debug bridge'
+$hsdClassWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys",
+    "/Fo$hsdClassWrapperObject", $hsdClassWrapper
+)
+& $compiler $hsdClassWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK HSD class/debug bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc hash/debug/class/object/objalloc/id.c'
+$hsdCommonInc = @("/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/I$includeXbox", "/I$includeSys")
+
+$hashArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdClassCompat") + $hsdCommonInc +
+    @("/Fo$hashObject", $hashSource)
+& $compiler $hashArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original hash.c compilation failed.' }
+
+$debugArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', '/DTARGET_PC', "/FI$hsdClassCompat") +
+    $hsdCommonInc + @("/Fo$debugObject", $debugSource)
+& $compiler $debugArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original debug.c compilation failed.' }
+
+$classArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdClassCompat") + $hsdCommonInc +
+    @("/Fo$classObject", $classSource)
+& $compiler $classArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original class.c compilation failed.' }
+
+$objectArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdClassCompat") + $hsdCommonInc +
+    @("/Fo$objectObject", $objectSource)
+& $compiler $objectArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original object.c compilation failed.' }
+
+$objallocArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdClassCompat") + $hsdCommonInc +
+    @("/Fo$objallocObject", $objallocSource)
+& $compiler $objallocArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original objalloc.c compilation failed.' }
+
+$idArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdClassCompat") + $hsdCommonInc +
+    @("/Fo$idObject", $idSource)
+& $compiler $idArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original id.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject, $bootObject, $gcmObject,
+    $memoryObject, $memoryWrapperObject,
+    $hsdClassWrapperObject, $hashObject, $debugObject, $classObject,
+    $objectObject, $objallocObject, $idObject,
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs

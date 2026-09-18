@@ -15,6 +15,8 @@
 - M12 GameCube FST reader: complete; validated against the legal GALE01 image
 - M13 Minimal Dolphin DVD API: complete (`DVDOpen`, `DVDFastOpen`, sync/async read)
 - M14 HAL archive loading: complete for `GmTtAll.dat` (`HSD_ArchiveParse` and public-symbol lookup)
+- M15 HSD heap allocator: complete (`sysdolphin/baselib/memory.c`, `HSD_MemAlloc`/`HSD_Free`)
+- M16 HSD class/hash/debug/objalloc/id cluster: complete (`hash.c`, `debug.c`, `class.c`, `object.c`, `objalloc.c`, `id.c`); real `HSD_Assert`/`OSPanic` bridging
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
@@ -44,3 +46,11 @@ a Xenon compatibility wrapper. On boot it reads `GmTtAll.dat` from the legal
 ISO, applies all 1,909 pointer relocations and resolves its first public root.
 Host validation independently checks the 381,781-byte archive layout, 13
 public roots and first symbol (`ScTitle_cam_int1_camanim`).
+
+The Xbox build now compiles the upstream `sysdolphin/baselib/memory.c` HSD
+allocator directly, backed by a real first-fit, coalescing free-list heap
+over a static 24 MiB arena supplied through `HSD_GetHeap`/`OSAllocFromHeap`/
+`OSFreeToHeap`. Host validation exercises alignment, read/write of allocated
+memory, mixed free/reallocate patterns and a 4,000-iteration burn-in; the
+same original `HSD_MemAlloc`/`HSD_Free` now back the boot self-test that
+reports `MELEE MODULES ...... LINKED/OK`.
