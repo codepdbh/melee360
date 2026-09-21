@@ -98,7 +98,9 @@ Xbox 360 shader compiler. The generated microcode headers are placed under
 vertex declaration. It batches the UI into `D3DPT_QUADLIST` and submits the
 translated Melee title geometry separately as `D3DPT_TRIANGLELIST`, with alpha
 blending. The translator handles GX triangles, quads, triangle strips and fans
-with direct, 8-bit-indexed or 16-bit-indexed vertex attributes. Only the
+with direct, 8-bit-indexed or 16-bit-indexed vertex attributes. Display-list
+parsing is bounded by HAL's 32-byte-block `n_display` length and validates the
+complete vertex payload before decoding a primitive. Only the
 initial back-buffer clear remains a D3D clear operation.
 
 The pixel shader now samples a `D3DFMT_LIN_A8R8G8B8` sprite atlas. For this

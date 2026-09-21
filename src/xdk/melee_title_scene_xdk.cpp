@@ -295,8 +295,10 @@ const unsigned char* ParseVertex(const HSD_VtxDescList* descriptors,
 {
     vertex->x = vertex->y = vertex->z = vertex->u = vertex->v = 0.0f;
     vertex->color = 0xFFFFFFFFu;
+    unsigned descriptorCount = 0;
     for (const HSD_VtxDescList* desc = descriptors;
-         desc && desc->attr != GX_VA_NULL; ++desc) {
+         desc && desc->attr != GX_VA_NULL && descriptorCount < 32;
+         ++desc, ++descriptorCount) {
         if (desc->attr_type == GX_NONE)
             continue;
         const unsigned char* value = stream;
@@ -330,6 +332,27 @@ const unsigned char* ParseVertex(const HSD_VtxDescList* descriptors,
         }
     }
     return stream;
+}
+
+unsigned VertexStreamSize(const HSD_VtxDescList* descriptors)
+{
+    unsigned size = 0;
+    unsigned descriptorCount = 0;
+    for (const HSD_VtxDescList* desc = descriptors;
+         desc && desc->attr != GX_VA_NULL && descriptorCount < 32;
+         ++desc, ++descriptorCount) {
+        if (desc->attr_type == GX_NONE)
+            continue;
+        if (desc->attr_type == GX_INDEX8)
+            size += 1;
+        else if (desc->attr_type == GX_INDEX16)
+            size += 2;
+        else if (desc->attr_type == GX_DIRECT)
+            size += DirectSize(desc);
+        else
+            return 0;
+    }
+    return size;
 }
 
 void TransformVertex(const HSD_JObj* jobj, ParsedVertex* vertex)
@@ -380,12 +403,21 @@ void DecodePObj(const HSD_JObj* jobj, const HSD_DObj* dobj,
                         (mat->diffuse.r << 16) | (mat->diffuse.g << 8) |
                         mat->diffuse.b;
     }
+    const unsigned vertexSize = VertexStreamSize(pobj->verts);
+    if (!vertexSize || pobj->n_display > 0x4000)
+        return;
+    const unsigned displayBytes = static_cast<unsigned>(pobj->n_display) << 5;
     const unsigned char* stream = pobj->display;
-    for (unsigned display = 0; display < pobj->n_display && *count < capacity;
-         ++display) {
+    const unsigned char* end = stream + displayBytes;
+    while (stream + 3 <= end && *count < capacity) {
         const unsigned primitive = *stream++ & 0xF8;
+        if (primitive == 0) /* GX_NOP padding */
+            break;
         const unsigned vertexCount = Read16(stream);
         stream += 2;
+        const unsigned remaining = static_cast<unsigned>(end - stream);
+        if (vertexCount > remaining / vertexSize)
+            break;
         ParsedVertex first, previous, current, quad[4];
         for (unsigned i = 0; i < vertexCount; ++i) {
             stream = ParseVertex(pobj->verts, stream, &current);
