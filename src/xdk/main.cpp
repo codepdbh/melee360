@@ -1,4 +1,5 @@
 #include <xtl.h>
+#include <stdio.h>
 
 #include "melee_pad_xdk.h"
 #include "melee_boot_xdk.h"
@@ -202,6 +203,21 @@ RectBatch g_panel = { {}, 0, D3DCOLOR_XRGB(24, 39, 61) };
 RectBatch g_dynamic = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
 SpriteRenderer g_renderer;
 MeleeTitleVertex g_titleMesh[32766];
+
+void TraceStage(const char* stage, unsigned value)
+{
+    HANDLE file = CreateFileA("game:\\runtime-trace.txt", GENERIC_WRITE,
+        FILE_SHARE_READ, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (file == INVALID_HANDLE_VALUE)
+        return;
+    SetFilePointer(file, 0, 0, FILE_END);
+    char line[160];
+    const int length = _snprintf(line, sizeof(line), "%s: %u\r\n", stage, value);
+    DWORD written;
+    if (length > 0 && length < sizeof(line))
+        WriteFile(file, line, length, &written, 0);
+    CloseHandle(file);
+}
 
 void AddRect(RectBatch& batch, LONG x, LONG y, LONG width, LONG height)
 {
@@ -720,7 +736,9 @@ void __cdecl main()
     }
 
     MeleeBootStatus boot;
+    TraceStage("boot.begin", GetTickCount());
     const bool bootSucceeded = M360_BootMelee("game:\\melee.iso", &boot);
+    TraceStage("boot.complete", bootSucceeded);
     if (boot.bannerDecoded)
         renderer.UploadBanner(device, boot.bannerPixels);
     unsigned* titleTexturePixels = 0;
@@ -736,14 +754,15 @@ void __cdecl main()
     const unsigned titleMeshVertexCount =
         M360_BuildTitleMesh(g_titleMesh, 32766);
     boot.titleScene.meshVertexCount = titleMeshVertexCount;
+    TraceStage("mesh.vertices", titleMeshVertexCount);
     BuildScene(meleeCodePassed, boot);
     M360_HSDPadInit();
     OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
-    /* Start from the already verified texture path. A/Start selects the
-       experimental GX mesh without risking a black boot screen. */
-    unsigned titleView = titleTextureDecoded ? 1u : 0u;
+    unsigned titleView = titleMeshVertexCount ? 2u :
+                         (titleTextureDecoded ? 1u : 0u);
+    unsigned frameCount = 0;
     for (;;) {
         const DWORD now = GetTickCount();
 
@@ -751,8 +770,10 @@ void __cdecl main()
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
         if (input.button & HSD_PAD_Y)
             break;
-        if (input.trigger & (HSD_PAD_A | HSD_PAD_START))
+        if (input.trigger & (HSD_PAD_A | HSD_PAD_START)) {
             titleView = (titleView + 1) % 3;
+            TraceStage("input.view", titleView);
+        }
 
         if (boot.titleScene.animationsBound)
             M360_AnimateTitleScene();
@@ -773,7 +794,13 @@ void __cdecl main()
         else if (boot.bannerDecoded)
             renderer.AddBanner(352.0f, 308.0f, 576.0f, 192.0f);
         renderer.End(device);
-        device->Present(0, 0, 0, 0);
+        const HRESULT presented = device->Present(0, 0, 0, 0);
+        ++frameCount;
+        if (frameCount == 1 || frameCount == 120) {
+            TraceStage("present.frame", frameCount);
+            TraceStage("present.result", static_cast<unsigned>(presented));
+            TraceStage("present.view", titleView);
+        }
     }
 
     renderer.Shutdown();

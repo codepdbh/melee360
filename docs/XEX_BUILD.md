@@ -88,6 +88,18 @@ Until that binding exists, GX mesh mode deliberately samples the atlas white
 texel so the authentic geometry and material/vertex colors remain visible;
 decoded title imagery remains available in the separate texture mode.
 
+Runtime diagnostics append boot completion, decoded vertex count and the
+results of frames 1 and 120 to `game:\runtime-trace.txt`. For a local Xenia
+diagnostic run, pass `--allow_game_relative_writes=true`; the resulting file
+is under the ignored `dist/` directory. Without write access, tracing is skipped.
+View IDs are 0 (banner), 1 (texture), and 2 (mesh). A successful `Present`
+result verifies submission, not visual correctness.
+
+The corrected draw order submits the opaque backdrop/UI batch before the
+title mesh. The mesh is currently a static snapshot of the JObj transforms,
+fitted to the preview panel, without original camera projection or per-PObj
+textures. HAL animation continues but does not yet update that snapshot.
+
 ## Graphics pipeline
 
 `tools/build_xex.ps1` compiles the HLSL sources in `src/xdk/shaders` with the

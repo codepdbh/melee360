@@ -377,8 +377,13 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
     device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
     device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
     device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-    /* Keep transient draws small. Large DrawPrimitiveUP calls can overflow the
-       Xbox 360 command-buffer path used by Xenia and discard the whole frame. */
+    /* The quad batch includes the opaque backdrop: submit it before the mesh. */
+    if (quadCount_) {
+        device->SetTexture(0, atlas_);
+        device->DrawPrimitiveUP(D3DPT_QUADLIST, quadCount_, vertices_,
+                                sizeof(Vertex));
+    }
+    /* Bound the transient upload size per draw. */
     if (titleVertexCount_) {
         const unsigned kVerticesPerDraw = 1536;
         device->SetTexture(0, atlas_);
@@ -393,13 +398,6 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
                                         titleVertices_ + first,
                                         sizeof(Vertex));
         }
-    }
-    /* Draw the diagnostic UI after the imported mesh so it always remains
-       visible even while a new GX primitive or material is being debugged. */
-    if (quadCount_) {
-        device->SetTexture(0, atlas_);
-        device->DrawPrimitiveUP(D3DPT_QUADLIST, quadCount_, vertices_,
-                                sizeof(Vertex));
     }
     if (bannerQueued_) {
         device->SetTexture(0, bannerTexture_);
