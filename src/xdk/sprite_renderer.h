@@ -36,6 +36,11 @@ public:
     bool UsesExternalAtlas() const;
 
 private:
+    IDirect3DTexture9* ResolveTitleTexture(IDirect3DDevice9* device, const void* key);
+    const void* textureKeys_[64];
+    IDirect3DTexture9* titleTextures_[64];
+    unsigned textureCount_;
+    const void* vertexTextures_[32766];
     struct Vertex {
         float x;
         float y;

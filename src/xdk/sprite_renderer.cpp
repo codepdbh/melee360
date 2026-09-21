@@ -134,6 +134,7 @@ SpriteRenderer::SpriteRenderer()
       atlas_(0), bannerTexture_(0), gameTexture_(0), bannerQueued_(false),
       gameTextureQueued_(false), titleVertexCount_(0), externalAtlas_(false)
 {
+    textureCount_ = 0;
 }
 
 bool SpriteRenderer::Initialize(IDirect3DDevice9* device)
@@ -350,13 +351,39 @@ void SpriteRenderer::AddTitleMesh(const MeleeTitleVertex* vertices,
         titleVertices_[i].green = ((color >> 8) & 255) / 255.0f;
         titleVertices_[i].blue = (color & 255) / 255.0f;
         titleVertices_[i].alpha = ((color >> 24) & 255) / 255.0f;
-        /* A PObj-specific TObj binding is required before imported UVs can be
-           sampled correctly. Use the atlas white texel for the geometry-only
-           pass so real vertex/material colors remain visible in the interim. */
-        titleVertices_[i].u = whiteU;
-        titleVertices_[i].v = whiteV;
+        vertexTextures_[i] = vertices[i].texture;
+        titleVertices_[i].u = vertices[i].texture ? vertices[i].u : whiteU;
+        titleVertices_[i].v = vertices[i].texture ? vertices[i].v : whiteV;
     }
     titleVertexCount_ = count;
+}
+
+IDirect3DTexture9* SpriteRenderer::ResolveTitleTexture(IDirect3DDevice9* device,
+                                                     const void* key)
+{
+    if (!key) return 0;
+    for (unsigned i = 0; i < textureCount_; ++i)
+        if (textureKeys_[i] == key) return titleTextures_[i];
+    if (textureCount_ == 64) return 0;
+    unsigned* pixels = 0;
+    unsigned width = 0, height = 0;
+    IDirect3DTexture9* result = 0;
+    if (M360_DecodeTitleTexture(key, &pixels, &width, &height)) {
+        if (SUCCEEDED(device->CreateTexture(width, height, 1, 0,
+                D3DFMT_LIN_A8R8G8B8, D3DPOOL_MANAGED, &result, 0))) {
+            D3DLOCKED_RECT locked;
+            if (SUCCEEDED(result->LockRect(0, &locked, 0, 0))) {
+                for (unsigned y = 0; y < height; ++y)
+                    memcpy(static_cast<BYTE*>(locked.pBits) + y * locked.Pitch,
+                           pixels + y * width, width * sizeof(unsigned));
+                result->UnlockRect(0);
+            } else { result->Release(); result = 0; }
+        }
+        M360_FreeDecodedTitleTexture(pixels);
+    }
+    textureKeys_[textureCount_] = key;
+    titleTextures_[textureCount_++] = result;
+    return result;
 }
 
 void SpriteRenderer::End(IDirect3DDevice9* device)
@@ -390,17 +417,24 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
     /* Bound the transient upload size per draw. */
     if (titleVertexCount_) {
         const unsigned kVerticesPerDraw = 1536;
-        device->SetTexture(0, atlas_);
         for (unsigned first = 0; first < titleVertexCount_;
-             first += kVerticesPerDraw) {
-            unsigned count = titleVertexCount_ - first;
-            if (count > kVerticesPerDraw)
-                count = kVerticesPerDraw;
-            count -= count % 3;
+             ) {
+            unsigned count = 3;
+            while (first + count < titleVertexCount_ && count < kVerticesPerDraw &&
+                   vertexTextures_[first + count] == vertexTextures_[first])
+                count += 3;
+            IDirect3DTexture9* texture = ResolveTitleTexture(device, vertexTextures_[first]);
+            if (!texture)
+                for (unsigned i = first; i < first + count; ++i) {
+                    titleVertices_[i].u = 2.0f / kAtlasWidth;
+                    titleVertices_[i].v = 2.0f / kAtlasHeight;
+                }
+            device->SetTexture(0, texture ? texture : atlas_);
             if (count)
                 device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, count / 3,
                                         titleVertices_ + first,
                                         sizeof(Vertex));
+            first += count;
         }
     }
     if (bannerQueued_) {
@@ -417,6 +451,9 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
 
 void SpriteRenderer::Shutdown()
 {
+    for (unsigned i = 0; i < textureCount_; ++i)
+        if (titleTextures_[i]) titleTextures_[i]->Release();
+    textureCount_ = 0;
     if (atlas_)
         atlas_->Release();
     if (bannerTexture_)

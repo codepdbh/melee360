@@ -25,6 +25,7 @@ struct TitleModelSymbols {
 
 HSD_JObj* s_titleModels[2];
 HSD_TObj* s_firstTexture;
+const HSD_TObj* s_drawTexture;
 HSD_CameraDescPerspective* s_camera;
 
 bool ProjectCamera(MeleeTitleVertex* vertices, unsigned* count)
@@ -440,6 +441,7 @@ void EmitVertex(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
     target.u = source.u;
     target.v = source.v;
     target.color = source.color == 0xFFFFFFFFu ? materialColor : source.color;
+    target.texture = s_drawTexture;
 }
 
 void EmitTriangle(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
@@ -458,6 +460,7 @@ void DecodePObj(const HSD_JObj* jobj, const HSD_DObj* dobj,
     if (!pobj->verts || !pobj->display)
         return;
     unsigned materialColor = 0xFFFFFFFFu;
+    s_drawTexture = dobj->mobj ? dobj->mobj->tobj : 0;
     if (dobj->mobj && dobj->mobj->mat) {
         const HSD_Material* mat = dobj->mobj->mat;
         const unsigned alpha = static_cast<unsigned>(mat->alpha * 255.0f);
@@ -656,17 +659,26 @@ void M360_AnimateTitleScene(void)
 bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
                                   unsigned* height)
 {
-    if (!pixels || !width || !height || !s_firstTexture ||
-        !s_firstTexture->imagedesc)
+    return M360_DecodeTitleTexture(s_firstTexture, pixels, width, height);
+}
+
+bool M360_DecodeTitleTexture(const void* handle, unsigned** pixels,
+                            unsigned* width, unsigned* height)
+{
+    const HSD_TObj* texture = static_cast<const HSD_TObj*>(handle);
+    if (!pixels || !width || !height || !texture || !texture->imagedesc)
         return false;
-    *width = s_firstTexture->imagedesc->width;
-    *height = s_firstTexture->imagedesc->height;
+    *pixels = 0;
+    *width = texture->imagedesc->width;
+    *height = texture->imagedesc->height;
+    if (!*width || !*height || *width > 2048 || *height > 2048)
+        return false;
     const size_t count = static_cast<size_t>(*width) * *height;
     *pixels = static_cast<unsigned*>(malloc(count * sizeof(unsigned)));
     if (!*pixels)
         return false;
     memset(*pixels, 0, count * sizeof(unsigned));
-    if (!DecodeTexture(s_firstTexture, *pixels)) {
+    if (!DecodeTexture(texture, *pixels)) {
         free(*pixels);
         *pixels = NULL;
         return false;

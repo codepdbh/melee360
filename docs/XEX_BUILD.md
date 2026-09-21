@@ -84,9 +84,10 @@ This is an interactive native title-resource milestone, not a claim that
 Melee gameplay has been ported. The first PObj GX display-list translation is
 running; the next graphics step is binding each PObj to its own material,
 texture and TEV state, followed by the original camera and scene callbacks.
-Until that binding exists, GX mesh mode deliberately samples the atlas white
-texel so the authentic geometry and material/vertex colors remain visible;
-decoded title imagery remains available in the separate texture mode.
+GX mesh mode binds the first TObj of each material and samples its original
+UVs. A 64-entry cache uploads decoded images once; unavailable textures fall
+back to the atlas white texel. Multiple texture stages, TEV, animated texture
+selection and texture matrices remain unimplemented.
 
 Runtime diagnostics append boot completion, decoded vertex count and the
 results of frames 1 and 120 to `game:\runtime-trace.txt`. For a local Xenia
@@ -99,7 +100,8 @@ The corrected draw order submits the opaque backdrop/UI batch before the
 title mesh. The mesh is rebuilt from animated JObj transforms each frame in
 mesh mode. Perspective camera descriptors now supply eye, target, field of
 view, aspect and depth limits for the preview; unsupported descriptors retain
-the XY fit fallback. Camera animation and per-PObj textures remain pending.
+the XY fit fallback. Camera animation remains pending; per-PObj texture binding
+currently covers the first texture only.
 Near/far clipping currently rejects crossing triangles instead of splitting
 them, and the preview still lacks depth buffering and perspective-correct UVs.
 Runtime tracing includes mesh hashes at frames 1 and 120
