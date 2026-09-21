@@ -1,4 +1,7 @@
 #include <xtl.h>
+#include <math.h>
+#undef near
+#undef far
 
 #include "hsdjobj_xdk_compat.h"
 #include "melee_archive_xdk.h"
@@ -7,6 +10,8 @@
 extern "C" {
 #include <sysdolphin/baselib/dobj.h>
 #include <sysdolphin/baselib/jobj.h>
+#include <sysdolphin/baselib/cobj.h>
+#include <sysdolphin/baselib/wobj.h>
 }
 
 namespace {
@@ -20,6 +25,63 @@ struct TitleModelSymbols {
 
 HSD_JObj* s_titleModels[2];
 HSD_TObj* s_firstTexture;
+HSD_CameraDescPerspective* s_camera;
+
+bool ProjectCamera(MeleeTitleVertex* vertices, unsigned* count)
+{
+    if (!s_camera || s_camera->projection_type != PROJ_PERSPECTIVE ||
+        !s_camera->eyepos || !s_camera->interest ||
+        !(s_camera->fov > 0 && s_camera->fov < 179) ||
+        !(s_camera->aspect > 0) || !(s_camera->nnear > 0))
+        return false;
+    const HSD_WObjDesc* eye = s_camera->eyepos;
+    const HSD_WObjDesc* target = s_camera->interest;
+    float z[3] = { eye->pos.x - target->pos.x,
+                   eye->pos.y - target->pos.y,
+                   eye->pos.z - target->pos.z };
+    float length = sqrtf(z[0]*z[0] + z[1]*z[1] + z[2]*z[2]);
+    if (!(length > 0.00001f)) return false;
+    for (unsigned i = 0; i < 3; ++i) z[i] /= length;
+    float up[3] = { 0, 1, 0 };
+    if (s_camera->up_vector) {
+        up[0] = s_camera->up_vector->x;
+        up[1] = s_camera->up_vector->y;
+        up[2] = s_camera->up_vector->z;
+    }
+    float x[3] = { up[1]*z[2]-up[2]*z[1], up[2]*z[0]-up[0]*z[2],
+                   up[0]*z[1]-up[1]*z[0] };
+    length = sqrtf(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
+    if (!(length > 0.00001f)) return false;
+    for (unsigned i = 0; i < 3; ++i) x[i] /= length;
+    float y[3] = { z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2],
+                   z[0]*x[1]-z[1]*x[0] };
+    const float c = cosf(s_camera->roll), s = sinf(s_camera->roll);
+    const float focal = 1.0f / tanf(s_camera->fov * 0.00872664626f);
+    unsigned output = 0;
+    for (unsigned first = 0; first + 2 < *count; first += 3) {
+        MeleeTitleVertex triangle[3];
+        bool visible = true;
+        for (unsigned i = 0; i < 3; ++i) {
+            triangle[i] = vertices[first+i];
+            float d[3] = { triangle[i].x-eye->pos.x,
+                           triangle[i].y-eye->pos.y, triangle[i].z-eye->pos.z };
+            const float depth = -(d[0]*z[0]+d[1]*z[1]+d[2]*z[2]);
+            if (!(depth >= s_camera->nnear && depth <= s_camera->ffar)) {
+                visible = false; break;
+            }
+            const float vx = d[0]*x[0]+d[1]*x[1]+d[2]*x[2];
+            const float vy = d[0]*y[0]+d[1]*y[1]+d[2]*y[2];
+            triangle[i].x = 640 + 105*s_camera->aspect *
+                ((c*vx+s*vy)*focal/(depth*s_camera->aspect));
+            triangle[i].y = 404 - 105*((-s*vx+c*vy)*focal/depth);
+            triangle[i].z = 0;
+        }
+        if (visible)
+            for (unsigned i = 0; i < 3; ++i) vertices[output++] = triangle[i];
+    }
+    *count = output;
+    return true;
+}
 
 unsigned Expand4To8(unsigned value) { return (value << 4) | value; }
 unsigned Expand5To8(unsigned value) { return (value << 3) | (value >> 2); }
@@ -539,7 +601,8 @@ bool M360_LoadTitleScene(MeleeTitleSceneStatus* status)
     title.shapeAnim = static_cast<HSD_ShapeAnimJoint*>(
         Resolve("TtlMoji_Top_shapeanim_joint", status));
 
-    Resolve("ScTitle_cam_int1_camera", status);
+    s_camera = static_cast<HSD_CameraDescPerspective*>(
+        Resolve("ScTitle_cam_int1_camera", status));
     Resolve("ScTitle_scene_lights", status);
     Resolve("ScTitle_fog", status);
 
@@ -625,6 +688,8 @@ unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity)
     DecodeJObj(s_titleModels[1], vertices, capacity, &count);
     if (!count)
         return 0;
+    if (ProjectCamera(vertices, &count))
+        return count;
     float minX = vertices[0].x, maxX = vertices[0].x;
     float minY = vertices[0].y, maxY = vertices[0].y;
     for (unsigned i = 1; i < count; ++i) {

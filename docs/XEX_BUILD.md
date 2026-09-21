@@ -97,8 +97,12 @@ result verifies submission, not visual correctness.
 
 The corrected draw order submits the opaque backdrop/UI batch before the
 title mesh. The mesh is rebuilt from animated JObj transforms each frame in
-mesh mode, fitted to the preview panel, without original camera projection or
-per-PObj textures. Runtime tracing includes mesh hashes at frames 1 and 120
+mesh mode. Perspective camera descriptors now supply eye, target, field of
+view, aspect and depth limits for the preview; unsupported descriptors retain
+the XY fit fallback. Camera animation and per-PObj textures remain pending.
+Near/far clipping currently rejects crossing triangles instead of splitting
+them, and the preview still lacks depth buffering and perspective-correct UVs.
+Runtime tracing includes mesh hashes at frames 1 and 120
 to check that animation reaches submitted vertex data.
 
 ## Graphics pipeline
