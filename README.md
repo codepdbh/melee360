@@ -55,8 +55,8 @@ LibXenon implementations.
 | Original HSD class/hash/debug/objalloc/id cluster | ✅ RTTI class hierarchy, hash search, real `HSD_Assert`/`OSPanic`, pool allocator and ID table linked and host-validated |
 | Original HSD gobj (game object) cluster | ✅ `list`/`gobj`/`gobjproc`/`gobjplink`/`gobjgxlink`/`gobjobject`/`gobjuserdata`/`gobjinit` linked and host-validated; cobj/fog/jobj/lobj stubbed pending their own ports |
 | Original HSD math/animation-data foundation | ✅ `mtx`/`quatlib`/`spline`/`fobj`/`random` linked and host-validated with real scalar `PSMTX`/`PSVEC` primitives; `util` pending GX types |
-| Original HSD animation-object layer | ✅ `aobj`/`dobj`/`robj` plus `util`/`bytecode` linked and host-validated (FObj stepping/loop, DObj class/list, RObj constraints/limits/expressions); jobj/mobj/pobj/tobj entry points stubbed, jobj class is a stand-in |
-| Real title-scene descriptors | ✅ 12 `gmtitle.c` symbols resolved; title/background JObj trees and animation graphs loaded from the ISO |
+| Original HSD animation-object layer | ✅ `aobj`/`dobj`/`robj` plus `util`/`bytecode` linked and host-validated; JObj animation advances on the real title graph |
+| Real title-scene descriptors | ✅ JObj, DObj, MObj, PObj and TObj graphs loaded from the ISO, including GX display lists and image descriptors |
 | Melee scene rendering, menus and gameplay | 🚧 HAL/GX-to-D3D9 rendering backend not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal

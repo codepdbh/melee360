@@ -20,16 +20,39 @@ struct TitleModelSymbols {
 
 HSD_JObj* s_titleModels[2];
 
-void CountTree(HSD_JObj* jobj, unsigned* joints, unsigned* dobjs)
+void CountTree(HSD_JObj* jobj, MeleeTitleSceneStatus* status)
 {
-    for (HSD_JObj* node = jobj; node && *joints < 10000; node = node->next) {
-        ++*joints;
+    for (HSD_JObj* node = jobj;
+         node && status->jointCount < 10000; node = node->next) {
+        ++status->jointCount;
         if (!(node->flags & (JOBJ_SPLINE | JOBJ_PTCL))) {
-            for (HSD_DObj* dobj = node->u.dobj; dobj; dobj = dobj->next)
-                ++*dobjs;
+            for (HSD_DObj* dobj = node->u.dobj; dobj; dobj = dobj->next) {
+                ++status->displayObjectCount;
+                if (dobj->mobj)
+                    ++status->materialCount;
+                if (dobj->mobj) {
+                    for (HSD_TObj* tobj = dobj->mobj->tobj; tobj;
+                         tobj = tobj->next) {
+                        ++status->textureObjectCount;
+                        if (tobj->imagedesc && tobj->imagedesc->image_ptr) {
+                            ++status->textureImageCount;
+                            if (!status->firstTextureWidth) {
+                                status->firstTextureWidth =
+                                    tobj->imagedesc->width;
+                                status->firstTextureHeight =
+                                    tobj->imagedesc->height;
+                                status->firstTextureFormat =
+                                    static_cast<unsigned>(tobj->imagedesc->format);
+                            }
+                        }
+                    }
+                }
+                for (HSD_PObj* pobj = dobj->pobj; pobj; pobj = pobj->next)
+                    ++status->polygonObjectCount;
+            }
         }
         if (!(node->flags & JOBJ_INSTANCE))
-            CountTree(node->child, joints, dobjs);
+            CountTree(node->child, status);
     }
 }
 
@@ -98,9 +121,15 @@ bool M360_LoadTitleScene(MeleeTitleSceneStatus* status)
     HSD_JObjAnimAll(s_titleModels[1]);
     status->animationsBound = true;
 
-    CountTree(s_titleModels[0], &status->jointCount,
-              &status->displayObjectCount);
-    CountTree(s_titleModels[1], &status->jointCount,
-              &status->displayObjectCount);
+    CountTree(s_titleModels[0], status);
+    CountTree(s_titleModels[1], status);
     return true;
+}
+
+void M360_AnimateTitleScene(void)
+{
+    if (s_titleModels[0])
+        HSD_JObjAnimAll(s_titleModels[0]);
+    if (s_titleModels[1])
+        HSD_JObjAnimAll(s_titleModels[1]);
 }

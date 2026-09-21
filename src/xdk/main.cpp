@@ -357,20 +357,31 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
     AddUnsigned(boot.titleScene.symbolsResolved ? g_green : g_white,
                 310, 562, boot.titleScene.resolvedSymbols, 2);
     AddText(g_muted, 350, 562, "/ 12", 2);
-    AddText(g_muted, 470, 562, "MODELS", 2);
+    AddText(g_muted, 440, 562, "MODELS", 2);
     AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
-                610, 562, boot.titleScene.modelCount, 2);
-    AddText(g_muted, 680, 562, "JOINTS", 2);
+                580, 562, boot.titleScene.modelCount, 2);
+    AddText(g_muted, 650, 562, "JOINTS", 2);
     AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
-                820, 562, boot.titleScene.jointCount, 2);
-    AddText(g_muted, 940, 562, "DOBJS", 2);
+                790, 562, boot.titleScene.jointCount, 2);
+    AddText(g_muted, 96, 592, "MATERIALS", 2);
     AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
-                1045, 562, boot.titleScene.displayObjectCount, 2);
-    AddText(g_muted, 96, 596,
+                270, 592, boot.titleScene.materialCount, 2);
+    AddText(g_muted, 390, 592, "POBJS", 2);
+    AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
+                500, 592, boot.titleScene.polygonObjectCount, 2);
+    AddText(g_muted, 650, 592, "TEXTURES", 2);
+    AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
+                810, 592, boot.titleScene.textureImageCount, 2);
+    AddText(g_muted, 875, 592, "FMT", 1);
+    AddUnsigned(g_white, 910, 592, boot.titleScene.firstTextureFormat, 1);
+    AddUnsigned(g_white, 950, 592, boot.titleScene.firstTextureWidth, 1);
+    AddText(g_muted, 1015, 592, "X", 1);
+    AddUnsigned(g_white, 1030, 592, boot.titleScene.firstTextureHeight, 1);
+    AddText(g_muted, 96, 616,
             boot.titleScene.animationsBound
-                ? "REAL TITLE JOBJ TREES + ANIMATIONS LOADED"
+                ? "REAL JOBJ MOBJ POBJ TOBJ GRAPHS LOADED"
                 : (boot.titleArchiveValid ? "HAL ROOT READY" : boot.error),
-            2);
+            1);
     AddText(g_muted, 76, 672,
             "NATIVE POWERPC / GAMECUBE FST / RGB5A3 / HAL ARCHIVE", 2);
     AddText(g_muted, 1080, 590, "Y EXIT", 1);
@@ -719,6 +730,9 @@ void __cdecl main()
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
         if (input.button & HSD_PAD_Y)
             break;
+
+        if (boot.titleScene.animationsBound)
+            M360_AnimateTitleScene();
 
         device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(12, 16, 40),
                       1.0f, 0);

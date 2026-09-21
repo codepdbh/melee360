@@ -5,6 +5,7 @@ extern "C" {
 #include <sysdolphin/baselib/dobj.h>
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/mobj.h>
+#include <sysdolphin/baselib/memory.h>
 #include <sysdolphin/baselib/object.h>
 #include <sysdolphin/baselib/pobj.h>
 #include <sysdolphin/baselib/robj.h>
@@ -32,6 +33,49 @@ extern "C" {
 
 M360AnimStubState g_m360AnimStub;
 
+static void M360_MObjUpdate(void* object, enum_t type, HSD_ObjData* value)
+{
+    HSD_MObj* mobj = static_cast<HSD_MObj*>(object);
+    if (!mobj || !mobj->mat || !value)
+        return;
+    switch (type) {
+    case HSD_A_M_AMBIENT_R: mobj->mat->ambient.r = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_AMBIENT_G: mobj->mat->ambient.g = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_AMBIENT_B: mobj->mat->ambient.b = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_DIFFUSE_R: mobj->mat->diffuse.r = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_DIFFUSE_G: mobj->mat->diffuse.g = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_DIFFUSE_B: mobj->mat->diffuse.b = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_SPECULAR_R: mobj->mat->specular.r = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_SPECULAR_G: mobj->mat->specular.g = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_SPECULAR_B: mobj->mat->specular.b = (u8) (255.0f * value->fv); break;
+    case HSD_A_M_ALPHA: mobj->mat->alpha = 1.0f - value->fv; break;
+    case HSD_A_M_PE_REF0:
+        if (mobj->pe) mobj->pe->ref0 = (u8) (255.0f * value->fv);
+        break;
+    case HSD_A_M_PE_REF1:
+        if (mobj->pe) mobj->pe->ref1 = (u8) (255.0f * value->fv);
+        break;
+    case HSD_A_M_PE_DSTALPHA:
+        if (mobj->pe) mobj->pe->dst_alpha = (u8) (255.0f * value->fv);
+        break;
+    }
+}
+
+static void M360_PObjUpdate(void* object, enum_t type, HSD_ObjData* value)
+{
+    HSD_PObj* pobj = static_cast<HSD_PObj*>(object);
+    if (!pobj || !pobj->u.shape_set || !value || type < HSD_A_S_W0)
+        return;
+    HSD_ShapeSet* shape = pobj->u.shape_set;
+    if (shape->flags & SHAPESET_ADDITIVE) {
+        const unsigned index = static_cast<unsigned>(type - HSD_A_S_W0);
+        if (shape->blend.bp && index < shape->nb_shape)
+            shape->blend.bp[index] = value->fv;
+    } else {
+        shape->blend.bl = value->fv;
+    }
+}
+
 /* ---- M19 STUB SECTION: mobj/pobj are not ported yet ---------------------
  * Every function below stands in for an unported neighbour and is a
  * counting no-op. jobj is real since M20 (jobj.c). */
@@ -47,6 +91,10 @@ void HSD_MObjRemoveAnimByFlags(HSD_MObj* mobj, u32 flags)
     g_m360AnimStub.mobjRemoveAnimByFlags++;
     g_m360AnimStub.lastPtr = mobj;
     g_m360AnimStub.lastFlags = flags;
+    if (mobj && (flags & MOBJ_ANIM)) {
+        HSD_AObjRemove(mobj->aobj);
+        mobj->aobj = NULL;
+    }
 }
 
 void HSD_MObjAddAnim(HSD_MObj* mobj, HSD_MatAnim* matanim)
@@ -54,6 +102,12 @@ void HSD_MObjAddAnim(HSD_MObj* mobj, HSD_MatAnim* matanim)
     g_m360AnimStub.mobjAddAnim++;
     g_m360AnimStub.lastPtr = mobj;
     g_m360AnimStub.lastPtr2 = matanim;
+    if (!mobj)
+        return;
+    HSD_AObjRemove(mobj->aobj);
+    mobj->aobj = matanim ? HSD_AObjLoadDesc(matanim->aobjdesc) : NULL;
+    if (matanim)
+        HSD_TObjAddAnimAll(mobj->tobj, matanim->texanim);
 }
 
 void HSD_MObjReqAnimByFlags(HSD_MObj* mobj, f32 startframe, u32 flags)
@@ -62,25 +116,161 @@ void HSD_MObjReqAnimByFlags(HSD_MObj* mobj, f32 startframe, u32 flags)
     g_m360AnimStub.lastPtr = mobj;
     g_m360AnimStub.lastFrame = startframe;
     g_m360AnimStub.lastFlags = flags;
+    if (mobj && (flags & MOBJ_ANIM))
+        HSD_AObjReqAnim(mobj->aobj, startframe);
+    if (mobj)
+        HSD_TObjReqAnimAllByFlags(mobj->tobj, startframe, flags);
 }
 
 void HSD_MObjAnim(HSD_MObj* mobj)
 {
     g_m360AnimStub.mobjAnim++;
     g_m360AnimStub.lastPtr = mobj;
+    if (mobj)
+        HSD_AObjInterpretAnim(mobj->aobj, mobj, M360_MObjUpdate);
+    if (mobj)
+        HSD_TObjAnimAll(mobj->tobj);
 }
 
 HSD_MObj* HSD_MObjLoadDesc(HSD_MObjDesc* mobjdesc)
 {
     g_m360AnimStub.mobjLoadDesc++;
     g_m360AnimStub.lastPtr = mobjdesc;
-    return g_m360AnimStub.mobjLoadDescResult;
+    if (!mobjdesc)
+        return NULL;
+    HSD_MObj* mobj = static_cast<HSD_MObj*>(HSD_MemAlloc(sizeof(HSD_MObj)));
+    if (!mobj)
+        return NULL;
+    memset(mobj, 0, sizeof(*mobj));
+    mobj->rendermode = mobjdesc->rendermode | RENDER_TOON;
+    mobj->tobj = HSD_TObjLoadDesc(mobjdesc->texdesc);
+    if (mobjdesc->mat) {
+        mobj->mat = static_cast<HSD_Material*>(
+            HSD_MemAlloc(sizeof(HSD_Material)));
+        if (mobj->mat)
+            memcpy(mobj->mat, mobjdesc->mat, sizeof(HSD_Material));
+    }
+    if (mobjdesc->pedesc) {
+        mobj->pe = static_cast<HSD_PEDesc*>(HSD_MemAlloc(sizeof(HSD_PEDesc)));
+        if (mobj->pe)
+            memcpy(mobj->pe, mobjdesc->pedesc, sizeof(HSD_PEDesc));
+    }
+    return mobj;
 }
 
 void HSD_MObjRemove(HSD_MObj* mobj)
 {
     g_m360AnimStub.mobjRemove++;
     g_m360AnimStub.lastPtr = mobj;
+    if (!mobj)
+        return;
+    HSD_AObjRemove(mobj->aobj);
+    HSD_TObjRemoveAll(mobj->tobj);
+    HSD_Free(mobj->pe);
+    HSD_Free(mobj->mat);
+    HSD_Free(mobj);
+}
+
+HSD_TObj* HSD_TObjLoadDesc(HSD_TObjDesc* desc)
+{
+    if (!desc)
+        return NULL;
+    HSD_TObj* tobj = static_cast<HSD_TObj*>(HSD_MemAlloc(sizeof(HSD_TObj)));
+    if (!tobj)
+        return NULL;
+    memset(tobj, 0, sizeof(*tobj));
+    tobj->next = HSD_TObjLoadDesc(desc->next);
+    tobj->id = desc->id;
+    tobj->src = desc->src;
+    tobj->rotate.x = desc->rotate.x;
+    tobj->rotate.y = desc->rotate.y;
+    tobj->rotate.z = desc->rotate.z;
+    tobj->rotate.w = 1.0f;
+    tobj->scale.x = desc->scale.x;
+    tobj->scale.y = desc->scale.y;
+    tobj->scale.z = desc->scale.z;
+    tobj->translate.x = desc->translate.x;
+    tobj->translate.y = desc->translate.y;
+    tobj->translate.z = desc->translate.z;
+    tobj->wrap_s = desc->wrap_s;
+    tobj->wrap_t = desc->wrap_t;
+    tobj->repeat_s = desc->repeat_s;
+    tobj->repeat_t = desc->repeat_t;
+    tobj->flags = desc->blend_flags;
+    tobj->blending = desc->blending;
+    tobj->magFilt = desc->magFilt;
+    tobj->imagedesc = desc->imagedesc;
+    if (desc->tlutdesc) {
+        tobj->tlut = static_cast<HSD_Tlut*>(HSD_MemAlloc(sizeof(HSD_Tlut)));
+        if (tobj->tlut) {
+            tobj->tlut->lut = desc->tlutdesc->lut;
+            tobj->tlut->fmt = desc->tlutdesc->fmt;
+            tobj->tlut->tlut_name = desc->tlutdesc->tlut_name;
+            tobj->tlut->n_entries = desc->tlutdesc->n_entries;
+        }
+    }
+    if (desc->lod) {
+        tobj->lod = static_cast<HSD_TexLODDesc*>(
+            HSD_MemAlloc(sizeof(HSD_TexLODDesc)));
+        if (tobj->lod)
+            memcpy(tobj->lod, desc->lod, sizeof(HSD_TexLODDesc));
+    }
+    if (desc->tev) {
+        tobj->tev = static_cast<HSD_TObjTev*>(
+            HSD_MemAlloc(sizeof(HSD_TObjTev)));
+        if (tobj->tev)
+            memcpy(tobj->tev, desc->tev, sizeof(HSD_TObjTev));
+    }
+    PSMTXIdentity(tobj->mtx);
+    return tobj;
+}
+
+void HSD_TObjRemoveAnimAll(HSD_TObj* tobj)
+{
+    for (; tobj; tobj = tobj->next) {
+        HSD_AObjRemove(tobj->aobj);
+        tobj->aobj = NULL;
+    }
+}
+
+void HSD_TObjAddAnimAll(HSD_TObj* tobj, HSD_TexAnim* texanim)
+{
+    for (; tobj && texanim; tobj = tobj->next, texanim = texanim->next) {
+        HSD_AObjRemove(tobj->aobj);
+        tobj->aobj = texanim->aobjdesc
+                         ? HSD_AObjLoadDesc(texanim->aobjdesc)
+                         : NULL;
+        tobj->imagetbl = texanim->imagetbl;
+        tobj->n_imagetbl = texanim->n_imagetbl;
+    }
+}
+
+void HSD_TObjReqAnimAllByFlags(HSD_TObj* tobj, f32 frame, u32 flags)
+{
+    if (!(flags & TOBJ_ANIM))
+        return;
+    for (; tobj; tobj = tobj->next)
+        HSD_AObjReqAnim(tobj->aobj, frame);
+}
+
+void HSD_TObjAnimAll(HSD_TObj* tobj)
+{
+    /* Texture descriptors and frame tables are retained. Their callback
+     * mapping is the next backend step; material/JObj animation already runs. */
+    (void) tobj;
+}
+
+void HSD_TObjRemoveAll(HSD_TObj* tobj)
+{
+    while (tobj) {
+        HSD_TObj* next = tobj->next;
+        HSD_AObjRemove(tobj->aobj);
+        HSD_Free(tobj->tev);
+        HSD_Free(tobj->lod);
+        HSD_Free(tobj->tlut);
+        HSD_Free(tobj);
+        tobj = next;
+    }
 }
 
 void HSD_PObjRemoveAnimAllByFlags(HSD_PObj* pobj, u32 flags)
@@ -88,6 +278,13 @@ void HSD_PObjRemoveAnimAllByFlags(HSD_PObj* pobj, u32 flags)
     g_m360AnimStub.pobjRemoveAnimAllByFlags++;
     g_m360AnimStub.lastPtr = pobj;
     g_m360AnimStub.lastFlags = flags;
+    for (HSD_PObj* node = pobj; node; node = node->next) {
+        if ((flags & POBJ_ANIM) && pobj_type(node) == POBJ_SHAPEANIM &&
+            node->u.shape_set) {
+            HSD_AObjRemove(node->u.shape_set->aobj);
+            node->u.shape_set->aobj = NULL;
+        }
+    }
 }
 
 void HSD_PObjAddAnimAll(HSD_PObj* pobj, HSD_ShapeAnim* shapeanim)
@@ -95,6 +292,14 @@ void HSD_PObjAddAnimAll(HSD_PObj* pobj, HSD_ShapeAnim* shapeanim)
     g_m360AnimStub.pobjAddAnimAll++;
     g_m360AnimStub.lastPtr = pobj;
     g_m360AnimStub.lastPtr2 = shapeanim;
+    for (HSD_PObj* node = pobj; node && shapeanim;
+         node = node->next, shapeanim = shapeanim->next) {
+        if (pobj_type(node) == POBJ_SHAPEANIM && node->u.shape_set) {
+            HSD_AObjRemove(node->u.shape_set->aobj);
+            node->u.shape_set->aobj =
+                HSD_AObjLoadDesc(shapeanim->aobjdesc);
+        }
+    }
 }
 
 void HSD_PObjReqAnimAllByFlags(HSD_PObj* pobj, f32 startframe, u32 flags)
@@ -103,25 +308,81 @@ void HSD_PObjReqAnimAllByFlags(HSD_PObj* pobj, f32 startframe, u32 flags)
     g_m360AnimStub.lastPtr = pobj;
     g_m360AnimStub.lastFrame = startframe;
     g_m360AnimStub.lastFlags = flags;
+    for (HSD_PObj* node = pobj; node; node = node->next) {
+        if ((flags & POBJ_ANIM) && pobj_type(node) == POBJ_SHAPEANIM &&
+            node->u.shape_set)
+            HSD_AObjReqAnim(node->u.shape_set->aobj, startframe);
+    }
 }
 
 void HSD_PObjAnimAll(HSD_PObj* pobj)
 {
     g_m360AnimStub.pobjAnimAll++;
     g_m360AnimStub.lastPtr = pobj;
+    for (HSD_PObj* node = pobj; node; node = node->next) {
+        if (pobj_type(node) == POBJ_SHAPEANIM && node->u.shape_set)
+            HSD_AObjInterpretAnim(node->u.shape_set->aobj, node,
+                                  M360_PObjUpdate);
+    }
 }
 
 HSD_PObj* HSD_PObjLoadDesc(HSD_PObjDesc* pobjdesc)
 {
     g_m360AnimStub.pobjLoadDesc++;
     g_m360AnimStub.lastPtr = pobjdesc;
-    return g_m360AnimStub.pobjLoadDescResult;
+    if (!pobjdesc)
+        return NULL;
+    HSD_PObj* pobj = static_cast<HSD_PObj*>(HSD_MemAlloc(sizeof(HSD_PObj)));
+    if (!pobj)
+        return NULL;
+    memset(pobj, 0, sizeof(*pobj));
+    pobj->next = HSD_PObjLoadDesc(pobjdesc->next);
+    pobj->verts = pobjdesc->verts;
+    pobj->flags = pobjdesc->flags;
+    pobj->n_display = pobjdesc->n_display;
+    pobj->display = pobjdesc->display;
+    if (pobj_type(pobj) == POBJ_SHAPEANIM && pobjdesc->u.shape_set) {
+        HSD_ShapeSetDesc* source = pobjdesc->u.shape_set;
+        HSD_ShapeSet* shape = static_cast<HSD_ShapeSet*>(
+            HSD_MemAlloc(sizeof(HSD_ShapeSet)));
+        if (shape) {
+            memset(shape, 0, sizeof(*shape));
+            shape->flags = source->flags;
+            shape->nb_shape = source->nb_shape;
+            shape->nb_vertex_index = source->nb_vertex_index;
+            shape->vertex_desc = source->vertex_desc;
+            shape->vertex_idx_list = source->vertex_idx_list;
+            shape->nb_normal_index = source->nb_normal_index;
+            shape->normal_desc = source->normal_desc;
+            shape->normal_idx_list = source->normal_idx_list;
+            if (shape->flags & SHAPESET_ADDITIVE) {
+                shape->blend.bp = static_cast<f32*>(
+                    HSD_MemAlloc(shape->nb_shape * sizeof(f32)));
+                if (shape->blend.bp)
+                    memset(shape->blend.bp, 0,
+                           shape->nb_shape * sizeof(f32));
+            }
+            pobj->u.shape_set = shape;
+        }
+    }
+    return pobj;
 }
 
 void HSD_PObjRemoveAll(HSD_PObj* pobj)
 {
     g_m360AnimStub.pobjRemoveAll++;
     g_m360AnimStub.lastPtr = pobj;
+    while (pobj) {
+        HSD_PObj* next = pobj->next;
+        if (pobj_type(pobj) == POBJ_SHAPEANIM && pobj->u.shape_set) {
+            HSD_AObjRemove(pobj->u.shape_set->aobj);
+            if (pobj->u.shape_set->flags & SHAPESET_ADDITIVE)
+                HSD_Free(pobj->u.shape_set->blend.bp);
+            HSD_Free(pobj->u.shape_set);
+        }
+        HSD_Free(pobj);
+        pobj = next;
+    }
 }
 
 void HSD_PObjResolveRefsAll(HSD_PObj* pobj, HSD_PObjDesc* desc)
@@ -129,6 +390,13 @@ void HSD_PObjResolveRefsAll(HSD_PObj* pobj, HSD_PObjDesc* desc)
     g_m360AnimStub.pobjResolveRefsAll++;
     g_m360AnimStub.lastPtr = pobj;
     g_m360AnimStub.lastPtr2 = desc;
+    for (; pobj && desc; pobj = pobj->next, desc = desc->next) {
+        if (pobj_type(pobj) == POBJ_SKIN && desc->u.joint) {
+            pobj->u.jobj = static_cast<HSD_JObj*>(
+                HSD_IDGetDataFromTable(NULL,
+                    reinterpret_cast<uintptr_t>(desc->u.joint), NULL));
+        }
+    }
 }
 
 } /* extern "C" */

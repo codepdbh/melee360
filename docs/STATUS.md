@@ -23,6 +23,7 @@
 - M20 XDK native disc boot: complete in Xenia Canary (`GALE01`, 1,212-entry FST, `opening.bnr` RGB5A3 decode)
 - M21 XDK HAL archive relocation: complete in Xenia Canary (381,781-byte `GmTtAll.dat`, 1,909 relocations, first public root `ScTitle_cam_int1_camanim`)
 - M22 Title scene graph load: XEX resolves the 12 symbols requested by `gmtitle.c`, constructs both real JObj trees, binds their animation graphs and reports joint/DObj counts on screen
+- M23 Title render-data graph: DObj now retains runtime MObj/PObj/TObj objects, material and PE data, GX attribute/display-list pointers, texture image descriptors, palettes and LOD/TEV metadata; XEX reports real material, polygon and texture counts
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
