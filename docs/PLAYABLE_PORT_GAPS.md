@@ -26,6 +26,22 @@ The HUD vertex capacity was increased and quad submissions are chunked.
 
 ## Acceptance criteria
 
+## Gameplay compiler probe
+
+Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles fighter,
+Wait and title translation units independently into the ignored
+`build-x360/gameplay-probe` directory. It intentionally fails until all three
+compile; it neither links them into the XEX nor replaces the working binary.
+The probe-only compatibility header preserves static assertions.
+
+The current C++ probe still fails on C/C++ structure-name differences in
+`lb/types.h`, fighter layout assertions involving Pikachu state types, and
+missing platform declarations in the title dependencies. C compilation also
+fails on enum constant initializers. Switching language mode alone is not a
+solution; a reviewed source/header adaptation is required before linking.
+
+## Playability checks
+
 A playable milestone must load an original stage and fighter, advance original
 fighter states, respond to movement and attacks, and resolve collision through
 the ported game code. Visual verification in Xenia and guest diagnostics must
