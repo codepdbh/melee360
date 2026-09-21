@@ -40,11 +40,12 @@ preserving their expressions while making them valid C constant expressions.
 Original upstream files are not edited. Predicate, OSCalendarTime and
 RETURN_IF are supplied by the compatibility header.
 
-The main fighter unit still fails at castle layout assertions using indexed
-offsetof expressions and lacks the FP_NAN classification definition. These
-checks remain enabled: a failed layout check must be investigated rather than
-removed to force compilation. Successful Wait compilation is not execution
-of a fighter and does not resolve its gameplay dependencies.
+All four compilation probes now pass, including fighter.c. Indexed castle
+offsetof checks are expressed as base offsets plus element/member offsets in
+generated overlays; the assertions remain active. Floating-point classification
+uses XDK _fpclass, with explicit handling of float subnormals before promotion.
+Compilation is not linking or execution of a fighter; its gameplay dependencies
+still need to be integrated.
 
 The XEX now invokes original `mn_8022ED6C` and `mn_8022F298` for title animation
 looping. The build extracts these two function bodies verbatim from mn_22EC.c

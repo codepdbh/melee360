@@ -17,6 +17,14 @@ foreach ($path in $headers) {
     New-Item -ItemType Directory -Force (Split-Path $destination) | Out-Null
     Set-Content -Encoding ASCII $destination $text
 }
+$ground = Get-Content -Raw "$root/upstream/melee-pc/src/melee/gr/types.h"
+# VC's C offsetof rejects indexed members; retain the same byte comparison.
+$ground = [regex]::Replace($ground, 'offsetof\(struct (\w+), (\w+)\[(\d+)\]\)', '(offsetof(struct $1, $2) + $3 * sizeof(((struct $1*)0)->$2[0]))')
+# The indexed member is passed through GRCASTLE_ALIAS, so normalize its calls.
+$ground = [regex]::Replace($ground, 'GRCASTLE_ALIAS\((\w+), (\w+), (\w+), (\w+)\[(\d+)\]\);', 'STATIC_ASSERT(offsetof(struct $1, $2) == offsetof(struct $3, $4) + $5 * sizeof(((struct $3*)0)->$4[0]));')
+New-Item -ItemType Directory -Force "$overlay/melee/gr" | Out-Null
+$ground = $ground.Replace('GRCASTLE_BELOW(grCastle_GroundVars8, plat[0].state, grCastle_GroundVars7, xD0);', 'STATIC_ASSERT(offsetof(struct grCastle_GroundVars8, plat) + offsetof(struct grCastle_Platform, state) + sizeof(((struct grCastle_Platform*)0)->state) <= offsetof(struct grCastle_GroundVars7, xD0));')
+Set-Content -Encoding ASCII "$overlay/melee/gr/types.h" $ground
 $sources = @('melee/ft/fighter.c', 'melee/ft/kinds/ftCommon/ftCo_Wait.c', 'melee/gm/gmtitle.c', 'melee/mn/mn_22EC.c')
 $failed = 0
 foreach ($source in $sources) {
