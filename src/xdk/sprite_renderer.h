@@ -49,7 +49,7 @@ private:
         float v;
     };
 
-    static const unsigned kMaxQuads = 4096;
+    static const unsigned kMaxQuads = 16384;
     static const unsigned kMaxTitleVertices = 32766;
     Vertex vertices_[kMaxQuads * 4];
     unsigned quadCount_;

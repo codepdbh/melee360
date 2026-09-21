@@ -751,7 +751,7 @@ void __cdecl main()
                                    titleTextureWidth, titleTextureHeight);
         M360_FreeDecodedTitleTexture(titleTexturePixels);
     }
-    const unsigned titleMeshVertexCount =
+    unsigned titleMeshVertexCount =
         M360_BuildTitleMesh(g_titleMesh, 32766);
     boot.titleScene.meshVertexCount = titleMeshVertexCount;
     TraceStage("mesh.vertices", titleMeshVertexCount);
@@ -777,6 +777,8 @@ void __cdecl main()
 
         if (boot.titleScene.animationsBound)
             M360_AnimateTitleScene();
+        if (titleView == 2 && boot.titleScene.modelsLoaded)
+            titleMeshVertexCount = M360_BuildTitleMesh(g_titleMesh, 32766);
 
         device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(12, 16, 40),
                       1.0f, 0);
@@ -800,6 +802,13 @@ void __cdecl main()
             TraceStage("present.frame", frameCount);
             TraceStage("present.result", static_cast<unsigned>(presented));
             TraceStage("present.view", titleView);
+            unsigned hash = 2166136261u;
+            const unsigned char* bytes =
+                reinterpret_cast<const unsigned char*>(g_titleMesh);
+            for (unsigned i = 0; i < titleMeshVertexCount * sizeof(MeleeTitleVertex); ++i)
+                hash = (hash ^ bytes[i]) * 16777619u;
+            TraceStage("mesh.hash", hash);
+            TraceStage("mesh.vertices", titleMeshVertexCount);
         }
     }
 

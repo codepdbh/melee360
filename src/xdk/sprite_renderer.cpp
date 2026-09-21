@@ -380,8 +380,12 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
     /* The quad batch includes the opaque backdrop: submit it before the mesh. */
     if (quadCount_) {
         device->SetTexture(0, atlas_);
-        device->DrawPrimitiveUP(D3DPT_QUADLIST, quadCount_, vertices_,
-                                sizeof(Vertex));
+        for (unsigned first = 0; first < quadCount_; first += 256) {
+            unsigned count = quadCount_ - first;
+            if (count > 256) count = 256;
+            device->DrawPrimitiveUP(D3DPT_QUADLIST, count,
+                                    vertices_ + first * 4, sizeof(Vertex));
+        }
     }
     /* Bound the transient upload size per draw. */
     if (titleVertexCount_) {

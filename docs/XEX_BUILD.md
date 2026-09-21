@@ -96,9 +96,10 @@ View IDs are 0 (banner), 1 (texture), and 2 (mesh). A successful `Present`
 result verifies submission, not visual correctness.
 
 The corrected draw order submits the opaque backdrop/UI batch before the
-title mesh. The mesh is currently a static snapshot of the JObj transforms,
-fitted to the preview panel, without original camera projection or per-PObj
-textures. HAL animation continues but does not yet update that snapshot.
+title mesh. The mesh is rebuilt from animated JObj transforms each frame in
+mesh mode, fitted to the preview panel, without original camera projection or
+per-PObj textures. Runtime tracing includes mesh hashes at frames 1 and 120
+to check that animation reaches submitted vertex data.
 
 ## Graphics pipeline
 
