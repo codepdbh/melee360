@@ -84,6 +84,9 @@ This is an interactive native title-resource milestone, not a claim that
 Melee gameplay has been ported. The first PObj GX display-list translation is
 running; the next graphics step is binding each PObj to its own material,
 texture and TEV state, followed by the original camera and scene callbacks.
+Until that binding exists, GX mesh mode deliberately samples the atlas white
+texel so the authentic geometry and material/vertex colors remain visible;
+decoded title imagery remains available in the separate texture mode.
 
 ## Graphics pipeline
 

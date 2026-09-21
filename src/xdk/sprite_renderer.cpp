@@ -338,6 +338,8 @@ void SpriteRenderer::AddTitleMesh(const MeleeTitleVertex* vertices,
     if (count > kMaxTitleVertices)
         count = kMaxTitleVertices;
     count -= count % 3;
+    const float whiteU = 2.0f / static_cast<float>(kAtlasWidth);
+    const float whiteV = 2.0f / static_cast<float>(kAtlasHeight);
     for (unsigned i = 0; i < count; ++i) {
         const unsigned color = vertices[i].color;
         titleVertices_[i].x = vertices[i].x;
@@ -348,8 +350,11 @@ void SpriteRenderer::AddTitleMesh(const MeleeTitleVertex* vertices,
         titleVertices_[i].green = ((color >> 8) & 255) / 255.0f;
         titleVertices_[i].blue = (color & 255) / 255.0f;
         titleVertices_[i].alpha = ((color >> 24) & 255) / 255.0f;
-        titleVertices_[i].u = vertices[i].u;
-        titleVertices_[i].v = vertices[i].v;
+        /* A PObj-specific TObj binding is required before imported UVs can be
+           sampled correctly. Use the atlas white texel for the geometry-only
+           pass so real vertex/material colors remain visible in the interim. */
+        titleVertices_[i].u = whiteU;
+        titleVertices_[i].v = whiteV;
     }
     titleVertexCount_ = count;
 }
@@ -372,6 +377,25 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
     device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
     device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
     device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    /* Keep transient draws small. Large DrawPrimitiveUP calls can overflow the
+       Xbox 360 command-buffer path used by Xenia and discard the whole frame. */
+    if (titleVertexCount_) {
+        const unsigned kVerticesPerDraw = 1536;
+        device->SetTexture(0, atlas_);
+        for (unsigned first = 0; first < titleVertexCount_;
+             first += kVerticesPerDraw) {
+            unsigned count = titleVertexCount_ - first;
+            if (count > kVerticesPerDraw)
+                count = kVerticesPerDraw;
+            count -= count % 3;
+            if (count)
+                device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, count / 3,
+                                        titleVertices_ + first,
+                                        sizeof(Vertex));
+        }
+    }
+    /* Draw the diagnostic UI after the imported mesh so it always remains
+       visible even while a new GX primitive or material is being debugged. */
     if (quadCount_) {
         device->SetTexture(0, atlas_);
         device->DrawPrimitiveUP(D3DPT_QUADLIST, quadCount_, vertices_,
@@ -386,11 +410,6 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
         device->SetTexture(0, gameTexture_);
         device->DrawPrimitiveUP(D3DPT_QUADLIST, 1, gameVertices_,
                                 sizeof(Vertex));
-    }
-    if (titleVertexCount_) {
-        device->SetTexture(0, gameTexture_ ? gameTexture_ : atlas_);
-        device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, titleVertexCount_ / 3,
-                                titleVertices_, sizeof(Vertex));
     }
 }
 

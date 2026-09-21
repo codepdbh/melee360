@@ -741,8 +741,9 @@ void __cdecl main()
     OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
-    unsigned titleView = titleMeshVertexCount ? 2u :
-                         (titleTextureDecoded ? 1u : 0u);
+    /* Start from the already verified texture path. A/Start selects the
+       experimental GX mesh without risking a black boot screen. */
+    unsigned titleView = titleTextureDecoded ? 1u : 0u;
     for (;;) {
         const DWORD now = GetTickCount();
 
