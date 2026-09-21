@@ -29,16 +29,23 @@ The HUD vertex capacity was increased and quad submissions are chunked.
 ## Gameplay compiler probe
 
 Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles fighter,
-Wait and title translation units independently into the ignored
+Wait, title and menu-animation translation units independently into the ignored
 `build-x360/gameplay-probe` directory. It intentionally fails until all three
 compile; it neither links them into the XEX nor replaces the working binary.
 The probe-only compatibility header preserves static assertions.
 
-The current C++ probe still fails on C/C++ structure-name differences in
+Title and menu-animation units now compile in C after supplying Predicate and
+OSCalendarTime declarations. The current fighter C++ probes still fail on C/C++ structure-name differences in
 `lb/types.h`, fighter layout assertions involving Pikachu state types, and
-missing platform declarations in the title dependencies. C compilation also
+other fighter declarations. C compilation also
 fails on enum constant initializers. Switching language mode alone is not a
 solution; a reviewed source/header adaptation is required before linking.
+
+The XEX now invokes original `mn_8022ED6C` and `mn_8022F298` for title animation
+looping. The build extracts these two function bodies verbatim from mn_22EC.c
+into an ignored translation unit, because unrelated functions in that file
+require scene and menu services which are not linked yet. This does not mean
+the full menu or title scene is running.
 
 ## Playability checks
 

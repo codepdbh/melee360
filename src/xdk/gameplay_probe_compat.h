@@ -7,4 +7,8 @@
 #define STATIC_ASSERT(condition) typedef char M360_JOIN(m360_assert_, __LINE__)[(condition) ? 1 : -1]
 #endif
 typedef int BOOL;
+typedef bool (*Predicate)(void);
+typedef struct OSCalendarTime {
+    int sec, min, hour, mday, mon, year, wday, yday, msec, usec;
+} OSCalendarTime;
 #endif

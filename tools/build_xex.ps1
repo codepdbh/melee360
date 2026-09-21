@@ -486,9 +486,34 @@ if ($LASTEXITCODE -ne 0) { throw 'Original jobj.c compilation failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Original wobj.c compilation failed.' }
 
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
+$menuAnimObject = Join-Path $build 'mn_22EC.obj'
+$menuSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/mn/mn_22EC.c')
+$menuSlice = $menuSource.Substring(0, $menuSource.IndexOf('float mn_8022EC18('))
+foreach ($function in @('mn_8022ED6C', 'mn_8022F298')) {
+    $start = $menuSource.IndexOf("float $function(")
+    if ($start -lt 0) { throw "Missing original function: $function" }
+    $cursor = $menuSource.IndexOf('{', $start)
+    $depth = 1
+    ++$cursor
+    while ($depth -gt 0 -and $cursor -lt $menuSource.Length) {
+        if ($menuSource[$cursor] -eq '{') { ++$depth }
+        if ($menuSource[$cursor] -eq '}') { --$depth }
+        ++$cursor
+    }
+    if ($depth -ne 0) { throw "Unbalanced source: $function" }
+    $menuSlice += "`r`n" + $menuSource.Substring($start, $cursor - $start) + "`r`n"
+}
+$menuSlicePath = Join-Path $build 'menu_animation_slice.c'
+Set-Content -Encoding ASCII $menuSlicePath $menuSlice
+& $compiler (@('/nologo','/c','/TC','/O2','/MT','/Gy','/D_XBOX','/DXBOX',
+    "/I$(Join-Path $root 'upstream/melee-pc/src/melee/mn')",
+    "/FI$(Join-Path $root 'src/xdk/gameplay_probe_compat.h')",
+    "/Fo$menuAnimObject", $menuSlicePath) + $hsdCommonInc)
+if ($LASTEXITCODE -ne 0) { throw 'Original menu animation compilation failed.' }
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
-    '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
+    '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
+    $menuAnimObject,
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject, $bootObject, $archiveObject,
     $titleSceneObject, $gcmObject,

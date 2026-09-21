@@ -3,7 +3,7 @@
 #undef near
 #undef far
 
-#include "hsdjobj_xdk_compat.h"
+#include "gameplay_probe_compat.h"
 #include "melee_archive_xdk.h"
 #include "melee_title_scene_xdk.h"
 
@@ -12,6 +12,8 @@ extern "C" {
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/cobj.h>
 #include <sysdolphin/baselib/wobj.h>
+#include <melee/mn/types.h>
+float mn_8022ED6C(HSD_JObj*, AnimLoopSettings*);
 }
 
 namespace {
@@ -650,10 +652,12 @@ bool M360_LoadTitleScene(MeleeTitleSceneStatus* status)
 
 void M360_AnimateTitleScene(void)
 {
+    static AnimLoopSettings loops[2] = { { 0, 1600.0f, 400.0f },
+                                         { 0, 1330.0f, 130.0f } };
     if (s_titleModels[0])
-        HSD_JObjAnimAll(s_titleModels[0]);
+        mn_8022ED6C(s_titleModels[0], &loops[0]);
     if (s_titleModels[1])
-        HSD_JObjAnimAll(s_titleModels[1]);
+        mn_8022ED6C(s_titleModels[1], &loops[1]);
 }
 
 bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
