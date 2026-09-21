@@ -201,6 +201,7 @@ RectBatch g_muted = { {}, 0, D3DCOLOR_XRGB(139, 158, 181) };
 RectBatch g_panel = { {}, 0, D3DCOLOR_XRGB(24, 39, 61) };
 RectBatch g_dynamic = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
 SpriteRenderer g_renderer;
+MeleeTitleVertex g_titleMesh[32766];
 
 void AddRect(RectBatch& batch, LONG x, LONG y, LONG width, LONG height)
 {
@@ -377,6 +378,9 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
     AddUnsigned(g_white, 950, 592, boot.titleScene.firstTextureWidth, 1);
     AddText(g_muted, 1015, 592, "X", 1);
     AddUnsigned(g_white, 1030, 592, boot.titleScene.firstTextureHeight, 1);
+    AddText(g_muted, 1080, 592, "TRIS", 1);
+    AddUnsigned(boot.titleScene.meshVertexCount ? g_green : g_white,
+                1140, 592, boot.titleScene.meshVertexCount / 3, 1);
     AddText(g_muted, 96, 616,
             boot.titleScene.animationsBound
                 ? "REAL JOBJ MOBJ POBJ TOBJ GRAPHS LOADED"
@@ -729,12 +733,16 @@ void __cdecl main()
                                    titleTextureWidth, titleTextureHeight);
         M360_FreeDecodedTitleTexture(titleTexturePixels);
     }
+    const unsigned titleMeshVertexCount =
+        M360_BuildTitleMesh(g_titleMesh, 32766);
+    boot.titleScene.meshVertexCount = titleMeshVertexCount;
     BuildScene(meleeCodePassed, boot);
     M360_HSDPadInit();
     OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
-    bool showGameTexture = titleTextureDecoded;
+    unsigned titleView = titleMeshVertexCount ? 2u :
+                         (titleTextureDecoded ? 1u : 0u);
     for (;;) {
         const DWORD now = GetTickCount();
 
@@ -743,7 +751,7 @@ void __cdecl main()
         if (input.button & HSD_PAD_Y)
             break;
         if (input.trigger & (HSD_PAD_A | HSD_PAD_START))
-            showGameTexture = !showGameTexture;
+            titleView = (titleView + 1) % 3;
 
         if (boot.titleScene.animationsBound)
             M360_AnimateTitleScene();
@@ -757,7 +765,9 @@ void __cdecl main()
         RenderBatch(renderer, g_white);
         RenderBatch(renderer, g_muted);
         RenderBatch(renderer, g_green);
-        if (showGameTexture && titleTextureDecoded)
+        if (titleView == 2 && titleMeshVertexCount)
+            renderer.AddTitleMesh(g_titleMesh, titleMeshVertexCount);
+        else if (titleView == 1 && titleTextureDecoded)
             renderer.AddGameTexture(352.0f, 292.0f, 576.0f, 224.0f);
         else if (boot.bannerDecoded)
             renderer.AddBanner(352.0f, 308.0f, 576.0f, 192.0f);

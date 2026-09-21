@@ -209,6 +209,240 @@ bool DecodeTexture(const HSD_TObj* texture, unsigned* pixels)
     return false;
 }
 
+unsigned Read32(const unsigned char* data)
+{
+    return (static_cast<unsigned>(data[0]) << 24) |
+           (static_cast<unsigned>(data[1]) << 16) |
+           (static_cast<unsigned>(data[2]) << 8) | data[3];
+}
+
+float ReadComponent(const unsigned char* data, GXCompType type, unsigned frac)
+{
+    const float divisor = static_cast<float>(1u << frac);
+    switch (type) {
+    case GX_U8: return data[0] / divisor;
+    case GX_S8: return static_cast<const signed char*>(
+        static_cast<const void*>(data))[0] / divisor;
+    case GX_U16: return Read16(data) / divisor;
+    case GX_S16: return static_cast<short>(Read16(data)) / divisor;
+    case GX_F32: {
+        union { unsigned bits; float value; } converted;
+        converted.bits = Read32(data);
+        return converted.value;
+    }
+    default: return 0.0f;
+    }
+}
+
+unsigned ComponentSize(GXCompType type)
+{
+    return type == GX_U8 || type == GX_S8 ? 1u :
+           (type == GX_F32 ? 4u : 2u);
+}
+
+unsigned DirectSize(const HSD_VtxDescList* desc)
+{
+    if (desc->attr >= GX_VA_PNMTXIDX && desc->attr <= GX_VA_TEX7MTXIDX)
+        return 1;
+    if (desc->attr == GX_VA_CLR0 || desc->attr == GX_VA_CLR1) {
+        switch (desc->comp_type) {
+        case GX_RGB565: case GX_RGBA4: return 2;
+        case GX_RGB8: case GX_RGBA6: return 3;
+        default: return 4;
+        }
+    }
+    unsigned components = 1;
+    if (desc->attr == GX_VA_POS)
+        components = desc->comp_cnt == GX_POS_XYZ ? 3 : 2;
+    else if (desc->attr == GX_VA_NRM || desc->attr == GX_VA_NBT)
+        components = desc->comp_cnt == GX_NRM_NBT ? 9 : 3;
+    else if (desc->attr >= GX_VA_TEX0 && desc->attr <= GX_VA_TEX7)
+        components = desc->comp_cnt == GX_TEX_ST ? 2 : 1;
+    return components * ComponentSize(desc->comp_type);
+}
+
+unsigned DecodeColor(const unsigned char* data, GXCompType type)
+{
+    switch (type) {
+    case GX_RGB565: return DecodeRgb565(Read16(data));
+    case GX_RGB8: return 0xFF000000u | (data[0] << 16) | (data[1] << 8) | data[2];
+    case GX_RGBX8: return 0xFF000000u | (data[0] << 16) | (data[1] << 8) | data[2];
+    case GX_RGBA4:
+        return (Expand4To8(data[1] & 15) << 24) |
+               (Expand4To8(data[0] >> 4) << 16) |
+               (Expand4To8(data[0] & 15) << 8) | Expand4To8(data[1] >> 4);
+    case GX_RGBA6: {
+        const unsigned bits = (data[0] << 16) | (data[1] << 8) | data[2];
+        return (((bits & 63) * 255 / 63) << 24) |
+               ((((bits >> 18) & 63) * 255 / 63) << 16) |
+               ((((bits >> 12) & 63) * 255 / 63) << 8) |
+               (((bits >> 6) & 63) * 255 / 63);
+    }
+    case GX_RGBA8:
+        return (data[3] << 24) | (data[0] << 16) | (data[1] << 8) | data[2];
+    default: return 0xFFFFFFFFu;
+    }
+}
+
+struct ParsedVertex {
+    float x, y, z, u, v;
+    unsigned color;
+};
+
+const unsigned char* ParseVertex(const HSD_VtxDescList* descriptors,
+                                 const unsigned char* stream,
+                                 ParsedVertex* vertex)
+{
+    vertex->x = vertex->y = vertex->z = vertex->u = vertex->v = 0.0f;
+    vertex->color = 0xFFFFFFFFu;
+    for (const HSD_VtxDescList* desc = descriptors;
+         desc && desc->attr != GX_VA_NULL; ++desc) {
+        if (desc->attr_type == GX_NONE)
+            continue;
+        const unsigned char* value = stream;
+        if (desc->attr_type == GX_INDEX8) {
+            const unsigned index = *stream++;
+            value = static_cast<const unsigned char*>(desc->vertex) +
+                    index * desc->stride;
+        } else if (desc->attr_type == GX_INDEX16) {
+            const unsigned index = Read16(stream);
+            stream += 2;
+            value = static_cast<const unsigned char*>(desc->vertex) +
+                    index * desc->stride;
+        } else {
+            stream += DirectSize(desc);
+        }
+        if (desc->attr == GX_VA_POS) {
+            const unsigned size = ComponentSize(desc->comp_type);
+            vertex->x = ReadComponent(value, desc->comp_type, desc->frac);
+            vertex->y = ReadComponent(value + size, desc->comp_type, desc->frac);
+            if (desc->comp_cnt == GX_POS_XYZ)
+                vertex->z = ReadComponent(value + size * 2,
+                                          desc->comp_type, desc->frac);
+        } else if (desc->attr == GX_VA_TEX0) {
+            const unsigned size = ComponentSize(desc->comp_type);
+            vertex->u = ReadComponent(value, desc->comp_type, desc->frac);
+            if (desc->comp_cnt == GX_TEX_ST)
+                vertex->v = ReadComponent(value + size,
+                                          desc->comp_type, desc->frac);
+        } else if (desc->attr == GX_VA_CLR0) {
+            vertex->color = DecodeColor(value, desc->comp_type);
+        }
+    }
+    return stream;
+}
+
+void TransformVertex(const HSD_JObj* jobj, ParsedVertex* vertex)
+{
+    const float x = vertex->x, y = vertex->y, z = vertex->z;
+    vertex->x = jobj->mtx[0][0] * x + jobj->mtx[0][1] * y +
+                jobj->mtx[0][2] * z + jobj->mtx[0][3];
+    vertex->y = jobj->mtx[1][0] * x + jobj->mtx[1][1] * y +
+                jobj->mtx[1][2] * z + jobj->mtx[1][3];
+    vertex->z = jobj->mtx[2][0] * x + jobj->mtx[2][1] * y +
+                jobj->mtx[2][2] * z + jobj->mtx[2][3];
+}
+
+void EmitVertex(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
+                const ParsedVertex& source, unsigned materialColor)
+{
+    if (*count >= capacity)
+        return;
+    MeleeTitleVertex& target = output[(*count)++];
+    target.x = source.x;
+    target.y = source.y;
+    target.z = source.z;
+    target.u = source.u;
+    target.v = source.v;
+    target.color = source.color == 0xFFFFFFFFu ? materialColor : source.color;
+}
+
+void EmitTriangle(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
+                  const ParsedVertex& a, const ParsedVertex& b,
+                  const ParsedVertex& c, unsigned color)
+{
+    EmitVertex(output, capacity, count, a, color);
+    EmitVertex(output, capacity, count, b, color);
+    EmitVertex(output, capacity, count, c, color);
+}
+
+void DecodePObj(const HSD_JObj* jobj, const HSD_DObj* dobj,
+                const HSD_PObj* pobj, MeleeTitleVertex* output,
+                unsigned capacity, unsigned* count)
+{
+    if (!pobj->verts || !pobj->display)
+        return;
+    unsigned materialColor = 0xFFFFFFFFu;
+    if (dobj->mobj && dobj->mobj->mat) {
+        const HSD_Material* mat = dobj->mobj->mat;
+        const unsigned alpha = static_cast<unsigned>(mat->alpha * 255.0f);
+        materialColor = ((alpha > 255 ? 255 : alpha) << 24) |
+                        (mat->diffuse.r << 16) | (mat->diffuse.g << 8) |
+                        mat->diffuse.b;
+    }
+    const unsigned char* stream = pobj->display;
+    for (unsigned display = 0; display < pobj->n_display && *count < capacity;
+         ++display) {
+        const unsigned primitive = *stream++ & 0xF8;
+        const unsigned vertexCount = Read16(stream);
+        stream += 2;
+        ParsedVertex first, previous, current, quad[4];
+        for (unsigned i = 0; i < vertexCount; ++i) {
+            stream = ParseVertex(pobj->verts, stream, &current);
+            TransformVertex(jobj, &current);
+            if (primitive == GX_TRIANGLES) {
+                quad[i % 3] = current;
+                if (i % 3 == 2)
+                    EmitTriangle(output, capacity, count, quad[0], quad[1],
+                                 quad[2], materialColor);
+            } else if (primitive == GX_QUADS) {
+                quad[i % 4] = current;
+                if (i % 4 == 3) {
+                    EmitTriangle(output, capacity, count, quad[0], quad[1],
+                                 quad[2], materialColor);
+                    EmitTriangle(output, capacity, count, quad[0], quad[2],
+                                 quad[3], materialColor);
+                }
+            } else if (primitive == GX_TRIANGLESTRIP) {
+                if (i >= 2) {
+                    if (i & 1)
+                        EmitTriangle(output, capacity, count, previous, first,
+                                     current, materialColor);
+                    else
+                        EmitTriangle(output, capacity, count, first, previous,
+                                     current, materialColor);
+                }
+                first = previous;
+                previous = current;
+                if (i == 0)
+                    first = previous = current;
+            } else if (primitive == GX_TRIANGLEFAN) {
+                if (i == 0)
+                    first = current;
+                else if (i >= 2)
+                    EmitTriangle(output, capacity, count, first, previous,
+                                 current, materialColor);
+                previous = current;
+            }
+        }
+    }
+}
+
+void DecodeJObj(HSD_JObj* jobj, MeleeTitleVertex* output,
+                unsigned capacity, unsigned* count)
+{
+    for (HSD_JObj* node = jobj; node && *count < capacity; node = node->next) {
+        HSD_JObjSetupMatrix(node);
+        if (!(node->flags & (JOBJ_SPLINE | JOBJ_PTCL))) {
+            for (HSD_DObj* dobj = node->u.dobj; dobj; dobj = dobj->next)
+                for (HSD_PObj* pobj = dobj->pobj; pobj; pobj = pobj->next)
+                    DecodePObj(node, dobj, pobj, output, capacity, count);
+        }
+        if (!(node->flags & JOBJ_INSTANCE))
+            DecodeJObj(node->child, output, capacity, count);
+    }
+}
+
 void CountTree(HSD_JObj* jobj, MeleeTitleSceneStatus* status)
 {
     for (HSD_JObj* node = jobj;
@@ -348,4 +582,38 @@ bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
 void M360_FreeDecodedTitleTexture(unsigned* pixels)
 {
     free(pixels);
+}
+
+unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity)
+{
+    if (!vertices || capacity < 3)
+        return 0;
+    unsigned count = 0;
+    DecodeJObj(s_titleModels[0], vertices, capacity, &count);
+    DecodeJObj(s_titleModels[1], vertices, capacity, &count);
+    if (!count)
+        return 0;
+    float minX = vertices[0].x, maxX = vertices[0].x;
+    float minY = vertices[0].y, maxY = vertices[0].y;
+    for (unsigned i = 1; i < count; ++i) {
+        if (vertices[i].x < minX) minX = vertices[i].x;
+        if (vertices[i].x > maxX) maxX = vertices[i].x;
+        if (vertices[i].y < minY) minY = vertices[i].y;
+        if (vertices[i].y > maxY) maxY = vertices[i].y;
+    }
+    const float rangeX = maxX - minX;
+    const float rangeY = maxY - minY;
+    if (rangeX <= 0.0001f || rangeY <= 0.0001f)
+        return 0;
+    const float scaleX = 560.0f / rangeX;
+    const float scaleY = 210.0f / rangeY;
+    const float scale = scaleX < scaleY ? scaleX : scaleY;
+    const float centerX = (minX + maxX) * 0.5f;
+    const float centerY = (minY + maxY) * 0.5f;
+    for (unsigned i = 0; i < count; ++i) {
+        vertices[i].x = 640.0f + (vertices[i].x - centerX) * scale;
+        vertices[i].y = 404.0f - (vertices[i].y - centerY) * scale;
+        vertices[i].z = 0.0f;
+    }
+    return count - (count % 3);
 }

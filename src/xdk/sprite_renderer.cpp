@@ -1,4 +1,5 @@
 #include "sprite_renderer.h"
+#include "melee_title_scene_xdk.h"
 
 #include <d3dx9.h>
 
@@ -131,7 +132,7 @@ bool BuildAtlas(IDirect3DDevice9* device, IDirect3DTexture9** atlas)
 SpriteRenderer::SpriteRenderer()
     : quadCount_(0), vertexShader_(0), pixelShader_(0), declaration_(0),
       atlas_(0), bannerTexture_(0), gameTexture_(0), bannerQueued_(false),
-      gameTextureQueued_(false), externalAtlas_(false)
+      gameTextureQueued_(false), titleVertexCount_(0), externalAtlas_(false)
 {
 }
 
@@ -172,6 +173,7 @@ void SpriteRenderer::Begin()
     quadCount_ = 0;
     bannerQueued_ = false;
     gameTextureQueued_ = false;
+    titleVertexCount_ = 0;
 }
 
 void SpriteRenderer::AddQuad(float x, float y, float width, float height,
@@ -328,9 +330,34 @@ void SpriteRenderer::AddGameTexture(float x, float y, float width,
     gameTextureQueued_ = true;
 }
 
+void SpriteRenderer::AddTitleMesh(const MeleeTitleVertex* vertices,
+                                  unsigned count)
+{
+    if (!vertices)
+        return;
+    if (count > kMaxTitleVertices)
+        count = kMaxTitleVertices;
+    count -= count % 3;
+    for (unsigned i = 0; i < count; ++i) {
+        const unsigned color = vertices[i].color;
+        titleVertices_[i].x = vertices[i].x;
+        titleVertices_[i].y = vertices[i].y;
+        titleVertices_[i].z = vertices[i].z;
+        titleVertices_[i].w = 1.0f;
+        titleVertices_[i].red = ((color >> 16) & 255) / 255.0f;
+        titleVertices_[i].green = ((color >> 8) & 255) / 255.0f;
+        titleVertices_[i].blue = (color & 255) / 255.0f;
+        titleVertices_[i].alpha = ((color >> 24) & 255) / 255.0f;
+        titleVertices_[i].u = vertices[i].u;
+        titleVertices_[i].v = vertices[i].v;
+    }
+    titleVertexCount_ = count;
+}
+
 void SpriteRenderer::End(IDirect3DDevice9* device)
 {
-    if (!quadCount_ && !bannerQueued_ && !gameTextureQueued_)
+    if (!quadCount_ && !bannerQueued_ && !gameTextureQueued_ &&
+        !titleVertexCount_)
         return;
 
     device->SetVertexShader(vertexShader_);
@@ -359,6 +386,11 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
         device->SetTexture(0, gameTexture_);
         device->DrawPrimitiveUP(D3DPT_QUADLIST, 1, gameVertices_,
                                 sizeof(Vertex));
+    }
+    if (titleVertexCount_) {
+        device->SetTexture(0, gameTexture_ ? gameTexture_ : atlas_);
+        device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, titleVertexCount_ / 3,
+                                titleVertices_, sizeof(Vertex));
     }
 }
 

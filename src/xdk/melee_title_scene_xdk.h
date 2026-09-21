@@ -17,6 +17,13 @@ struct MeleeTitleSceneStatus {
     unsigned firstTextureWidth;
     unsigned firstTextureHeight;
     unsigned firstTextureFormat;
+    unsigned meshVertexCount;
+};
+
+struct MeleeTitleVertex {
+    float x, y, z;
+    float u, v;
+    unsigned color;
 };
 
 bool M360_LoadTitleScene(MeleeTitleSceneStatus* status);
@@ -24,5 +31,6 @@ void M360_AnimateTitleScene(void);
 bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
                                   unsigned* height);
 void M360_FreeDecodedTitleTexture(unsigned* pixels);
+unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity);
 
 #endif

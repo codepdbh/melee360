@@ -46,7 +46,8 @@ expose it as `game:\melee.iso` without duplicating the 1.4 GB image. The XEX
 mounts the GameCube FST, decodes `opening.bnr`, reads `GmTtAll.dat`, runs the
 original `HSD_ArchiveParse`, applies its relocation table and resolves the
 first public title root. It then constructs the title JObj/MObj/PObj/TObj
-graph and decodes its first tiled GameCube texture for D3D9 display. It is a
+graph, decodes its first tiled GameCube texture and translates the title PObj
+GX display lists into a D3D9 triangle list. It is a
 real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`; Melee's full
 scene renderer and gameplay loop are not running yet.
 
@@ -70,17 +71,19 @@ Run it with a local Xenia Canary build:
 The launcher enables Xenia's keyboard-as-controller mode. Default Canary
 bindings retained by the bootstrap are:
 
-- `;`: switch title resource (Xbox A)
-- `X`: switch title resource (Start)
+- `;`: cycle GX mesh / title texture / disc banner (Xbox A)
+- `X`: cycle GX mesh / title texture / disc banner (Start)
 - `P`: exit (Xbox Y)
 
-An Xbox-compatible controller uses A or Start to switch the displayed title
-resource and Y to exit.
+An Xbox-compatible controller uses A or Start to cycle the displayed title
+resource and Y to exit. When geometry was decoded successfully, the viewer
+starts in GX mesh mode and the HUD shows the number of generated `TRIS`.
 Pass `-DisableKeyboard` if keyboard emulation should remain disabled.
 
 This is an interactive native title-resource milestone, not a claim that
-Melee gameplay has been ported. The next graphics step is translating PObj GX
-display lists and vertex formats into D3D9 vertex buffers.
+Melee gameplay has been ported. The first PObj GX display-list translation is
+running; the next graphics step is binding each PObj to its own material,
+texture and TEV state, followed by the original camera and scene callbacks.
 
 ## Graphics pipeline
 
@@ -89,9 +92,11 @@ Xbox 360 shader compiler. The generated microcode headers are placed under
 `build-x360/xdk` and embedded in the XEX; they are not committed.
 
 `src/xdk/sprite_renderer.cpp` owns the D3D9 vertex shader, pixel shader and
-vertex declaration. It batches all UI glyphs, arena geometry, gradients and
-character primitives into one `D3DPT_QUADLIST` submission per frame with alpha
-blending. Only the initial back-buffer clear remains a D3D clear operation.
+vertex declaration. It batches the UI into `D3DPT_QUADLIST` and submits the
+translated Melee title geometry separately as `D3DPT_TRIANGLELIST`, with alpha
+blending. The translator handles GX triangles, quads, triangle strips and fans
+with direct, 8-bit-indexed or 16-bit-indexed vertex attributes. Only the
+initial back-buffer clear remains a D3D clear operation.
 
 The pixel shader now samples a `D3DFMT_LIN_A8R8G8B8` sprite atlas. For this
 repository milestone, the atlas is generated at runtime and contains original

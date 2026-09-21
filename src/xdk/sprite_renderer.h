@@ -3,6 +3,8 @@
 
 #include <xtl.h>
 
+struct MeleeTitleVertex;
+
 struct SpriteColor {
     float red;
     float green;
@@ -28,6 +30,7 @@ public:
     bool UploadGameTexture(IDirect3DDevice9* device, const unsigned* pixels,
                            unsigned width, unsigned height);
     void AddGameTexture(float x, float y, float width, float height);
+    void AddTitleMesh(const MeleeTitleVertex* vertices, unsigned count);
     void End(IDirect3DDevice9* device);
     void Shutdown();
     bool UsesExternalAtlas() const;
@@ -47,6 +50,7 @@ private:
     };
 
     static const unsigned kMaxQuads = 4096;
+    static const unsigned kMaxTitleVertices = 32766;
     Vertex vertices_[kMaxQuads * 4];
     unsigned quadCount_;
     IDirect3DVertexShader9* vertexShader_;
@@ -57,6 +61,8 @@ private:
     IDirect3DTexture9* gameTexture_;
     Vertex bannerVertices_[4];
     Vertex gameVertices_[4];
+    Vertex titleVertices_[kMaxTitleVertices];
+    unsigned titleVertexCount_;
     bool bannerQueued_;
     bool gameTextureQueued_;
     bool externalAtlas_;
