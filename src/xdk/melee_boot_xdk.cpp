@@ -2,6 +2,7 @@
 
 #include "melee_boot_xdk.h"
 #include "melee_archive_xdk.h"
+#include "melee_title_scene_xdk.h"
 extern "C" {
 #include "../common/gcm.h"
 }
@@ -156,6 +157,8 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
                     status->titleArchiveValid =
                         status->titleArchiveRelocated &&
                         status->titlePublicRootResolved;
+                    if (status->titleArchiveValid)
+                        M360_LoadTitleScene(&status->titleScene);
                 }
             }
         }

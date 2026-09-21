@@ -1,6 +1,8 @@
 #ifndef MELEE360_XDK_BOOT_H
 #define MELEE360_XDK_BOOT_H
 
+#include "melee_title_scene_xdk.h"
+
 struct MeleeBootStatus {
     bool isoOpened;
     bool discValid;
@@ -19,6 +21,7 @@ struct MeleeBootStatus {
     char title[65];
     char firstPublicSymbol[65];
     char error[96];
+    MeleeTitleSceneStatus titleScene;
     unsigned bannerPixels[96 * 32];
 };
 

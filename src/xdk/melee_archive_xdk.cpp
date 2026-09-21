@@ -91,3 +91,10 @@ bool M360_ParseHsdArchive(unsigned char* image, unsigned imageSize,
     *firstRoot = HSD_ArchiveGetPublicAddress(&s_titleArchive, firstSymbol);
     return *firstRoot != 0;
 }
+
+void* M360_GetHsdPublic(const char* symbol)
+{
+    if (!symbol || !s_titleArchive.data || !s_titleArchive.symbols)
+        return 0;
+    return HSD_ArchiveGetPublicAddress(&s_titleArchive, symbol);
+}

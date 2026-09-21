@@ -350,12 +350,26 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
     AddText(g_white, 835, 230,
             boot.titleArchiveValid ? boot.firstPublicSymbol : "UNAVAILABLE", 1);
 
-    AddText(g_muted, 96, 550, "TITLE", 2);
-    AddText(g_white, 220, 550,
+    AddText(g_muted, 96, 528, "TITLE", 2);
+    AddText(g_white, 220, 528,
             boot.title[0] ? boot.title : "SUPER SMASH BROS. MELEE", 2);
-    AddText(g_muted, 96, 590,
-            boot.titleArchiveValid ? "REAL ISO DATA RELOCATED / HAL ROOT READY"
-                                   : boot.error,
+    AddText(g_muted, 96, 562, "TITLE SYMBOLS", 2);
+    AddUnsigned(boot.titleScene.symbolsResolved ? g_green : g_white,
+                310, 562, boot.titleScene.resolvedSymbols, 2);
+    AddText(g_muted, 350, 562, "/ 12", 2);
+    AddText(g_muted, 470, 562, "MODELS", 2);
+    AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
+                610, 562, boot.titleScene.modelCount, 2);
+    AddText(g_muted, 680, 562, "JOINTS", 2);
+    AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
+                820, 562, boot.titleScene.jointCount, 2);
+    AddText(g_muted, 940, 562, "DOBJS", 2);
+    AddUnsigned(boot.titleScene.modelsLoaded ? g_green : g_white,
+                1045, 562, boot.titleScene.displayObjectCount, 2);
+    AddText(g_muted, 96, 596,
+            boot.titleScene.animationsBound
+                ? "REAL TITLE JOBJ TREES + ANIMATIONS LOADED"
+                : (boot.titleArchiveValid ? "HAL ROOT READY" : boot.error),
             2);
     AddText(g_muted, 76, 672,
             "NATIVE POWERPC / GAMECUBE FST / RGB5A3 / HAL ARCHIVE", 2);

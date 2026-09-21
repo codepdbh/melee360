@@ -22,6 +22,7 @@
 - M19 HSD animation-object layer: complete (`aobj.c`, `dobj.c`, `robj.c`, plus the GX-free `util.c` and `bytecode.c` they need); real jobj/pobj/mobj/tobj/wobj/fog/cobj/lobj headers compile unmodified against real `GXEnum.h`/`GXStruct.h`; jobj/mobj/pobj functions are counting stubs (`HSD_JObjLoadJoint`/`SetupMatrixSub`/`MakeMatrix`, all `HSD_MObj*`/`HSD_PObj*` entry points dobj calls) plus a stand-in `hsdJObj` class and verbatim `HSD_JObjGetFlags`/`Unref`/`UnrefThis`; on-target self-test lives in `hsdanim_xdk.cpp` because `gobj_xdk_compat.h` short-circuits `jobj.h`
 - M20 XDK native disc boot: complete in Xenia Canary (`GALE01`, 1,212-entry FST, `opening.bnr` RGB5A3 decode)
 - M21 XDK HAL archive relocation: complete in Xenia Canary (381,781-byte `GmTtAll.dat`, 1,909 relocations, first public root `ScTitle_cam_int1_camanim`)
+- M22 Title scene graph load: XEX resolves the 12 symbols requested by `gmtitle.c`, constructs both real JObj trees, binds their animation graphs and reports joint/DObj counts on screen
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic

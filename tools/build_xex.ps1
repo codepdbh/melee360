@@ -74,6 +74,8 @@ $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
 $bootHeader = Join-Path $root 'src\xdk\melee_boot_xdk.h'
 $archiveSource = Join-Path $root 'src\xdk\melee_archive_xdk.cpp'
 $archiveHeader = Join-Path $root 'src\xdk\melee_archive_xdk.h'
+$titleSceneSource = Join-Path $root 'src\xdk\melee_title_scene_xdk.cpp'
+$titleSceneHeader = Join-Path $root 'src\xdk\melee_title_scene_xdk.h'
 $gcmSource = Join-Path $root 'src\common\gcm.c'
 $vertexShaderSource = Join-Path $root 'src\xdk\shaders\sprite_vs.hlsl'
 $pixelShaderSource = Join-Path $root 'src\xdk\shaders\sprite_ps.hlsl'
@@ -89,6 +91,7 @@ $lbmathObject = Join-Path $build 'lb_00CE.obj'
 $spriteObject = Join-Path $build 'sprite_renderer.obj'
 $bootObject = Join-Path $build 'melee_boot_xdk.obj'
 $archiveObject = Join-Path $build 'melee_archive_xdk.obj'
+$titleSceneObject = Join-Path $build 'melee_title_scene_xdk.obj'
 $gcmObject = Join-Path $build 'gcm.obj'
 $memoryObject = Join-Path $build 'memory.obj'
 $memoryWrapperObject = Join-Path $build 'memory_xdk.obj'
@@ -140,6 +143,7 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $vertexShaderSource, $pixelShaderSource,
                          $atlasGenerator, $bootSource, $bootHeader,
                          $archiveSource, $archiveHeader,
+                         $titleSceneSource, $titleSceneHeader,
                          $gcmSource, $memoryCompat, $memorySource,
                          $memoryWrapper, $hsdClassCompat, $hsdClassWrapper,
                          $hashSource, $debugSource, $classSource,
@@ -210,6 +214,17 @@ $archiveArgs = @(
 )
 & $compiler $archiveArgs
 if ($LASTEXITCODE -ne 0) { throw 'Original HAL archive parser compilation failed.' }
+
+Write-Host '[M360][XEX] compiling real title scene loader'
+$titleSceneArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W3',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$titleSceneObject", $titleSceneSource
+)
+& $compiler $titleSceneArgs
+if ($LASTEXITCODE -ne 0) { throw 'Real title scene loader compilation failed.' }
 
 $gcmArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
@@ -475,7 +490,8 @@ $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
-    $lbmathObject, $spriteObject, $bootObject, $archiveObject, $gcmObject,
+    $lbmathObject, $spriteObject, $bootObject, $archiveObject,
+    $titleSceneObject, $gcmObject,
     $memoryObject, $memoryWrapperObject,
     $hsdClassWrapperObject, $hashObject, $debugObject, $classObject,
     $objectObject, $objallocObject, $idObject,

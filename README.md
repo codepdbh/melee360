@@ -56,6 +56,7 @@ LibXenon implementations.
 | Original HSD gobj (game object) cluster | ✅ `list`/`gobj`/`gobjproc`/`gobjplink`/`gobjgxlink`/`gobjobject`/`gobjuserdata`/`gobjinit` linked and host-validated; cobj/fog/jobj/lobj stubbed pending their own ports |
 | Original HSD math/animation-data foundation | ✅ `mtx`/`quatlib`/`spline`/`fobj`/`random` linked and host-validated with real scalar `PSMTX`/`PSVEC` primitives; `util` pending GX types |
 | Original HSD animation-object layer | ✅ `aobj`/`dobj`/`robj` plus `util`/`bytecode` linked and host-validated (FObj stepping/loop, DObj class/list, RObj constraints/limits/expressions); jobj/mobj/pobj/tobj entry points stubbed, jobj class is a stand-in |
+| Real title-scene descriptors | ✅ 12 `gmtitle.c` symbols resolved; title/background JObj trees and animation graphs loaded from the ISO |
 | Melee scene rendering, menus and gameplay | 🚧 HAL/GX-to-D3D9 rendering backend not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal
