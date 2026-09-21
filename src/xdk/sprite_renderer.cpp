@@ -130,7 +130,8 @@ bool BuildAtlas(IDirect3DDevice9* device, IDirect3DTexture9** atlas)
 
 SpriteRenderer::SpriteRenderer()
     : quadCount_(0), vertexShader_(0), pixelShader_(0), declaration_(0),
-      atlas_(0), bannerTexture_(0), bannerQueued_(false), externalAtlas_(false)
+      atlas_(0), bannerTexture_(0), gameTexture_(0), bannerQueued_(false),
+      gameTextureQueued_(false), externalAtlas_(false)
 {
 }
 
@@ -170,6 +171,7 @@ void SpriteRenderer::Begin()
 {
     quadCount_ = 0;
     bannerQueued_ = false;
+    gameTextureQueued_ = false;
 }
 
 void SpriteRenderer::AddQuad(float x, float y, float width, float height,
@@ -276,9 +278,59 @@ void SpriteRenderer::AddBanner(float x, float y, float width, float height)
     bannerQueued_ = true;
 }
 
+bool SpriteRenderer::UploadGameTexture(IDirect3DDevice9* device,
+                                       const unsigned* pixels,
+                                       unsigned width, unsigned height)
+{
+    if (!pixels || !width || !height)
+        return false;
+    if (gameTexture_) {
+        gameTexture_->Release();
+        gameTexture_ = 0;
+    }
+    if (FAILED(device->CreateTexture(width, height, 1, 0,
+            D3DFMT_LIN_A8R8G8B8, D3DPOOL_MANAGED, &gameTexture_, 0)))
+        return false;
+    D3DLOCKED_RECT locked;
+    if (FAILED(gameTexture_->LockRect(0, &locked, 0, 0)))
+        return false;
+    for (unsigned y = 0; y < height; ++y) {
+        memcpy(reinterpret_cast<BYTE*>(locked.pBits) + y * locked.Pitch,
+               pixels + y * width, width * sizeof(unsigned));
+    }
+    gameTexture_->UnlockRect(0);
+    return true;
+}
+
+void SpriteRenderer::AddGameTexture(float x, float y, float width,
+                                    float height)
+{
+    if (!gameTexture_)
+        return;
+    const float positions[4][2] = {
+        { x, y }, { x + width, y },
+        { x + width, y + height }, { x, y + height }
+    };
+    const float texcoords[4][2] = {
+        { 0.0f, 0.0f }, { 1.0f, 0.0f },
+        { 1.0f, 1.0f }, { 0.0f, 1.0f }
+    };
+    for (unsigned i = 0; i < 4; ++i) {
+        gameVertices_[i].x = positions[i][0];
+        gameVertices_[i].y = positions[i][1];
+        gameVertices_[i].z = 0.0f;
+        gameVertices_[i].w = 1.0f;
+        gameVertices_[i].red = gameVertices_[i].green =
+            gameVertices_[i].blue = gameVertices_[i].alpha = 1.0f;
+        gameVertices_[i].u = texcoords[i][0];
+        gameVertices_[i].v = texcoords[i][1];
+    }
+    gameTextureQueued_ = true;
+}
+
 void SpriteRenderer::End(IDirect3DDevice9* device)
 {
-    if (!quadCount_ && !bannerQueued_)
+    if (!quadCount_ && !bannerQueued_ && !gameTextureQueued_)
         return;
 
     device->SetVertexShader(vertexShader_);
@@ -303,6 +355,11 @@ void SpriteRenderer::End(IDirect3DDevice9* device)
         device->DrawPrimitiveUP(D3DPT_QUADLIST, 1, bannerVertices_,
                                 sizeof(Vertex));
     }
+    if (gameTextureQueued_) {
+        device->SetTexture(0, gameTexture_);
+        device->DrawPrimitiveUP(D3DPT_QUADLIST, 1, gameVertices_,
+                                sizeof(Vertex));
+    }
 }
 
 void SpriteRenderer::Shutdown()
@@ -311,6 +368,8 @@ void SpriteRenderer::Shutdown()
         atlas_->Release();
     if (bannerTexture_)
         bannerTexture_->Release();
+    if (gameTexture_)
+        gameTexture_->Release();
     if (declaration_)
         declaration_->Release();
     if (pixelShader_)
@@ -322,6 +381,7 @@ void SpriteRenderer::Shutdown()
     vertexShader_ = 0;
     atlas_ = 0;
     bannerTexture_ = 0;
+    gameTexture_ = 0;
     externalAtlas_ = false;
 }
 

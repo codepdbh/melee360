@@ -45,9 +45,10 @@ This produces `dist/default.xex`. When exactly one legal ISO exists under
 expose it as `game:\melee.iso` without duplicating the 1.4 GB image. The XEX
 mounts the GameCube FST, decodes `opening.bnr`, reads `GmTtAll.dat`, runs the
 original `HSD_ArchiveParse`, applies its relocation table and resolves the
-first public title root. It is a real Xbox 360 PowerPC XEX importing `xam.xex`
-and `xboxkrnl.exe`; Melee's scene renderer and gameplay loop are not running
-yet.
+first public title root. It then constructs the title JObj/MObj/PObj/TObj
+graph and decodes its first tiled GameCube texture for D3D9 display. It is a
+real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`; Melee's full
+scene renderer and gameplay loop are not running yet.
 
 Controller input also passes through the original
 `upstream/melee-pc/src/sysdolphin/baselib/controller.c`. The Xbox adapter
@@ -69,18 +70,17 @@ Run it with a local Xenia Canary build:
 The launcher enables Xenia's keyboard-as-controller mode. Default Canary
 bindings retained by the bootstrap are:
 
-- `A` / `D`: move
-- `;`: jump (Xbox A)
-- `L`: attack (Xbox X)
-- `X`: reset (Start)
+- `;`: switch title resource (Xbox A)
+- `X`: switch title resource (Start)
 - `P`: exit (Xbox Y)
 
-An Xbox-compatible controller uses the left stick or D-pad, A, X, Start and Y.
+An Xbox-compatible controller uses A or Start to switch the displayed title
+resource and Y to exit.
 Pass `-DisableKeyboard` if keyboard emulation should remain disabled.
 
-This arena is a native input/physics/rendering integration milestone, not a
-claim that Melee gameplay has been ported. Game subsystems will continue to
-move behind the shared platform boundary incrementally.
+This is an interactive native title-resource milestone, not a claim that
+Melee gameplay has been ported. The next graphics step is translating PObj GX
+display lists and vertex formats into D3D9 vertex buffers.
 
 ## Graphics pipeline
 

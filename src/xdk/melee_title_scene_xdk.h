@@ -21,5 +21,8 @@ struct MeleeTitleSceneStatus {
 
 bool M360_LoadTitleScene(MeleeTitleSceneStatus* status);
 void M360_AnimateTitleScene(void);
+bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
+                                  unsigned* height);
+void M360_FreeDecodedTitleTexture(unsigned* pixels);
 
 #endif

@@ -57,6 +57,8 @@ LibXenon implementations.
 | Original HSD math/animation-data foundation | ✅ `mtx`/`quatlib`/`spline`/`fobj`/`random` linked and host-validated with real scalar `PSMTX`/`PSVEC` primitives; `util` pending GX types |
 | Original HSD animation-object layer | ✅ `aobj`/`dobj`/`robj` plus `util`/`bytecode` linked and host-validated; JObj animation advances on the real title graph |
 | Real title-scene descriptors | ✅ JObj, DObj, MObj, PObj and TObj graphs loaded from the ISO, including GX display lists and image descriptors |
+| GameCube texture decoding | ✅ I4/I8/IA4/IA8/RGB565/RGB5A3/RGBA8/CI4/CI8/CMPR decoded from the title archive and uploaded to D3D9 |
+| Interactive native title viewer | ✅ A/Start switches between the decoded title texture and disc banner while HAL animation advances |
 | Melee scene rendering, menus and gameplay | 🚧 HAL/GX-to-D3D9 rendering backend not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal

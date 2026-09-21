@@ -384,7 +384,8 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
             1);
     AddText(g_muted, 76, 672,
             "NATIVE POWERPC / GAMECUBE FST / RGB5A3 / HAL ARCHIVE", 2);
-    AddText(g_muted, 1080, 590, "Y EXIT", 1);
+    AddText(g_muted, 980, 616, "A START VIEW", 1);
+    AddText(g_muted, 1100, 616, "Y EXIT", 1);
 }
 
 SpriteColor ToSpriteColor(D3DCOLOR color, float alpha = 1.0f)
@@ -718,11 +719,22 @@ void __cdecl main()
     const bool bootSucceeded = M360_BootMelee("game:\\melee.iso", &boot);
     if (boot.bannerDecoded)
         renderer.UploadBanner(device, boot.bannerPixels);
+    unsigned* titleTexturePixels = 0;
+    unsigned titleTextureWidth = 0;
+    unsigned titleTextureHeight = 0;
+    const bool titleTextureDecoded = M360_DecodeFirstTitleTexture(
+        &titleTexturePixels, &titleTextureWidth, &titleTextureHeight);
+    if (titleTextureDecoded) {
+        renderer.UploadGameTexture(device, titleTexturePixels,
+                                   titleTextureWidth, titleTextureHeight);
+        M360_FreeDecodedTitleTexture(titleTexturePixels);
+    }
     BuildScene(meleeCodePassed, boot);
     M360_HSDPadInit();
     OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
+    bool showGameTexture = titleTextureDecoded;
     for (;;) {
         const DWORD now = GetTickCount();
 
@@ -730,6 +742,8 @@ void __cdecl main()
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
         if (input.button & HSD_PAD_Y)
             break;
+        if (input.trigger & (HSD_PAD_A | HSD_PAD_START))
+            showGameTexture = !showGameTexture;
 
         if (boot.titleScene.animationsBound)
             M360_AnimateTitleScene();
@@ -743,7 +757,9 @@ void __cdecl main()
         RenderBatch(renderer, g_white);
         RenderBatch(renderer, g_muted);
         RenderBatch(renderer, g_green);
-        if (boot.bannerDecoded)
+        if (showGameTexture && titleTextureDecoded)
+            renderer.AddGameTexture(352.0f, 292.0f, 576.0f, 224.0f);
+        else if (boot.bannerDecoded)
             renderer.AddBanner(352.0f, 308.0f, 576.0f, 192.0f);
         renderer.End(device);
         device->Present(0, 0, 0, 0);

@@ -25,6 +25,9 @@ public:
                    const SpriteColor& tint);
     bool UploadBanner(IDirect3DDevice9* device, const unsigned* pixels);
     void AddBanner(float x, float y, float width, float height);
+    bool UploadGameTexture(IDirect3DDevice9* device, const unsigned* pixels,
+                           unsigned width, unsigned height);
+    void AddGameTexture(float x, float y, float width, float height);
     void End(IDirect3DDevice9* device);
     void Shutdown();
     bool UsesExternalAtlas() const;
@@ -51,8 +54,11 @@ private:
     IDirect3DVertexDeclaration9* declaration_;
     IDirect3DTexture9* atlas_;
     IDirect3DTexture9* bannerTexture_;
+    IDirect3DTexture9* gameTexture_;
     Vertex bannerVertices_[4];
+    Vertex gameVertices_[4];
     bool bannerQueued_;
+    bool gameTextureQueued_;
     bool externalAtlas_;
 };
 
