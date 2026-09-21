@@ -72,6 +72,8 @@ $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
 $bootHeader = Join-Path $root 'src\xdk\melee_boot_xdk.h'
+$archiveSource = Join-Path $root 'src\xdk\melee_archive_xdk.cpp'
+$archiveHeader = Join-Path $root 'src\xdk\melee_archive_xdk.h'
 $gcmSource = Join-Path $root 'src\common\gcm.c'
 $vertexShaderSource = Join-Path $root 'src\xdk\shaders\sprite_vs.hlsl'
 $pixelShaderSource = Join-Path $root 'src\xdk\shaders\sprite_ps.hlsl'
@@ -86,6 +88,7 @@ $controllerObject = Join-Path $build 'controller.obj'
 $lbmathObject = Join-Path $build 'lb_00CE.obj'
 $spriteObject = Join-Path $build 'sprite_renderer.obj'
 $bootObject = Join-Path $build 'melee_boot_xdk.obj'
+$archiveObject = Join-Path $build 'melee_archive_xdk.obj'
 $gcmObject = Join-Path $build 'gcm.obj'
 $memoryObject = Join-Path $build 'memory.obj'
 $memoryWrapperObject = Join-Path $build 'memory_xdk.obj'
@@ -136,6 +139,7 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $lbmathWrapper, $spriteSource, $spriteHeader,
                          $vertexShaderSource, $pixelShaderSource,
                          $atlasGenerator, $bootSource, $bootHeader,
+                         $archiveSource, $archiveHeader,
                          $gcmSource, $memoryCompat, $memorySource,
                          $memoryWrapper, $hsdClassCompat, $hsdClassWrapper,
                          $hashSource, $debugSource, $classSource,
@@ -195,6 +199,17 @@ $bootArgs = @(
 )
 & $compiler $bootArgs
 if ($LASTEXITCODE -ne 0) { throw 'Native Melee boot compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc HAL archive parser'
+$archiveArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$meleeSdkInclude",
+    "/I$(Join-Path $root 'src\xdk')",
+    "/Fo$archiveObject", $archiveSource
+)
+& $compiler $archiveArgs
+if ($LASTEXITCODE -ne 0) { throw 'Original HAL archive parser compilation failed.' }
 
 $gcmArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
@@ -460,7 +475,7 @@ $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
-    $lbmathObject, $spriteObject, $bootObject, $gcmObject,
+    $lbmathObject, $spriteObject, $bootObject, $archiveObject, $gcmObject,
     $memoryObject, $memoryWrapperObject,
     $hsdClassWrapperObject, $hashObject, $debugObject, $classObject,
     $objectObject, $objallocObject, $idObject,

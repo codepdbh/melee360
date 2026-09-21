@@ -40,12 +40,14 @@ Build the native D3D9 bootstrap from PowerShell:
 ./tools/build_xex.ps1
 ```
 
-This produces `dist/default.xex`. The current interactive bootstrap renders a
-small D3D9 arena with player movement, jumping, gravity, a training dummy,
-damage, attacking and reset handling. The damage path directly compiles and
-links the original `upstream/melee-pc/src/melee/lb/lbtime.c` source through a
-small XDK time compatibility layer. It is a real Xbox 360 PowerPC XEX importing
-`xam.xex` and `xboxkrnl.exe`; it is not the full game yet.
+This produces `dist/default.xex`. When exactly one legal ISO exists under
+`iso/`, the build creates an ignored hardlink at `dist/melee.iso` so Xenia can
+expose it as `game:\melee.iso` without duplicating the 1.4 GB image. The XEX
+mounts the GameCube FST, decodes `opening.bnr`, reads `GmTtAll.dat`, runs the
+original `HSD_ArchiveParse`, applies its relocation table and resolves the
+first public title root. It is a real Xbox 360 PowerPC XEX importing `xam.xex`
+and `xboxkrnl.exe`; Melee's scene renderer and gameplay loop are not running
+yet.
 
 Controller input also passes through the original
 `upstream/melee-pc/src/sysdolphin/baselib/controller.c`. The Xbox adapter
@@ -65,7 +67,7 @@ Run it with a local Xenia Canary build:
 ```
 
 The launcher enables Xenia's keyboard-as-controller mode. Default Canary
-bindings for the prototype are:
+bindings retained by the bootstrap are:
 
 - `A` / `D`: move
 - `;`: jump (Xbox A)

@@ -8,6 +8,8 @@ struct MeleeBootStatus {
     bool bannerDecoded;
     bool titleArchiveFound;
     bool titleArchiveValid;
+    bool titleArchiveRelocated;
+    bool titlePublicRootResolved;
     unsigned entryCount;
     unsigned titleArchiveSize;
     unsigned relocationCount;

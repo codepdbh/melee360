@@ -20,6 +20,8 @@
 - M17 HSD gobj (game object) cluster: complete (`list.c`, `gobjobject.c`, `gobjuserdata.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c`, `gobjinit.c`, `gobj.c`); cobj/fog/jobj/lobj not ported yet, stubbed as opaque types plus no-op render/teardown callbacks
 - M18 HSD math/animation-data foundation: complete (`mtx.c`, `quatlib.c`, `spline.c`, `fobj.c`, `random.c`); Dolphin `PSMTX*`/`PSVEC*` primitives implemented as scalar float math; `util.c` deferred to M19
 - M19 HSD animation-object layer: complete (`aobj.c`, `dobj.c`, `robj.c`, plus the GX-free `util.c` and `bytecode.c` they need); real jobj/pobj/mobj/tobj/wobj/fog/cobj/lobj headers compile unmodified against real `GXEnum.h`/`GXStruct.h`; jobj/mobj/pobj functions are counting stubs (`HSD_JObjLoadJoint`/`SetupMatrixSub`/`MakeMatrix`, all `HSD_MObj*`/`HSD_PObj*` entry points dobj calls) plus a stand-in `hsdJObj` class and verbatim `HSD_JObjGetFlags`/`Unref`/`UnrefThis`; on-target self-test lives in `hsdanim_xdk.cpp` because `gobj_xdk_compat.h` short-circuits `jobj.h`
+- M20 XDK native disc boot: complete in Xenia Canary (`GALE01`, 1,212-entry FST, `opening.bnr` RGB5A3 decode)
+- M21 XDK HAL archive relocation: complete in Xenia Canary (381,781-byte `GmTtAll.dat`, 1,909 relocations, first public root `ScTitle_cam_int1_camanim`)
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
@@ -49,6 +51,11 @@ a Xenon compatibility wrapper. On boot it reads `GmTtAll.dat` from the legal
 ISO, applies all 1,909 pointer relocations and resolves its first public root.
 Host validation independently checks the 381,781-byte archive layout, 13
 public roots and first symbol (`ScTitle_cam_int1_camanim`).
+
+The same original parser is now also compiled into `default.xex`. Xenia Canary
+has visibly confirmed `GMTTALL.DAT RELOCATED`, `MELEE MODULES LINKED`, and a
+resolved public title root while displaying the banner decoded directly from
+the user's ISO. No ISO or extracted Nintendo asset is copied into the repo.
 
 The Xbox build now compiles the upstream `sysdolphin/baselib/memory.c` HSD
 allocator directly, backed by a real first-fit, coalescing free-list heap

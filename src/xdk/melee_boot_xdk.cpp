@@ -1,11 +1,14 @@
 #include <xtl.h>
 
 #include "melee_boot_xdk.h"
+#include "melee_archive_xdk.h"
 extern "C" {
 #include "../common/gcm.h"
 }
 
 namespace {
+
+unsigned char* s_titleArchiveImage = 0;
 
 unsigned ReadBE32(const unsigned char* bytes)
 {
@@ -136,24 +139,23 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
                 0x20 + dataSize + status->relocationCount * 4;
             const unsigned symbolOffset = publicOffset +
                 status->publicCount * 8 + status->externalCount * 8;
-            unsigned char publicEntry[8];
             if (fileSize == archiveFile.size && status->publicCount &&
-                symbolOffset < archiveFile.size &&
-                m360_gcm_read(&gcm, &archiveFile, publicOffset,
-                              publicEntry, sizeof(publicEntry)) ==
-                    sizeof(publicEntry)) {
-                const unsigned nameOffset = ReadBE32(publicEntry + 4);
-                const unsigned namePosition = symbolOffset + nameOffset;
-                if (namePosition < archiveFile.size) {
-                    unsigned available = archiveFile.size - namePosition;
-                    if (available > 64)
-                        available = 64;
-                    if (m360_gcm_read(&gcm, &archiveFile, namePosition,
-                                      status->firstPublicSymbol,
-                                      available) == available) {
-                        status->firstPublicSymbol[64] = '\0';
-                        status->titleArchiveValid = true;
-                    }
+                symbolOffset < archiveFile.size) {
+                s_titleArchiveImage = static_cast<unsigned char*>(
+                    malloc(archiveFile.size));
+                if (s_titleArchiveImage &&
+                    m360_gcm_read(&gcm, &archiveFile, 0,
+                                  s_titleArchiveImage, archiveFile.size) ==
+                        archiveFile.size) {
+                    void* firstRoot = 0;
+                    status->titleArchiveRelocated = M360_ParseHsdArchive(
+                        s_titleArchiveImage, archiveFile.size,
+                        status->firstPublicSymbol,
+                        sizeof(status->firstPublicSymbol), &firstRoot);
+                    status->titlePublicRootResolved = firstRoot != 0;
+                    status->titleArchiveValid =
+                        status->titleArchiveRelocated &&
+                        status->titlePublicRootResolved;
                 }
             }
         }

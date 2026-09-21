@@ -257,6 +257,8 @@ BYTE GlyphRow(char character, unsigned row)
         return digits[character - '0'][row];
     if (character == '-')
         return row == 3 ? 31 : 0;
+    if (character == '_')
+        return row == 6 ? 31 : 0;
     if (character == ':')
         return (row == 2 || row == 5) ? 4 : 0;
     if (character == '.')
@@ -339,7 +341,7 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
             boot.bannerDecoded ? "DECODED" : "FAILED", 2);
     AddText(g_cyan, 600, 188, "GMTTALL.DAT", 2);
     AddText(boot.titleArchiveValid ? g_green : g_white, 835, 188,
-            boot.titleArchiveValid ? "PARSED" : "FAILED", 2);
+            boot.titleArchiveRelocated ? "RELOCATED" : "FAILED", 2);
 
     AddText(g_cyan, 96, 230, "MELEE MODULES", 2);
     AddText(meleeCodePassed ? g_green : g_white, 350, 230,
@@ -352,7 +354,7 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
     AddText(g_white, 220, 550,
             boot.title[0] ? boot.title : "SUPER SMASH BROS. MELEE", 2);
     AddText(g_muted, 96, 590,
-            boot.titleArchiveValid ? "REAL ISO DATA LOADED / NEXT: HAL RUNTIME INIT"
+            boot.titleArchiveValid ? "REAL ISO DATA RELOCATED / HAL ROOT READY"
                                    : boot.error,
             2);
     AddText(g_muted, 76, 672,
@@ -641,12 +643,17 @@ void __cdecl main()
                            ? "[M360][ANIM] HSD anim self-test passed\n"
                            : "[M360][ANIM] HSD anim self-test FAILED\n");
 
+    const bool hsdJObjPassed = M360_HsdJObjSelfTest() != 0;
+    OutputDebugStringA(hsdJObjPassed
+                           ? "[M360][JOBJ] HSD scene graph self-test passed\n"
+                           : "[M360][JOBJ] HSD scene graph self-test FAILED\n");
+
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
         lbTime_8000AEE4(4u, -10) == 0u &&
         lbTime_8000AF74(250u, 8) == 255u &&
         powi(3, 4) == 81 &&
-        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, 0.0f, 1.0f) == 1 &&
+        lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, 0.0f, 5.0f) == 1 &&
         lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 50.0f, 50.0f, 1.0f) == 0 &&
         memoryPassed && hsdClassPassed && gobjPassed && hsdMathPassed &&
         hsdAnimPassed && hsdJObjPassed;

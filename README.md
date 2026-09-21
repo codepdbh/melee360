@@ -11,8 +11,9 @@
 </div>
 
 > [!IMPORTANT]
-> MELEE360 is an early community porting project. It now has a **playable
-> native XEX technology demo**, but it is not yet a playable Melee port and
+> MELEE360 is an early community porting project. Its native XEX now boots a
+> legal `GALE01` image and relocates a real Melee HAL archive, but it is not
+> yet a playable Melee port and
 > does not contain Nintendo game data.
 
 ## About
@@ -38,7 +39,8 @@ LibXenon implementations.
 | FAT filesystem and `GALE01` detection | ✅ Compiled |
 | GameCube FST and resource lookup | ✅ Host-tested and linked |
 | Dolphin `DVDOpen`/`DVDRead` compatibility | ✅ Minimal synchronous slice working |
-| HAL `.dat` archive parser and relocation | ✅ Title archive linked and host-validated |
+| XDK native `GALE01` boot path | ✅ ISO/FST/banner load running in Xenia Canary |
+| HAL `.dat` archive parser and relocation | ✅ Original parser relocates `GmTtAll.dat` in the XEX and resolves its first public root |
 | First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
 | Original HSD controller pipeline (`controller.c`) | ✅ XInput bridge, normalized sticks and edge-triggered buttons running in XEX |
 | Original math/segment test (`lb_00CE.c`) | ✅ PowerPC hit-volume test drives prototype attacks |
@@ -54,7 +56,7 @@ LibXenon implementations.
 | Original HSD gobj (game object) cluster | ✅ `list`/`gobj`/`gobjproc`/`gobjplink`/`gobjgxlink`/`gobjobject`/`gobjuserdata`/`gobjinit` linked and host-validated; cobj/fog/jobj/lobj stubbed pending their own ports |
 | Original HSD math/animation-data foundation | ✅ `mtx`/`quatlib`/`spline`/`fobj`/`random` linked and host-validated with real scalar `PSMTX`/`PSVEC` primitives; `util` pending GX types |
 | Original HSD animation-object layer | ✅ `aobj`/`dobj`/`robj` plus `util`/`bytecode` linked and host-validated (FObj stepping/loop, DObj class/list, RObj constraints/limits/expressions); jobj/mobj/pobj/tobj entry points stubbed, jobj class is a stand-in |
-| Melee menus and gameplay | 🚧 Not implemented yet |
+| Melee scene rendering, menus and gameplay | 🚧 HAL/GX-to-D3D9 rendering backend not implemented yet |
 
 The current `xenon.elf` is a platform and integration test. With a legal
 `GALE01` image on the USB drive it now opens `GmTtAll.dat`, runs the original
