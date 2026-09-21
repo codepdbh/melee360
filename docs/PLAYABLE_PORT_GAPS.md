@@ -34,12 +34,17 @@ Wait, title and menu-animation translation units independently into the ignored
 compile; it neither links them into the XEX nor replaces the working binary.
 The probe-only compatibility header preserves static assertions.
 
-Title and menu-animation units now compile in C after supplying Predicate and
-OSCalendarTime declarations. The current fighter C++ probes still fail on C/C++ structure-name differences in
-`lb/types.h`, fighter layout assertions involving Pikachu state types, and
-other fighter declarations. C compilation also
-fails on enum constant initializers. Switching language mode alone is not a
-solution; a reviewed source/header adaptation is required before linking.
+Title, menu-animation and fighter Wait units now compile in C. The probe
+generates header overlays converting MotionFlags constants to enum constants,
+preserving their expressions while making them valid C constant expressions.
+Original upstream files are not edited. Predicate, OSCalendarTime and
+RETURN_IF are supplied by the compatibility header.
+
+The main fighter unit still fails at castle layout assertions using indexed
+offsetof expressions and lacks the FP_NAN classification definition. These
+checks remain enabled: a failed layout check must be investigated rather than
+removed to force compilation. Successful Wait compilation is not execution
+of a fighter and does not resolve its gameplay dependencies.
 
 The XEX now invokes original `mn_8022ED6C` and `mn_8022F298` for title animation
 looping. The build extracts these two function bodies verbatim from mn_22EC.c
