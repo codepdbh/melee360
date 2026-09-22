@@ -68,6 +68,10 @@ $hsdJObjCompat = Join-Path $root 'src\xdk\hsdjobj_xdk_compat.h'
 $hsdJObjWrapper = Join-Path $root 'src\xdk\hsdjobj_xdk.cpp'
 $jobjSource = Join-Path $baselibDir 'jobj.c'
 $wobjSource = Join-Path $baselibDir 'wobj.c'
+$hsdSynthCompat = Join-Path $root 'src\xdk\hsdsynth_xdk_compat.h'
+$hsdSynthWrapper = Join-Path $root 'src\xdk\hsdsynth_xdk.cpp'
+$synthSource = Join-Path $baselibDir 'synth.c'
+$devcomSource = Join-Path $baselibDir 'devcom.c'
 $spriteSource = Join-Path $root 'src\xdk\sprite_renderer.cpp'
 $spriteHeader = Join-Path $root 'src\xdk\sprite_renderer.h'
 $bootSource = Join-Path $root 'src\xdk\melee_boot_xdk.cpp'
@@ -126,6 +130,9 @@ $bytecodeObject = Join-Path $build 'bytecode.obj'
 $hsdJObjWrapperObject = Join-Path $build 'hsdjobj_xdk.obj'
 $jobjObject = Join-Path $build 'jobj.obj'
 $wobjObject = Join-Path $build 'wobj.obj'
+$hsdSynthWrapperObject = Join-Path $build 'hsdsynth_xdk.obj'
+$synthObject = Join-Path $build 'synth.obj'
+$devcomObject = Join-Path $build 'devcom.obj'
 $vertexShaderHeader = Join-Path $build 'sprite_vs.h'
 $pixelShaderHeader = Join-Path $build 'sprite_ps.h'
 $pe = Join-Path $build 'melee360.exe'
@@ -157,7 +164,9 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $randomSource, $hsdAnimCompat, $hsdAnimWrapper,
                          $aobjSource, $dobjSource, $robjSource,
                          $utilSource, $bytecodeSource, $hsdJObjCompat,
-                         $hsdJObjWrapper, $jobjSource, $wobjSource)) {
+                         $hsdJObjWrapper, $jobjSource, $wobjSource,
+                         $hsdSynthCompat, $hsdSynthWrapper, $synthSource,
+                         $devcomSource)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Required XDK component is missing: $required"
     }
@@ -485,6 +494,27 @@ if ($LASTEXITCODE -ne 0) { throw 'Original jobj.c compilation failed.' }
 & $compiler ($hsdJObjArgs + @("/Fo$wobjObject", $wobjSource))
 if ($LASTEXITCODE -ne 0) { throw 'Original wobj.c compilation failed.' }
 
+Write-Host '[M360][XEX] compiling XDK HSD synth/devcom bridge'
+$hsdSynthWrapperArgs = @(
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$hsdSynthWrapperObject", $hsdSynthWrapper
+)
+& $compiler $hsdSynthWrapperArgs
+if ($LASTEXITCODE -ne 0) { throw 'XDK HSD synth/devcom bridge compilation failed.' }
+
+Write-Host '[M360][XEX] compiling original melee-pc synth.c/devcom.c'
+$hsdSynthArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdSynthCompat") + $hsdCommonInc
+
+& $compiler ($hsdSynthArgs + @("/Fo$synthObject", $synthSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original synth.c compilation failed.' }
+
+& $compiler ($hsdSynthArgs + @("/Fo$devcomObject", $devcomSource))
+if ($LASTEXITCODE -ne 0) { throw 'Original devcom.c compilation failed.' }
+
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 & (Join-Path $PSScriptRoot 'probe_gameplay_xdk.ps1')
 $gameplayLayoutObject = Join-Path $root 'build-x360/gameplay-probe/gameplay_layout_probe.obj'
@@ -546,6 +576,7 @@ $linkArgs = @(
     $hsdAnimWrapperObject, $aobjObject, $dobjObject, $robjObject,
     $utilObject, $bytecodeObject,
     $hsdJObjWrapperObject, $jobjObject, $wobjObject,
+    $hsdSynthWrapperObject, $synthObject, $devcomObject,
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs

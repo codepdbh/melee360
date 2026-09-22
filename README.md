@@ -60,6 +60,7 @@ LibXenon implementations.
 | GameCube texture decoding | ✅ I4/I8/IA4/IA8/RGB565/RGB5A3/RGBA8/CI4/CI8/CMPR decoded from the title archive and uploaded to D3D9 |
 | GX display-list translation | ✅ Title PObj triangles, quads, strips and fans plus direct/indexed position, color and UV attributes are translated to material-colored D3D9 triangles |
 | Interactive native title viewer | ✅ LB+RB cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances; Start is reserved for scene integration |
+| Original HSD audio engine (`synth.c`/`devcom.c`) | ✅ Voice alloc/priority-stealing, ADSR-style volume ramp, pitch/pan curves and the DVD/ARAM command queue linked and host-validated; AX/AI/AR/DVD hardware entry points stubbed (no audible output yet) |
 | Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal

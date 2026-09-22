@@ -18,6 +18,7 @@ extern "C" void* HSD_MemAlloc(int size);
 extern "C" void HSD_Free(void* ptr);
 extern "C" int M360_HsdAnimSelfTest(void);
 extern "C" int M360_HsdJObjSelfTest(void);
+extern "C" int M360_HsdSynthSelfTest(void);
 extern "C" int M360_GameplayLayoutProbe(void);
 extern "C" unsigned M360_MenuInputSelfTest(void);
 extern "C" void gm_EvaluateAllControllerInputs(void);
@@ -698,6 +699,11 @@ void __cdecl main()
                            ? "[M360][JOBJ] HSD scene graph self-test passed\n"
                            : "[M360][JOBJ] HSD scene graph self-test FAILED\n");
 
+    const bool hsdSynthPassed = M360_HsdSynthSelfTest() != 0;
+    OutputDebugStringA(hsdSynthPassed
+                           ? "[M360][SYNTH] HSD synth/devcom self-test passed\n"
+                           : "[M360][SYNTH] HSD synth/devcom self-test FAILED\n");
+
     const bool meleeCodePassed =
         lbTime_8000AEC8(0xfffffff0u, 0x20u) == 0xffffffffu &&
         lbTime_8000AEE4(4u, -10) == 0u &&
@@ -706,7 +712,7 @@ void __cdecl main()
         lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 0.0f, 0.0f, 5.0f) == 1 &&
         lb_8000D148(0.0f, 0.0f, 10.0f, 0.0f, 50.0f, 50.0f, 1.0f) == 0 &&
         memoryPassed && hsdClassPassed && gobjPassed && hsdMathPassed &&
-        hsdAnimPassed && hsdJObjPassed;
+        hsdAnimPassed && hsdJObjPassed && hsdSynthPassed;
 
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
     if (!d3d)
