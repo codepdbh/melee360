@@ -46,7 +46,9 @@ $sources = @('melee/ft/fighter.c', 'melee/ft/kinds/ftCommon/ftCo_Wait.c', 'melee
     'melee/ft/ft_0892.c', 'melee/ft/ftchangeparam.c',
     'melee/mp/mpcoll.c', 'melee/mp/mplib.c',
     'melee/lb/lbcollision.c', 'melee/lb/lbvector.c',
-    '../../../src/xdk/gameplay_layout_probe.c')
+    '../../../src/xdk/gameplay_layout_probe.c',
+    'melee/gm/gmscene.c', 'melee/gm/gm_1A36.c',
+    'melee/gm/gm_1A3F.c', 'melee/mn/mnmain.c')
 $failed = 0
 $results = @()
 # Invalidate the previous success before compiling, so interrupted builds cannot

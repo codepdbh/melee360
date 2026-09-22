@@ -26,10 +26,11 @@ The HUD vertex capacity was increased and quad submissions are chunked.
 
 ## Gameplay compiler probe
 
-Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles 27 original
+Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles 31 original
 translation units independently into the ignored `build-x360/gameplay-probe`
 directory, plus a native layout test. It fails if any unit fails. The XEX build
-runs this probe and links only its layout test, not the fighter gameplay objects.
+runs this probe and links its layout test, not the fighter gameplay objects.
+Original menu input is linked separately as described below.
 The probe-only compatibility header preserves static assertions.
 
 Title, menu-animation and fighter Wait units now compile in C. The probe
@@ -38,10 +39,11 @@ preserving their expressions while making them valid C constant expressions.
 Original upstream files are not edited. Predicate, OSCalendarTime and
 RETURN_IF are supplied by the compatibility header.
 
-All 27 original compilation probes now pass, including fighter.c, ftcommon, ftanim,
+All 31 original compilation probes now pass, including fighter.c, ftcommon, ftanim,
 ftaction, ftcoll, ftparts, ftdata, Wait, Walk, Jump, Fall, Dash, Run, Turn,
 Landing, Attack1, AttackAir, title and menu, plus ftwalkcommon, ft_081B,
-ft_0892, ftchangeparam, mpcoll, mplib, lbcollision and lbvector. Indexed castle
+ft_0892, ftchangeparam, mpcoll, mplib, lbcollision, lbvector, gmscene, gm_1A36,
+gm_1A3F and mnmain. Indexed castle
 offsetof checks are expressed as base offsets plus element/member offsets in
 generated overlays; the assertions remain active. Floating-point classification
 uses XDK _fpclass, with explicit handling of float subnormals before promotion.
@@ -76,6 +78,26 @@ validation of the entire Fighter structure or every bitfield.
 in the XEX. The latest Xenia trace reports `gameplay.layout: 1`, then successful
 boot and Present at frame 120. This is a target compatibility test, not running
 fighter state transitions or combat. No new playable scene is claimed.
+
+## Original menu input integration
+
+The XEX now initializes and runs the original gm_1A36 controller mapper after
+HSD_PadRenewStatus each frame. The generated compilation unit preserves the
+source prefix verbatim, omitting only gm_801A3EF4 (initialization of all game
+modes). Start detection uses gm_GetButtonsTriggered's combined four-port slot.
+Start still logs `input.start.pending_scene`; it does not enter mnmain yet.
+
+The target-side test reports `menu.input.tests: 31` (all five checks passed):
+Start-to-confirm mapping, held input without a second trigger, cancellation
+from port four, direction mapping and held-direction repeat. It restores the
+copied pad state and resets the mapper before processing live input.
+
+Although mnmain and gmscene compile, their full lifecycle is not running. The
+object inventory currently finds 113 mnmain references absent from the inspected
+objects, including text, graphics, archive/audio and submenu services. Some may
+be library-supplied or unreachable; this is not an executable linker test.
+The existing OSContext shim is not a real Dolphin thread context and must not
+be treated as a working implementation of gmscene's OS/thread services.
 
 The XEX now invokes original `mn_8022ED6C` and `mn_8022F298` for title animation
 looping. The build extracts these two function bodies verbatim from mn_22EC.c

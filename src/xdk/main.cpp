@@ -19,6 +19,9 @@ extern "C" void HSD_Free(void* ptr);
 extern "C" int M360_HsdAnimSelfTest(void);
 extern "C" int M360_HsdJObjSelfTest(void);
 extern "C" int M360_GameplayLayoutProbe(void);
+extern "C" unsigned M360_MenuInputSelfTest(void);
+extern "C" void gm_EvaluateAllControllerInputs(void);
+extern "C" unsigned __int64 gm_GetButtonsTriggered(unsigned char index);
 
 #include "hsd_class_xdk_compat.h"
 extern "C" {
@@ -759,6 +762,7 @@ void __cdecl main()
     TraceStage("mesh.vertices", titleMeshVertexCount);
     BuildScene(meleeCodePassed, boot);
     M360_HSDPadInit();
+    TraceStage("menu.input.tests", M360_MenuInputSelfTest());
     OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
@@ -769,6 +773,7 @@ void __cdecl main()
         const DWORD now = GetTickCount();
 
         HSD_PadRenewStatus();
+        gm_EvaluateAllControllerInputs();
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
         if (input.button & HSD_PAD_Y)
             break;
@@ -780,7 +785,7 @@ void __cdecl main()
             titleView = (titleView + 1) % 3;
             TraceStage("input.view", titleView);
         }
-        if (input.trigger & HSD_PAD_START)
+        if (gm_GetButtonsTriggered(4) & HSD_PAD_START)
             TraceStage("input.start.pending_scene", 1);
 
         if (boot.titleScene.animationsBound)

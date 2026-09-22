@@ -3,6 +3,12 @@
 #include "hsdjobj_xdk_compat.h"
 #include <float.h>
 #include <math.h>
+/* OSContext is already supplied by the existing XDK platform shim. */
+#define _DOLPHIN_OSCONTEXT_H_
+#include <sysdolphin/baselib/video.h>
+#ifndef U8_MAX
+#define U8_MAX 255
+#endif
 #ifndef M_TAU
 #define M_TAU 6.283185307179586
 #endif

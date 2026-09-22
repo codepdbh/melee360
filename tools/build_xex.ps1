@@ -488,6 +488,22 @@ if ($LASTEXITCODE -ne 0) { throw 'Original wobj.c compilation failed.' }
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
 & (Join-Path $PSScriptRoot 'probe_gameplay_xdk.ps1')
 $gameplayLayoutObject = Join-Path $root 'build-x360/gameplay-probe/gameplay_layout_probe.obj'
+$menuInputObject = Join-Path $build 'menu_input_original.obj'
+$menuInputTestObject = Join-Path $build 'menu_input_test.obj'
+$menuInputSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gm/gm_1A36.c')
+# Keep the input implementation verbatim; the last function initializes every
+# game mode and is not part of the controller mapper.
+$cut = $menuInputSource.IndexOf('void gm_801A3EF4(void)')
+if ($cut -lt 0) { throw 'Cannot locate mode initialization boundary in gm_1A36.c.' }
+$menuInputSlice = Join-Path $build 'menu_input_original.c'
+Set-Content -Encoding ASCII $menuInputSlice $menuInputSource.Substring(0, $cut)
+$menuInputArgs = @('/nologo','/c','/TC','/O2','/MT','/D_XBOX','/DXBOX',
+    "/I$(Join-Path $root 'upstream/melee-pc/src/melee/gm')",
+    "/FI$(Join-Path $root 'src/xdk/gameplay_probe_compat.h')") + $hsdCommonInc
+& $compiler ($menuInputArgs + @("/Fo$menuInputObject", $menuInputSlice))
+if ($LASTEXITCODE -ne 0) { throw 'Original menu input compilation failed.' }
+& $compiler ($menuInputArgs + @("/Fo$menuInputTestObject", (Join-Path $root 'src/xdk/menu_input_xdk.c')))
+if ($LASTEXITCODE -ne 0) { throw 'Menu input self-test compilation failed.' }
 $menuAnimObject = Join-Path $build 'mn_22EC.obj'
 $menuSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/mn/mn_22EC.c')
 $menuSlice = $menuSource.Substring(0, $menuSource.IndexOf('float mn_8022EC18('))
@@ -515,7 +531,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original menu animation compilation failed.' }
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
-    $menuAnimObject, $gameplayLayoutObject,
+    $menuAnimObject, $gameplayLayoutObject, $menuInputObject, $menuInputTestObject,
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject, $bootObject, $archiveObject,
     $titleSceneObject, $gcmObject,
