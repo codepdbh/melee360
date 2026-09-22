@@ -18,7 +18,23 @@ const unsigned __int64 kPadConfirm = 1ull << 32;
 const unsigned __int64 kPadCancel = 1ull << 33;
 const unsigned __int64 kPadUp = 1ull << 36;
 const unsigned __int64 kPadDown = 1ull << 37;
-const unsigned kMainMenuSelectionCount = 5;
+const unsigned kMenuSelectionCounts[29] = {
+    5, 5, 5, 4, 6, 5, 3, 0, 0, 3, 0, 0, 10,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3
+};
+
+bool MenuOptionAvailable(unsigned kind, unsigned selection)
+{
+    // mn_80229938: these slots are hidden in the original scene. Sound Test
+    // additionally depends on progress; no save-game unlock bridge exists yet.
+    if ((kind == 1 || kind == 3 || kind == 5) && selection == 2)
+        return false;
+    if (kind == 4 && selection == 3)
+        return false;
+    if (kind == 6 && selection == 2)
+        return false; // All-Star unlock state has not been imported yet.
+    return true;
+}
 
 bool s_allStagesUnlocked = false;
 bool s_allCharactersUnlocked = false;
@@ -91,7 +107,7 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         flow->titleVisible = true;
     } else {
         flow->menuSelection = 0;
-        flow->menuNoticeFrames = 0;
+        flow->menuKind = 0;
         PlayBgm(flow->rulesBgm, audio);
         flow->movieVisible = false;
         flow->titleVisible = false;
@@ -151,25 +167,52 @@ void UpdateMenu(MeleeFlow* flow, unsigned __int64 buttons,
                 MeleeAudioStatus* audio)
 {
     ++flow->sceneTick;
-    if (flow->menuNoticeFrames)
-        --flow->menuNoticeFrames;
     if (buttons & kPadUp) {
-        flow->menuSelection = (flow->menuSelection + kMainMenuSelectionCount - 1) %
-                              kMainMenuSelectionCount;
+        const unsigned count = kMenuSelectionCounts[flow->menuKind];
+        do {
+            flow->menuSelection = (flow->menuSelection + count - 1) % count;
+        } while (!MenuOptionAvailable(flow->menuKind, flow->menuSelection));
         M360_Trace("input.menu.selection", flow->menuSelection);
-        flow->menuNoticeFrames = 0;
     } else if (buttons & kPadDown) {
-        flow->menuSelection = (flow->menuSelection + 1) % kMainMenuSelectionCount;
+        do {
+            flow->menuSelection = (flow->menuSelection + 1) %
+                                  kMenuSelectionCounts[flow->menuKind];
+        } while (!MenuOptionAvailable(flow->menuKind, flow->menuSelection));
         M360_Trace("input.menu.selection", flow->menuSelection);
-        flow->menuNoticeFrames = 0;
     }
     if (buttons & kPadConfirm) {
         M360_Trace("input.menu.confirm.selection", flow->menuSelection);
-        flow->menuNoticeFrames = 180;
+        unsigned nextKind = flow->menuKind;
+        if (flow->menuKind == 0)
+            nextKind = flow->menuSelection + 1;
+        else if (flow->menuKind == 1 && flow->menuSelection == 0)
+            nextKind = 6; // Regular Match
+        else if (flow->menuKind == 1 && flow->menuSelection == 3)
+            nextKind = 9; // Stadium
+        else if (flow->menuKind == 2 && flow->menuSelection == 2)
+            nextKind = 12; // Special Melee
+        else if (flow->menuKind == 5 && flow->menuSelection == 3)
+            nextKind = 28; // Records
+        if (nextKind != flow->menuKind) {
+            flow->menuKind = nextKind;
+            flow->menuSelection = 0;
+            M360_Trace("input.menu.kind", flow->menuKind);
+        }
     }
     if (buttons & kPadCancel) {
         M360_Trace("input.menu.back", flow->sceneTick);
-        EnterState(flow, kFlowTitle, audio);
+        if (flow->menuKind) {
+            const unsigned previousKind = flow->menuKind;
+            flow->menuKind = previousKind == 6 || previousKind == 9 ? 1 :
+                             previousKind == 12 ? 2 :
+                             previousKind == 28 ? 5 : 0;
+            flow->menuSelection = previousKind == 9 || previousKind == 28 ? 3 :
+                                  previousKind == 12 ? 2 :
+                                  previousKind == 6 ? 0 : previousKind - 1;
+            M360_Trace("input.menu.kind", flow->menuKind);
+        } else {
+            EnterState(flow, kFlowTitle, audio);
+        }
     }
 }
 
@@ -182,8 +225,6 @@ void M360_FlowStart(MeleeFlow* flow, MeleeAudioStatus* audio)
     flow->rulesBgm = kBgmMenu01;
     flow->state = kFlowMainMenu;
     EnterState(flow, kFlowOpening, audio);
-    if (GetFileAttributesA("game:\\menu_preview.enable") != static_cast<DWORD>(-1))
-        EnterState(flow, kFlowMainMenu, audio);
 }
 
 void M360_FlowUpdate(MeleeFlow* flow, unsigned __int64 buttonsTriggered,

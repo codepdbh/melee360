@@ -428,9 +428,13 @@ IDirect3DTexture9* SpriteRenderer::ResolveTitleTexture(IDirect3DDevice9* device,
                                                      const void* key)
 {
     if (!key) return 0;
+    const void* imageKey = M360_TitleTextureImageKey(key);
+    const void* paletteKey = M360_TitleTexturePaletteKey(key);
     for (unsigned i = 0; i < textureCount_; ++i)
-        if (textureKeys_[i] == key) return titleTextures_[i];
-    if (textureCount_ == 128) return 0;
+        if (textureImageKeys_[i] == imageKey &&
+            texturePaletteKeys_[i] == paletteKey)
+            return titleTextures_[i];
+    if (textureCount_ == 512) return 0;
     unsigned* pixels = 0;
     unsigned width = 0, height = 0;
     IDirect3DTexture9* result = 0;
@@ -447,7 +451,8 @@ IDirect3DTexture9* SpriteRenderer::ResolveTitleTexture(IDirect3DDevice9* device,
         }
         M360_FreeDecodedTitleTexture(pixels);
     }
-    textureKeys_[textureCount_] = key;
+    textureImageKeys_[textureCount_] = imageKey;
+    texturePaletteKeys_[textureCount_] = paletteKey;
     titleTextures_[textureCount_++] = result;
     return result;
 }

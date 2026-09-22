@@ -9,6 +9,7 @@
 
 extern "C" {
 #include <sysdolphin/baselib/dobj.h>
+#include <sysdolphin/baselib/fobj.h>
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/cobj.h>
 #include <sysdolphin/baselib/wobj.h>
@@ -19,6 +20,21 @@ float mn_8022F298(HSD_JObj*);
 }
 
 namespace {
+
+void StopMenuTextureChannel(HSD_AObj* aobj, void* object, u32 channel)
+{
+    for (HSD_FObj* fobj = aobj ? aobj->fobj : NULL; fobj; fobj = fobj->next)
+        if (fobj->obj_type == channel)
+            HSD_FObjStopAnim(fobj, object, NULL, 0.0f);
+}
+
+void StopMenuTextureChannels(HSD_JObj* jobj)
+{
+    for (u32 channel = 0xC; channel <= 0x13; ++channel)
+        HSD_ForeachAnim(jobj, JOBJ_TYPE, TOBJ_MASK,
+                        reinterpret_cast<void*>(StopMenuTextureChannel),
+                        AOBJ_ARG_AOU, channel);
+}
 
 struct TitleModelSymbols {
     HSD_Joint* joint;
@@ -53,6 +69,35 @@ const char* const s_menuNames[] = {
     "MenMainConIs", "MenMainCursorIs", "MenMainConSs", "MenMainCursorSs"
 };
 HSD_JObj* s_menuModels[20];
+HSD_JObj* s_mainMenuCursors[5];
+unsigned s_mainMenuSelection = 5;
+HSD_JObj* s_subMenuRoots[29];
+HSD_JObj* s_subMenuCursors[29][10];
+unsigned s_subMenuSelections[29];
+unsigned s_activeMenuKind;
+const unsigned s_menuOptionCounts[29] = {
+    5, 5, 5, 4, 6, 5, 3, 0, 0, 3, 0, 0, 10,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3
+};
+const unsigned s_menuLabelFrames[29] = {
+    0, 20, 40, 60, 80, 100, 120, 0, 0, 160, 0, 0, 200,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240
+};
+const unsigned s_menuPanelFrames[29] = {
+    100, 300, 500, 700, 900, 1100, 1300, 0, 0, 1900, 0, 0, 2700,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5100
+};
+
+bool MenuOptionAvailable(unsigned kind, unsigned selection)
+{
+    if ((kind == 1 || kind == 3 || kind == 5) && selection == 2)
+        return false;
+    if (kind == 6 && selection == 2)
+        return false;
+    return !(kind == 4 && selection == 3);
+}
+AnimLoopSettings s_mainMenuPanelLoop = { 100.0f, 199.0f, 100.0f };
+AnimLoopSettings s_mainMenuPanelFrame = { 0.0f, 799.0f, 0.0f };
 
 bool ProjectCamera(MeleeTitleVertex* vertices, unsigned* count)
 {
@@ -881,6 +926,18 @@ unsigned M360_TitleTextureWrap(const void* handle)
                      ((static_cast<unsigned>(texture->wrap_t) & 3) << 2) : 0;
 }
 
+const void* M360_TitleTextureImageKey(const void* handle)
+{
+    const HSD_TObj* texture = static_cast<const HSD_TObj*>(handle);
+    return texture ? texture->imagedesc : NULL;
+}
+
+const void* M360_TitleTexturePaletteKey(const void* handle)
+{
+    const HSD_TObj* texture = static_cast<const HSD_TObj*>(handle);
+    return texture && texture->tlut ? texture->tlut->lut : NULL;
+}
+
 void M360_FreeDecodedTitleTexture(unsigned* pixels)
 {
     free(pixels);
@@ -927,11 +984,66 @@ unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity)
     return count - (count % 3);
 }
 
+bool CreateSubMenuRoot(unsigned kind)
+{
+    if (kind < 1 || kind >= 29 || !s_menuOptionCounts[kind])
+        return false;
+    if (s_subMenuRoots[kind])
+        return true;
+    HSD_Joint* rootDesc = static_cast<HSD_Joint*>(
+        M360_GetMenuHsdPublic("MenMainConTop_Top_joint"));
+    HSD_JObj* root = rootDesc ? HSD_JObjLoadJoint(rootDesc) : NULL;
+    if (!root)
+        return false;
+    HSD_JObjAddAnimAll(root,
+        static_cast<HSD_AnimJoint*>(M360_GetMenuHsdPublic("MenMainConTop_Top_animjoint")),
+        static_cast<HSD_MatAnimJoint*>(M360_GetMenuHsdPublic("MenMainConTop_Top_matanim_joint")),
+        static_cast<HSD_ShapeAnimJoint*>(M360_GetMenuHsdPublic("MenMainConTop_Top_shapeanim_joint")));
+    HSD_JObjReqAnimAll(root, 0.0f);
+    HSD_JObjAnimAll(root);
+    HSD_JObj* options[10];
+    const unsigned count = s_menuOptionCounts[kind];
+    unsigned unlockedCount = 0;
+    for (unsigned i = 0; i < count; ++i)
+        if (MenuOptionAvailable(kind, i))
+            ++unlockedCount;
+    for (unsigned i = 0; i < unlockedCount; ++i)
+        options[i] = JointByIndex(root, 4 + i);
+    HSD_Joint* cursorDesc = static_cast<HSD_Joint*>(
+        M360_GetMenuHsdPublic("MenMainCursor_Top_joint"));
+    HSD_AnimJoint* cursorAnim = static_cast<HSD_AnimJoint*>(
+        M360_GetMenuHsdPublic("MenMainCursor_Top_animjoint"));
+    HSD_MatAnimJoint* cursorMat = static_cast<HSD_MatAnimJoint*>(
+        M360_GetMenuHsdPublic("MenMainCursor_Top_matanim_joint"));
+    HSD_ShapeAnimJoint* cursorShape = static_cast<HSD_ShapeAnimJoint*>(
+        M360_GetMenuHsdPublic("MenMainCursor_Top_shapeanim_joint"));
+    unsigned unlockedIndex = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        if (!MenuOptionAvailable(kind, i))
+            continue;
+        HSD_JObj* option = options[unlockedIndex++];
+        if (!option || !cursorDesc)
+            continue;
+        HSD_JObjReqAnim(option, static_cast<float>(unlockedCount));
+        HSD_JObjAnim(option);
+        HSD_JObj* cursor = HSD_JObjLoadJoint(cursorDesc);
+        if (!cursor)
+            continue;
+        HSD_JObjAddAnimAll(cursor, cursorAnim, cursorMat, cursorShape);
+        HSD_JObjAddChild(option, cursor);
+        s_subMenuCursors[kind][i] = cursor;
+    }
+    s_subMenuRoots[kind] = root;
+    s_subMenuSelections[kind] = 10;
+    return true;
+}
+
 bool M360_LoadMenuModels(unsigned* loadedModels, unsigned* loadedJoints)
 {
     if (!loadedModels || !loadedJoints)
         return false;
     *loadedModels = *loadedJoints = 0;
+    s_activeMenuKind = 0;
     s_menuCamera = static_cast<HSD_CameraDescPerspective*>(
         M360_GetMenuHsdPublic("ScMenMain_cam_int1_camera"));
     s_menuFog = static_cast<HSD_FogDesc*>(
@@ -965,6 +1077,35 @@ bool M360_LoadMenuModels(unsigned* loadedModels, unsigned* loadedJoints)
         CountTree(s_menuModels[model], &counts);
         *loadedJoints += counts.jointCount;
     }
+    if (s_menuModels[2]) {
+        HSD_JObj* options[5];
+        for (unsigned i = 0; i < 5; ++i)
+            options[i] = JointByIndex(s_menuModels[2], 4 + i);
+        // MENU_KIND_MAIN has five unlocked selections; mn_8022B3A0 poses
+        // each option node at that count before parenting its cursor.
+        for (unsigned i = 0; i < 5; ++i)
+            if (options[i]) {
+                HSD_JObjReqAnim(options[i], 5.0f);
+                HSD_JObjAnim(options[i]);
+            }
+        HSD_Joint* joint = static_cast<HSD_Joint*>(
+            M360_GetMenuHsdPublic("MenMainCursor_Top_joint"));
+        HSD_AnimJoint* anim = static_cast<HSD_AnimJoint*>(
+            M360_GetMenuHsdPublic("MenMainCursor_Top_animjoint"));
+        HSD_MatAnimJoint* matAnim = static_cast<HSD_MatAnimJoint*>(
+            M360_GetMenuHsdPublic("MenMainCursor_Top_matanim_joint"));
+        HSD_ShapeAnimJoint* shapeAnim = static_cast<HSD_ShapeAnimJoint*>(
+            M360_GetMenuHsdPublic("MenMainCursor_Top_shapeanim_joint"));
+        for (unsigned i = 0; i < 5 && joint; ++i) {
+            HSD_JObj* cursor = options[i] ? HSD_JObjLoadJoint(joint) : NULL;
+            if (!cursor)
+                continue;
+            HSD_JObjAddAnimAll(cursor, anim, matAnim, shapeAnim);
+            HSD_JObjAddChild(options[i], cursor);
+            s_mainMenuCursors[i] = cursor;
+        }
+        s_mainMenuSelection = 5;
+    }
     return *loadedModels == 20 && s_menuCamera;
 }
 
@@ -982,19 +1123,77 @@ unsigned M360_BuildMenuMesh(MeleeTitleVertex* vertices, unsigned capacity)
     // ConTop (4) for MENU_KIND_MAIN. The other archive models belong to
     // submenus; drawing all twenty at once overlays unrelated screens.
     for (unsigned pass = 0; pass < 3; ++pass)
-        for (unsigned model = 0; model < 3 && count + 3 <= capacity; ++model)
-            if (s_menuModels[model])
-                DecodeJObj(s_menuModels[model], passes[pass], vertices,
-                           capacity, &count);
+        for (unsigned model = 0; model < 3 && count + 3 <= capacity; ++model) {
+            HSD_JObj* root = model == 2 && s_activeMenuKind
+                ? s_subMenuRoots[s_activeMenuKind] : s_menuModels[model];
+            if (root)
+                DecodeJObj(root, passes[pass], vertices, capacity, &count);
+        }
     ProjectCamera(vertices, &count);
     s_camera = previousCamera;
     s_fog = previousFog;
     return count;
 }
 
-void M360_UpdateMenuModels(void)
+void M360_UpdateMenuModels(unsigned kind, unsigned selection)
 {
+    if (kind >= 29 || !s_menuOptionCounts[kind])
+        kind = 0;
+    if (kind != s_activeMenuKind) {
+        if (kind && !CreateSubMenuRoot(kind))
+            kind = 0;
+        s_activeMenuKind = kind;
+        s_mainMenuPanelLoop.start_frame = static_cast<float>(s_menuPanelFrames[kind]);
+        s_mainMenuPanelLoop.end_frame = s_mainMenuPanelLoop.start_frame + 99.0f;
+        s_mainMenuPanelLoop.loop_frame = s_mainMenuPanelLoop.start_frame;
+        HSD_JObj* panel = s_menuModels[1]
+            ? JointByIndex(s_menuModels[1], 0x29) : NULL;
+        if (panel) {
+            HSD_JObjReqAnimAll(panel, s_mainMenuPanelLoop.start_frame);
+            HSD_JObjAnimAll(panel);
+        }
+    }
     // mn_8022EAE0 advances the original background JObj on every frame.
     if (s_menuModels[0])
         HSD_JObjAnimAll(s_menuModels[0]);
+    if (s_menuModels[1]) {
+        HSD_JObj* panelAnimation = JointByIndex(s_menuModels[1], 4);
+        HSD_JObj* menuAnimation = JointByIndex(s_menuModels[1], 0x29);
+        if (panelAnimation)
+            mn_8022ED6C(panelAnimation, &s_mainMenuPanelFrame);
+        if (menuAnimation)
+            mn_8022ED6C(menuAnimation, &s_mainMenuPanelLoop);
+    }
+    const unsigned optionCount = s_menuOptionCounts[kind];
+    unsigned* previousSelection = kind ? &s_subMenuSelections[kind]
+                                       : &s_mainMenuSelection;
+    if (selection >= optionCount || selection == *previousSelection)
+        return;
+    *previousSelection = selection;
+    for (unsigned i = 0; i < optionCount; ++i) {
+        HSD_JObj* cursor = kind ? s_subMenuCursors[kind][i]
+                               : s_mainMenuCursors[i];
+        if (!cursor)
+            continue;
+        const bool selected = i == selection;
+        HSD_JObj* position = JointByIndex(cursor, 2);
+        HSD_JObj* label = JointByIndex(cursor, 3);
+        HSD_JObj* highlight = JointByIndex(cursor, 4);
+        if (position) {
+            HSD_JObjReqAnim(position, selected ? 50.0f : 0.0f);
+            HSD_JObjAnim(position);
+        }
+        if (label) {
+            HSD_JObjReqAnimAll(label, selected ? 1.0f : 0.0f);
+            HSD_JObjAnimAll(label);
+            HSD_JObjReqAnim(label,
+                static_cast<float>(s_menuLabelFrames[kind] + i * 2));
+            StopMenuTextureChannels(label);
+            HSD_JObjAnim(label);
+        }
+        if (highlight) {
+            HSD_JObjReqAnimAll(highlight, selected ? 50.0f : 0.0f);
+            HSD_JObjAnimAll(highlight);
+        }
+    }
 }

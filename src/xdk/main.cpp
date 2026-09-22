@@ -489,28 +489,6 @@ void RenderMenuPlaceholder(SpriteRenderer& renderer, const MeleeFlow& flow)
     RenderBatch(renderer, g_dynamic);
 }
 
-void RenderMenuNavigation(SpriteRenderer& renderer, const MeleeFlow& flow)
-{
-    static const char* const choices[5] = {
-        "1-P MODE", "VS MODE", "TROPHIES", "OPTIONS", "DATA"
-    };
-    // Temporary native navigation layer over the genuine MnMaAll models.
-    // The original cursor needs TObj/MatAnim support before it can replace it.
-    DrawRect(renderer, 176, 190, 364, 378, D3DCOLOR_XRGB(5, 9, 24), 0.83f);
-    DrawRect(renderer, 176, 190, 6, 378, D3DCOLOR_XRGB(79, 203, 247));
-    DrawRect(renderer, 190, 263 + 52 * flow.menuSelection, 334, 43,
-             D3DCOLOR_XRGB(30, 96, 129), 0.88f);
-    g_dynamic.count = 0;
-    AddText(g_dynamic, 205, 214, "MAIN MENU", 3);
-    for (unsigned i = 0; i < 5; ++i) {
-        AddText(g_dynamic, 237, 273 + 52 * i, choices[i], 3);
-    }
-    AddText(g_dynamic, 205, 535, "UP DOWN SELECT  B BACK", 1);
-    if (flow.menuNoticeFrames)
-        AddText(g_dynamic, 205, 550, "SUBMENU NOT PORTED YET", 1);
-    RenderBatch(renderer, g_dynamic);
-}
-
 void ResetGame(GameState& game)
 {
     game.playerX = 145.0f;
@@ -829,6 +807,26 @@ void __cdecl main()
     const unsigned menuPreviewVertices = menuModelsReady
         ? M360_BuildMenuMesh(g_titleMesh, 32766) : 0;
     TraceStage("menu.mesh.vertices", menuPreviewVertices);
+    const void* menuTextureInstances[512] = {};
+    const void* menuTextureImages[512] = {};
+    unsigned menuTextureInstanceCount = 0;
+    unsigned menuTextureImageCount = 0;
+    for (unsigned vertex = 0; vertex < menuPreviewVertices; ++vertex) {
+        const void* instance = g_titleMesh[vertex].texture;
+        if (!instance) continue;
+        unsigned match = 0;
+        for (; match < menuTextureInstanceCount; ++match)
+            if (menuTextureInstances[match] == instance) break;
+        if (match == menuTextureInstanceCount && match < 512)
+            menuTextureInstances[menuTextureInstanceCount++] = instance;
+        const void* imageKey = M360_TitleTextureImageKey(instance);
+        for (match = 0; match < menuTextureImageCount; ++match)
+            if (menuTextureImages[match] == imageKey) break;
+        if (match == menuTextureImageCount && match < 512)
+            menuTextureImages[menuTextureImageCount++] = imageKey;
+    }
+    TraceStage("menu.texture.instances", menuTextureInstanceCount);
+    TraceStage("menu.texture.images", menuTextureImageCount);
     M360_FlowStart(&flow, &audio);
     TraceStage("audio.file.found", audio.fileFound);
     TraceStage("audio.file.size", audio.fileSize);
@@ -876,7 +874,7 @@ void __cdecl main()
         M360_FlowUpdate(&flow, triggered, &audio);
 
         if (flow.state == kFlowMainMenu && menuModelsReady)
-            M360_UpdateMenuModels();
+            M360_UpdateMenuModels(flow.menuKind, flow.menuSelection);
         titleMeshVertexCount = flow.state == kFlowMainMenu && menuModelsReady
             ? M360_BuildMenuMesh(g_titleMesh, 32766)
             : (flow.titleVisible ? M360_BuildTitleMesh(g_titleMesh, 32766) : 0);
@@ -899,11 +897,6 @@ void __cdecl main()
             renderer.AddTitleMesh(g_titleMesh, titleMeshVertexCount);
             renderer.End(device);
             device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-        }
-        if (flow.state == kFlowMainMenu && titleMeshVertexCount) {
-            renderer.Begin();
-            RenderMenuNavigation(renderer, flow);
-            renderer.End(device);
         }
         MeleeMovieStatus movie;
         M360_MovieGetStatus(&movie);

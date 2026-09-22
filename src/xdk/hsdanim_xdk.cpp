@@ -235,13 +235,46 @@ void HSD_TObjRemoveAnimAll(HSD_TObj* tobj)
 
 void HSD_TObjAddAnimAll(HSD_TObj* tobj, HSD_TexAnim* texanim)
 {
-    for (; tobj && texanim; tobj = tobj->next, texanim = texanim->next) {
+    // Texture animations are keyed by GX texture-map ID, not list position.
+    // Menu labels often have several TObjs on one material and the positional
+    // pairing silently bound their frame tables to the wrong texture.
+    for (; tobj; tobj = tobj->next) {
+        HSD_TexAnim* match = texanim;
+        while (match && match->id != tobj->id)
+            match = match->next;
         HSD_AObjRemove(tobj->aobj);
-        tobj->aobj = texanim->aobjdesc
-                         ? HSD_AObjLoadDesc(texanim->aobjdesc)
+        tobj->aobj = match && match->aobjdesc
+                         ? HSD_AObjLoadDesc(match->aobjdesc)
                          : NULL;
-        tobj->imagetbl = texanim->imagetbl;
-        tobj->n_imagetbl = texanim->n_imagetbl;
+        tobj->imagetbl = match ? match->imagetbl : NULL;
+        tobj->n_imagetbl = match ? match->n_imagetbl : 0;
+    }
+}
+
+static void M360_TObjUpdate(void* object, enum_t type, HSD_ObjData* value)
+{
+    HSD_TObj* tobj = static_cast<HSD_TObj*>(object);
+    if (!tobj || !value)
+        return;
+    switch (type) {
+    case HSD_A_T_TIMG: {
+        const int frame = static_cast<int>(value->fv);
+        if (tobj->imagetbl && frame >= 0 && frame < tobj->n_imagetbl &&
+            tobj->imagetbl[frame].v)
+            tobj->imagedesc = reinterpret_cast<HSD_ImageDesc*>(
+                static_cast<uintptr_t>(tobj->imagetbl[frame].v));
+        break;
+    }
+    case HSD_A_T_BLEND: case HSD_A_T_TS_BLEND:
+        tobj->blending = value->fv;
+        break;
+    case HSD_A_T_TRAU: tobj->translate.x = value->fv; break;
+    case HSD_A_T_TRAV: tobj->translate.y = value->fv; break;
+    case HSD_A_T_SCAU: tobj->scale.x = value->fv; break;
+    case HSD_A_T_SCAV: tobj->scale.y = value->fv; break;
+    case HSD_A_T_ROTX: tobj->rotate.x = value->fv; break;
+    case HSD_A_T_ROTY: tobj->rotate.y = value->fv; break;
+    case HSD_A_T_ROTZ: tobj->rotate.z = value->fv; break;
     }
 }
 
@@ -255,9 +288,8 @@ void HSD_TObjReqAnimAllByFlags(HSD_TObj* tobj, f32 frame, u32 flags)
 
 void HSD_TObjAnimAll(HSD_TObj* tobj)
 {
-    /* Texture descriptors and frame tables are retained. Their callback
-     * mapping is the next backend step; material/JObj animation already runs. */
-    (void) tobj;
+    for (; tobj; tobj = tobj->next)
+        HSD_AObjInterpretAnim(tobj->aobj, tobj, M360_TObjUpdate);
 }
 
 void HSD_TObjRemoveAll(HSD_TObj* tobj)

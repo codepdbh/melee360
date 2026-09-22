@@ -38,8 +38,9 @@ public:
 private:
     IDirect3DTexture9* ResolveTitleTexture(IDirect3DDevice9* device, const void* key);
     void DrawTitleMesh(IDirect3DDevice9* device);
-    const void* textureKeys_[128];
-    IDirect3DTexture9* titleTextures_[128];
+    const void* textureImageKeys_[512];
+    const void* texturePaletteKeys_[512];
+    IDirect3DTexture9* titleTextures_[512];
     unsigned textureCount_;
     const void* vertexTextures_[32766];
     const void* vertexTextures1_[32766];
