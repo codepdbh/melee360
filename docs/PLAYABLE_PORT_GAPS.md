@@ -19,19 +19,17 @@ The HUD vertex capacity was increased and quad submissions are chunked.
   or fighter gameplay modules. The current main loop is a viewer loop.
 - `src/xdk/hsdjobj_xdk.cpp` still provides placeholder HSD draw callbacks and
   current-camera handling. The preview renderer bypasses these callbacks.
-- Geometry is fitted in XY to a diagnostic panel. Original camera projection,
-  per-object textures, GX TEV effects, depth and skinning remain incomplete.
+- The preview uses original camera descriptor values and a first-texture binding
+  per PObj. Full CObj handling, GX TEV effects, depth and skinning remain incomplete.
 - Scene transitions, fighter loading, action states, stage collision, combat,
   match rules and game audio must be integrated and tested together.
 
-## Acceptance criteria
-
 ## Gameplay compiler probe
 
-Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles fighter,
-Wait, title and menu-animation translation units independently into the ignored
-`build-x360/gameplay-probe` directory. It intentionally fails until all three
-compile; it neither links them into the XEX nor replaces the working binary.
+Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles 19 original
+translation units independently into the ignored `build-x360/gameplay-probe`
+directory. It fails if any unit fails; it neither links them into the XEX nor
+replaces the working binary.
 The probe-only compatibility header preserves static assertions.
 
 Title, menu-animation and fighter Wait units now compile in C. The probe
@@ -40,12 +38,27 @@ preserving their expressions while making them valid C constant expressions.
 Original upstream files are not edited. Predicate, OSCalendarTime and
 RETURN_IF are supplied by the compatibility header.
 
-All four compilation probes now pass, including fighter.c. Indexed castle
+All 19 compilation probes now pass, including fighter.c, ftcommon, ftanim,
+ftaction, ftcoll, ftparts, ftdata, Wait, Walk, Jump, Fall, Dash, Run, Turn,
+Landing, Attack1, AttackAir, title and menu. Indexed castle
 offsetof checks are expressed as base offsets plus element/member offsets in
 generated overlays; the assertions remain active. Floating-point classification
 uses XDK _fpclass, with explicit handling of float subnormals before promotion.
 Compilation is not linking or execution of a fighter; its gameplay dependencies
 still need to be integrated.
+
+Generated source adaptations hoist declarations for the old C frontend and
+explicitly cast native relocated animation-table slots. Upstream sources are
+not changed. Compiler warnings still require review before runtime integration.
+
+Run `tools/audit_gameplay_symbols.ps1` after the probe and runtime build to
+inventory references absent from their object definitions. The current 19-object
+probe reports 1,229 distinct symbols, saved to ignored
+`build-x360/gameplay-probe/unresolved-symbols.json` with requesting modules.
+This conservative object-level inventory includes SDK/library references and
+unreachable functions; it is not a linker test or a count of runtime failures.
+It also assumes the existing runtime objects are current. No missing gameplay
+functions have been replaced with success-returning stubs.
 
 The XEX now invokes original `mn_8022ED6C` and `mn_8022F298` for title animation
 looping. The build extracts these two function bodies verbatim from mn_22EC.c

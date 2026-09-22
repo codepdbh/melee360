@@ -3,6 +3,10 @@
 #include "hsdjobj_xdk_compat.h"
 #include <float.h>
 #include <math.h>
+#define F32_MAX FLT_MAX
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#endif
 #ifndef FP_NAN
 #define FP_NAN 1
 #define FP_INFINITE 2
