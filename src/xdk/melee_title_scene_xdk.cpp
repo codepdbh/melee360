@@ -991,3 +991,10 @@ unsigned M360_BuildMenuMesh(MeleeTitleVertex* vertices, unsigned capacity)
     s_fog = previousFog;
     return count;
 }
+
+void M360_UpdateMenuModels(void)
+{
+    // mn_8022EAE0 advances the original background JObj on every frame.
+    if (s_menuModels[0])
+        HSD_JObjAnimAll(s_menuModels[0]);
+}

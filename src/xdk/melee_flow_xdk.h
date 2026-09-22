@@ -20,6 +20,7 @@ struct MeleeFlow {
     unsigned transitions;
     unsigned openingPlays;
     unsigned menuSelection;
+    unsigned menuNoticeFrames;
     bool movieVisible;
     bool titleVisible;
     bool movieReady;

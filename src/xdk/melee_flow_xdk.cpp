@@ -91,6 +91,7 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         flow->titleVisible = true;
     } else {
         flow->menuSelection = 0;
+        flow->menuNoticeFrames = 0;
         PlayBgm(flow->rulesBgm, audio);
         flow->movieVisible = false;
         flow->titleVisible = false;
@@ -150,16 +151,22 @@ void UpdateMenu(MeleeFlow* flow, unsigned __int64 buttons,
                 MeleeAudioStatus* audio)
 {
     ++flow->sceneTick;
+    if (flow->menuNoticeFrames)
+        --flow->menuNoticeFrames;
     if (buttons & kPadUp) {
         flow->menuSelection = (flow->menuSelection + kMainMenuSelectionCount - 1) %
                               kMainMenuSelectionCount;
         M360_Trace("input.menu.selection", flow->menuSelection);
+        flow->menuNoticeFrames = 0;
     } else if (buttons & kPadDown) {
         flow->menuSelection = (flow->menuSelection + 1) % kMainMenuSelectionCount;
         M360_Trace("input.menu.selection", flow->menuSelection);
+        flow->menuNoticeFrames = 0;
     }
-    if (buttons & kPadConfirm)
+    if (buttons & kPadConfirm) {
         M360_Trace("input.menu.confirm.selection", flow->menuSelection);
+        flow->menuNoticeFrames = 180;
+    }
     if (buttons & kPadCancel) {
         M360_Trace("input.menu.back", flow->sceneTick);
         EnterState(flow, kFlowTitle, audio);
