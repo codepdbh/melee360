@@ -61,6 +61,7 @@ LibXenon implementations.
 | GX display-list translation | ✅ Title PObj triangles, quads, strips and fans plus direct/indexed position, color and UV attributes are translated to material-colored D3D9 triangles |
 | Interactive native title viewer | ✅ LB+RB cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances; Start is reserved for scene integration |
 | Original HSD audio engine (`synth.c`/`devcom.c`) | ✅ Voice alloc/priority-stealing, ADSR-style volume ramp, pitch/pan curves and the DVD/ARAM command queue linked and host-validated; AX/AI/AR/DVD hardware entry points stubbed (no audible output yet) |
+| Real Melee music output | ✅ `menu01.hps` read from the ISO, HALPST/DSP-ADPCM decoded natively and streamed through XAudio2 at boot, looping; host test checks decode continuity and Xenia outputs audible sound |
 | Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal

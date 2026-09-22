@@ -243,6 +243,23 @@ $gcmArgs = @(
 & $compiler $gcmArgs
 if ($LASTEXITCODE -ne 0) { throw 'GameCube FST reader compilation failed.' }
 
+Write-Host '[M360][XEX] compiling HPS/DSP-ADPCM decoder and XAudio2 stream'
+$audioObjects = @()
+foreach ($audioSource in @('src\common\dsp_adpcm.c', 'src\common\hps.c')) {
+    $audioObject = Join-Path $build ([IO.Path]::GetFileNameWithoutExtension($audioSource) + '.obj')
+    & $compiler @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
+        '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$includeXbox", "/I$includeSys",
+        "/Fo$audioObject", (Join-Path $root $audioSource))
+    if ($LASTEXITCODE -ne 0) { throw "$audioSource compilation failed." }
+    $audioObjects += $audioObject
+}
+$audioObject = Join-Path $build 'melee_audio_xdk.obj'
+& $compiler @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$includeXbox", "/I$includeSys",
+    "/Fo$audioObject", (Join-Path $root 'src\xdk\melee_audio_xdk.cpp'))
+if ($LASTEXITCODE -ne 0) { throw 'XAudio2 stream compilation failed.' }
+$audioObjects += $audioObject
+
 Write-Host '[M360][XEX] compiling PowerPC source'
 $compileArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
@@ -576,7 +593,9 @@ $linkArgs = @(
     $hsdAnimWrapperObject, $aobjObject, $dobjObject, $robjObject,
     $utilObject, $bytecodeObject,
     $hsdJObjWrapperObject, $jobjObject, $wobjObject,
-    $hsdSynthWrapperObject, $synthObject, $devcomObject,
+    $hsdSynthWrapperObject, $synthObject, $devcomObject
+) + $audioObjects + @(
+    'xaudio2.lib', 'xmcore.lib',
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
 & $linker $linkArgs

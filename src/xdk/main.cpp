@@ -3,6 +3,7 @@
 
 #include "melee_pad_xdk.h"
 #include "melee_boot_xdk.h"
+#include "melee_audio_xdk.h"
 #include "sprite_renderer.h"
 
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
@@ -772,12 +773,28 @@ void __cdecl main()
     OutputDebugStringA(bootSucceeded ? "[M360][BOOT] GALE01 data ready\n"
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
+    MeleeAudioStatus audio;
+    const bool audioStarted =
+        M360_AudioStart("game:\\melee.iso", "audio/menu01.hps", &audio);
+    TraceStage("audio.file.found", audio.fileFound);
+    TraceStage("audio.file.size", audio.fileSize);
+    TraceStage("audio.sample_rate", audio.sampleRate);
+    TraceStage("audio.channels", audio.channels);
+    TraceStage("audio.xaudio2_create.hr", static_cast<unsigned>(audio.createResult));
+    TraceStage("audio.mastering_voice.hr", static_cast<unsigned>(audio.masterResult));
+    TraceStage("audio.source_voice.hr", static_cast<unsigned>(audio.sourceResult));
+    TraceStage("audio.start.hr", static_cast<unsigned>(audio.startResult));
+    TraceStage("audio.adpcm_frames", audio.adpcmFrames);
+    TraceStage("audio.buffers_submitted", audio.buffersSubmitted);
+    TraceStage("audio.playing", audioStarted);
+
     unsigned titleView = titleMeshVertexCount ? 2u :
                          (titleTextureDecoded ? 1u : 0u);
     unsigned frameCount = 0;
     for (;;) {
         const DWORD now = GetTickCount();
 
+        M360_AudioUpdate(&audio);
         HSD_PadRenewStatus();
         gm_EvaluateAllControllerInputs();
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
@@ -828,6 +845,15 @@ void __cdecl main()
                 hash = (hash ^ bytes[i]) * 16777619u;
             TraceStage("mesh.hash", hash);
             TraceStage("mesh.vertices", titleMeshVertexCount);
+        }
+        if (frameCount == 120 || frameCount == 600 || frameCount == 1200) {
+            TraceStage("audio.frame", frameCount);
+            TraceStage("audio.buffers_submitted", audio.buffersSubmitted);
+            TraceStage("audio.samples_played", audio.samplesPlayed);
+            TraceStage("audio.adpcm_frames", audio.adpcmFrames);
+            TraceStage("audio.blocks_entered", audio.blocksEntered);
+            TraceStage("audio.loops", audio.loops);
+            TraceStage("audio.history_mismatches", audio.historyMismatches);
         }
     }
 
