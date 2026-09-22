@@ -796,6 +796,16 @@ void __cdecl main()
     TraceStage("menu.archive.bytes", boot.menuArchiveSize);
     TraceStage("menu.archive.symbols", boot.menuSymbolsResolved);
     TraceStage("menu.archive.ready", boot.menuArchiveValid);
+    unsigned menuModels = 0;
+    unsigned menuJoints = 0;
+    const bool menuModelsReady = boot.menuArchiveValid &&
+        M360_LoadMenuModels(&menuModels, &menuJoints);
+    TraceStage("menu.models.loaded", menuModels);
+    TraceStage("menu.models.joints", menuJoints);
+    TraceStage("menu.models.ready", menuModelsReady);
+    const unsigned menuPreviewVertices = menuModelsReady
+        ? M360_BuildMenuMesh(g_titleMesh, 32766) : 0;
+    TraceStage("menu.mesh.vertices", menuPreviewVertices);
     M360_FlowStart(&flow, &audio);
     TraceStage("audio.file.found", audio.fileFound);
     TraceStage("audio.file.size", audio.fileSize);
@@ -842,12 +852,13 @@ void __cdecl main()
         }
         M360_FlowUpdate(&flow, triggered, &audio);
 
-        titleMeshVertexCount = flow.titleVisible
-            ? M360_BuildTitleMesh(g_titleMesh, 32766) : 0;
+        titleMeshVertexCount = flow.state == kFlowMainMenu && menuModelsReady
+            ? M360_BuildMenuMesh(g_titleMesh, 32766)
+            : (flow.titleVisible ? M360_BuildTitleMesh(g_titleMesh, 32766) : 0);
 
         device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
         renderer.Begin();
-        if (flow.state == kFlowMainMenu)
+        if (flow.state == kFlowMainMenu && !titleMeshVertexCount)
             RenderMenuPlaceholder(renderer, flow);
         else
             renderer.AddQuad(160.0f, 0.0f, 960.0f, 720.0f,
@@ -896,6 +907,8 @@ void __cdecl main()
                 ++framesOver20ms;
         }
         if (frameCount == 1 || frameCount == 120) {
+            if (flow.state == kFlowMainMenu)
+                TraceStage("menu.mesh.frame_vertices", titleMeshVertexCount);
             TraceStage("present.frame", frameCount);
             TraceStage("present.result", static_cast<unsigned>(presented));
             TraceStage("present.hud", hudVisible);

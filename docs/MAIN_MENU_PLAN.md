@@ -2,9 +2,10 @@
 
 Research notes for replacing the placeholder MAIN MENU screen with the original
 Melee main menu. Upstream paths are relative to `upstream/melee-pc/src/`.
-The archive-loading foundation is now implemented: the XEX parses the menu
-archive alongside the title archive and resolves 83/83 requested symbols in
-Xenia. The original menu scene and its rendering are still pending.
+The XEX parses the menu archive alongside the title archive, resolves 83/83
+requested symbols, constructs 20 model trees with 351 joints and submits 3,732
+projected vertices in Xenia. The original `mnmain` input and scene lifecycle,
+texture animation, effects and visual fidelity remain pending.
 
 ## Scene flow
 
@@ -122,10 +123,10 @@ lbCardNew/lbSnap work by calling `mnMain_Scene_OnEnter` with
    are running in Xenia (`menu.archive.symbols: 83`). Next: provide the original
    `lbArchive_LoadSymbols`/language/heap boundary and validate the loaded JObj
    counts before calling the menu scene.
-2. P1, static real menu: `melee_menu_scene_xdk.cpp` driver, `cobj.c` with GX
-   shimmed, native `HSD_JObjDisp` in `melee_render_hsd_xdk.cpp` (generalising
-   the title's PObj decode), `mnMain_Scene_OnEnter` called from
-   `melee_flow_xdk.cpp`. Visible: background, panel, five options in idle pose.
+2. P1, static real menu: the XEX now loads the JObj trees and translates their
+   geometry through the title renderer using the menu camera descriptor. Next:
+   inspect the visible result and replace the native preview path with the
+   original `mnMain_Scene_OnEnter` lifecycle and GX-facing rendering hooks.
 3. P2, faithful look: TObj animation, MatAnim, LObj lighting, fog, XLU sort,
    skinning, TEV modes.
 4. P3, navigation: `mn_8022DB10` and submenu thinks on the gm_1A36 mapper, B

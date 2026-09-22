@@ -42,6 +42,17 @@ unsigned s_drawBlend;
 unsigned s_drawCull;
 bool s_drawVertexColor;
 HSD_CameraDescPerspective* s_camera;
+HSD_CameraDescPerspective* s_menuCamera;
+HSD_FogDesc* s_menuFog;
+const char* const s_menuNames[] = {
+    "MenMainBack", "MenMainPanel", "MenMainConTop", "MenMainCursor",
+    "MenMainConRl", "MenMainCursorRl", "MenMainNmRl",
+    "MenMainCursorTr01", "MenMainCursorTr02", "MenMainCursorTr03",
+    "MenMainCursorTr04", "MenMainCursorRl01", "MenMainCursorRl02",
+    "MenMainCursorRl03", "MenMainCursorRl04", "MenMainCursorRl05",
+    "MenMainConIs", "MenMainCursorIs", "MenMainConSs", "MenMainCursorSs"
+};
+HSD_JObj* s_menuModels[20];
 
 bool ProjectCamera(MeleeTitleVertex* vertices, unsigned* count)
 {
@@ -914,4 +925,66 @@ unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity)
         vertices[i].z = 0.0f;
     }
     return count - (count % 3);
+}
+
+bool M360_LoadMenuModels(unsigned* loadedModels, unsigned* loadedJoints)
+{
+    if (!loadedModels || !loadedJoints)
+        return false;
+    *loadedModels = *loadedJoints = 0;
+    s_menuCamera = static_cast<HSD_CameraDescPerspective*>(
+        M360_GetMenuHsdPublic("ScMenMain_cam_int1_camera"));
+    s_menuFog = static_cast<HSD_FogDesc*>(
+        M360_GetMenuHsdPublic("ScMenMain_fog"));
+    static const char* const suffixes[4] = {
+        "_Top_joint", "_Top_animjoint", "_Top_matanim_joint",
+        "_Top_shapeanim_joint"
+    };
+    for (unsigned model = 0; model < 20; ++model) {
+        char symbol[80];
+        void* roots[4];
+        for (unsigned part = 0; part < 4; ++part) {
+            strcpy(symbol, s_menuNames[model]);
+            strcat(symbol, suffixes[part]);
+            roots[part] = M360_GetMenuHsdPublic(symbol);
+        }
+        if (!roots[0])
+            continue;
+        s_menuModels[model] = HSD_JObjLoadJoint(static_cast<HSD_Joint*>(roots[0]));
+        if (!s_menuModels[model])
+            continue;
+        ++*loadedModels;
+        HSD_JObjAddAnimAll(s_menuModels[model],
+            static_cast<HSD_AnimJoint*>(roots[1]),
+            static_cast<HSD_MatAnimJoint*>(roots[2]),
+            static_cast<HSD_ShapeAnimJoint*>(roots[3]));
+        HSD_JObjReqAnimAll(s_menuModels[model], 0.0f);
+        HSD_JObjAnimAll(s_menuModels[model]);
+        MeleeTitleSceneStatus counts;
+        ZeroMemory(&counts, sizeof(counts));
+        CountTree(s_menuModels[model], &counts);
+        *loadedJoints += counts.jointCount;
+    }
+    return *loadedModels == 20 && s_menuCamera;
+}
+
+unsigned M360_BuildMenuMesh(MeleeTitleVertex* vertices, unsigned capacity)
+{
+    if (!vertices || capacity < 3 || !s_menuCamera)
+        return 0;
+    HSD_CameraDescPerspective* previousCamera = s_camera;
+    HSD_FogDesc* previousFog = s_fog;
+    s_camera = s_menuCamera;
+    s_fog = s_menuFog;
+    static const unsigned passes[] = { 1, 4, 2 };
+    unsigned count = 0;
+    for (unsigned pass = 0; pass < 3; ++pass)
+        for (unsigned model = 0; model < 20 && count + 3 <= capacity; ++model)
+            if (s_menuModels[model])
+                DecodeJObj(s_menuModels[model], passes[pass], vertices,
+                           capacity, &count);
+    ProjectCamera(vertices, &count);
+    s_camera = previousCamera;
+    s_fog = previousFog;
+    return count;
 }

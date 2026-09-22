@@ -41,6 +41,8 @@ bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
 void M360_FreeDecodedTitleTexture(unsigned* pixels);
 unsigned M360_TitleTextureWrap(const void* texture);
 unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity);
+bool M360_LoadMenuModels(unsigned* loadedModels, unsigned* loadedJoints);
+unsigned M360_BuildMenuMesh(MeleeTitleVertex* vertices, unsigned capacity);
 bool M360_DecodeTitleTexture(const void* texture, unsigned** pixels,
                             unsigned* width, unsigned* height);
 

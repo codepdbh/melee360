@@ -161,6 +161,8 @@ void M360_FlowStart(MeleeFlow* flow, MeleeAudioStatus* audio)
     flow->rulesBgm = kBgmMenu01;
     flow->state = kFlowMainMenu;
     EnterState(flow, kFlowOpening, audio);
+    if (GetFileAttributesA("game:\\menu_preview.enable") != static_cast<DWORD>(-1))
+        EnterState(flow, kFlowMainMenu, audio);
 }
 
 void M360_FlowUpdate(MeleeFlow* flow, unsigned __int64 buttonsTriggered,
