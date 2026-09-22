@@ -32,7 +32,7 @@
 - M28 Opening movie: `MvOpen.mth` from the user's ISO decodes and presents in Xenia. The latest trace reached frame 634 with zero decode errors while audio samples advanced.
 - M29 Title-to-menu flow: Start reaches a temporary menu screen. `mnmain.c` compiles but the original menu scene is not yet active.
 - M30 Menu archive load: the XEX relocates `MnMaAll.usd` from the user's ISO in a second HAL archive and resolves all 83 model, camera, light and fog symbols required by `mnMain_Scene_OnEnter`. Xenia reports `menu.archive.symbols: 83` and `menu.archive.ready: 1`. JObj construction and drawing remain pending.
-- M31 Menu geometry: the XEX now constructs 20 original JObj model trees with 351 joints, binds their animation data, projects them using the original menu camera descriptor and submits 3,732 vertices to D3D9. A local opt-in menu preview reached 120 frames with successful Present calls in Xenia. `mnmain` input/scene lifecycle, texture animation, TEV, lighting and visual fidelity remain pending.
+- M31 Menu geometry: the XEX constructs 20 original JObj model trees with 351 joints and binds their animation data. A screenshot exposed that drawing every tree at once superimposed unrelated submenus. The main-scene draw now uses Back, Panel and ConTop only, following `mnMain_Scene_OnEnter`, and submits 2,982 vertices to D3D9. A local opt-in preview reached 120 frames with successful Present calls in Xenia. Cursor clones, `mnmain` input/scene lifecycle, texture animation, TEV, lighting and visual fidelity remain pending.
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic

@@ -65,7 +65,7 @@ LibXenon implementations.
 | Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
 | Title-to-menu flow | 🚧 Start reaches a menu mesh built from original `MnMaAll.usd` models; original `mnmain` logic and full visual effects remain pending |
 | Original menu archive | ✅ XEX loads `MnMaAll.usd` from the user's ISO and resolves all 83 requested symbols in Xenia |
-| Original menu geometry | ✅ Xenia loads 20 model trees and 351 joints, submits 3,732 vertices through the native renderer; visual fidelity still needs inspection |
+| Original menu geometry | 🚧 Xenia loads 20 model trees and 351 joints; the main scene submits 2,982 vertices from Back, Panel and ConTop. Cursor clones, animation and visual fidelity remain pending |
 | Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal

@@ -3,8 +3,8 @@
 Research notes for replacing the placeholder MAIN MENU screen with the original
 Melee main menu. Upstream paths are relative to `upstream/melee-pc/src/`.
 The XEX parses the menu archive alongside the title archive, resolves 83/83
-requested symbols, constructs 20 model trees with 351 joints and submits 3,732
-projected vertices in Xenia. The original `mnmain` input and scene lifecycle,
+requested symbols, constructs 20 model trees with 351 joints and submits 2,982
+projected vertices from the three main-scene models in Xenia. The original `mnmain` input and scene lifecycle,
 texture animation, effects and visual fidelity remain pending.
 
 ## Scene flow

@@ -803,6 +803,7 @@ void __cdecl main()
     TraceStage("menu.models.loaded", menuModels);
     TraceStage("menu.models.joints", menuJoints);
     TraceStage("menu.models.ready", menuModelsReady);
+    TraceStage("menu.models.visible.main", menuModelsReady ? 3 : 0);
     const unsigned menuPreviewVertices = menuModelsReady
         ? M360_BuildMenuMesh(g_titleMesh, 32766) : 0;
     TraceStage("menu.mesh.vertices", menuPreviewVertices);

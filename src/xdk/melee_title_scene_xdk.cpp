@@ -978,8 +978,11 @@ unsigned M360_BuildMenuMesh(MeleeTitleVertex* vertices, unsigned capacity)
     s_fog = s_menuFog;
     static const unsigned passes[] = { 1, 4, 2 };
     unsigned count = 0;
+    // mnMain_Scene_OnEnter creates Back (GX link 2), Panel (3), then
+    // ConTop (4) for MENU_KIND_MAIN. The other archive models belong to
+    // submenus; drawing all twenty at once overlays unrelated screens.
     for (unsigned pass = 0; pass < 3; ++pass)
-        for (unsigned model = 0; model < 20 && count + 3 <= capacity; ++model)
+        for (unsigned model = 0; model < 3 && count + 3 <= capacity; ++model)
             if (s_menuModels[model])
                 DecodeJObj(s_menuModels[model], passes[pass], vertices,
                            capacity, &count);

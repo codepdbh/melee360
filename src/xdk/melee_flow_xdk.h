@@ -19,6 +19,7 @@ struct MeleeFlow {
     unsigned rulesBgm;
     unsigned transitions;
     unsigned openingPlays;
+    unsigned menuSelection;
     bool movieVisible;
     bool titleVisible;
     bool movieReady;

@@ -16,6 +16,9 @@ const unsigned kTitleTimeout = 600;
 const unsigned kTitleCountdown = 20;
 const unsigned __int64 kPadConfirm = 1ull << 32;
 const unsigned __int64 kPadCancel = 1ull << 33;
+const unsigned __int64 kPadUp = 1ull << 36;
+const unsigned __int64 kPadDown = 1ull << 37;
+const unsigned kMainMenuSelectionCount = 5;
 
 bool s_allStagesUnlocked = false;
 bool s_allCharactersUnlocked = false;
@@ -87,6 +90,7 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         flow->movieVisible = false;
         flow->titleVisible = true;
     } else {
+        flow->menuSelection = 0;
         PlayBgm(flow->rulesBgm, audio);
         flow->movieVisible = false;
         flow->titleVisible = false;
@@ -146,6 +150,16 @@ void UpdateMenu(MeleeFlow* flow, unsigned __int64 buttons,
                 MeleeAudioStatus* audio)
 {
     ++flow->sceneTick;
+    if (buttons & kPadUp) {
+        flow->menuSelection = (flow->menuSelection + kMainMenuSelectionCount - 1) %
+                              kMainMenuSelectionCount;
+        M360_Trace("input.menu.selection", flow->menuSelection);
+    } else if (buttons & kPadDown) {
+        flow->menuSelection = (flow->menuSelection + 1) % kMainMenuSelectionCount;
+        M360_Trace("input.menu.selection", flow->menuSelection);
+    }
+    if (buttons & kPadConfirm)
+        M360_Trace("input.menu.confirm.selection", flow->menuSelection);
     if (buttons & kPadCancel) {
         M360_Trace("input.menu.back", flow->sceneTick);
         EnterState(flow, kFlowTitle, audio);
