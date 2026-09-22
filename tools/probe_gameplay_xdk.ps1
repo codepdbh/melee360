@@ -25,6 +25,11 @@ $ground = [regex]::Replace($ground, 'GRCASTLE_ALIAS\((\w+), (\w+), (\w+), (\w+)\
 New-Item -ItemType Directory -Force "$overlay/melee/gr" | Out-Null
 $ground = $ground.Replace('GRCASTLE_BELOW(grCastle_GroundVars8, plat[0].state, grCastle_GroundVars7, xD0);', 'STATIC_ASSERT(offsetof(struct grCastle_GroundVars8, plat) + offsetof(struct grCastle_Platform, state) + sizeof(((struct grCastle_Platform*)0)->state) <= offsetof(struct grCastle_GroundVars7, xD0));')
 Set-Content -Encoding ASCII "$overlay/melee/gr/types.h" $ground
+$fighterTypes = Get-Content -Raw "$root/upstream/melee-pc/src/melee/ft/types.h"
+# MSVC starts a new bitfield allocation unit when the base type changes.
+# The original mixed u8/u16 view must occupy one 16-bit unit at fp+596.
+$fighterTypes = $fighterTypes.Replace('/* fp+596:0 */ u8 x0 : 7;', '/* fp+596:0 */ u16 x0 : 7;')
+Set-Content -Encoding ASCII "$overlay/melee/ft/types.h" $fighterTypes
 $sources = @('melee/ft/fighter.c', 'melee/ft/kinds/ftCommon/ftCo_Wait.c', 'melee/gm/gmtitle.c', 'melee/mn/mn_22EC.c',
     'melee/ft/ftcommon.c', 'melee/ft/ftanim.c', 'melee/ft/ftaction.c',
     'melee/ft/ftcoll.c', 'melee/ft/ftparts.c', 'melee/ft/ftdata.c',
@@ -36,13 +41,33 @@ $sources = @('melee/ft/fighter.c', 'melee/ft/kinds/ftCommon/ftCo_Wait.c', 'melee
     'melee/ft/kinds/ftCommon/ftCo_Turn.c',
     'melee/ft/kinds/ftCommon/ftCo_Landing.c',
     'melee/ft/kinds/ftCommon/ftCo_Attack1.c',
-    'melee/ft/kinds/ftCommon/ftCo_AttackAir.c')
+    'melee/ft/kinds/ftCommon/ftCo_AttackAir.c',
+    'melee/ft/ftwalkcommon.c', 'melee/ft/ft_081B.c',
+    'melee/ft/ft_0892.c', 'melee/ft/ftchangeparam.c',
+    'melee/mp/mpcoll.c', 'melee/mp/mplib.c',
+    'melee/lb/lbcollision.c', 'melee/lb/lbvector.c',
+    '../../../src/xdk/gameplay_layout_probe.c')
 $failed = 0
+$results = @()
+# Invalidate the previous success before compiling, so interrupted builds cannot
+# cause the dependency audit to silently consume stale objects.
+@{ Complete = $false; Objects = @() } | ConvertTo-Json | Set-Content -Encoding UTF8 "$output/manifest.json"
 foreach ($source in $sources) {
     $name = [IO.Path]::GetFileNameWithoutExtension($source)
     $inputSource = "$root/upstream/melee-pc/src/$source"
-    if ($name -in @('ftanim','ftparts','ftdata')) {
+    if ($name -in @('ftanim','ftparts','ftdata','ftchangeparam','mpcoll')) {
         $adapted = Get-Content -Raw $inputSource
+        if ($name -eq 'ftchangeparam') {
+            $adapted = [regex]::Replace($adapted,
+                '        fp->x294_itPickup = \*DP\(struct itPickup, fp->ft_data->x40\);\s+DiscVec2\* v = DP\(DiscVec2, fp->ft_data->x50\);',
+                "        DiscVec2* v;`r`n        fp->x294_itPickup = *DP(struct itPickup, fp->ft_data->x40);`r`n        v = DP(DiscVec2, fp->ft_data->x50);")
+        }
+        if ($name -eq 'mpcoll') {
+            # XDK sinf/cosf macros expand to sin/cos. Rename the local values
+            # so they cannot shadow the math functions after preprocessing.
+            $adapted = [regex]::Replace($adapted, '\bsin\b', 'ecb_sine')
+            $adapted = [regex]::Replace($adapted, '\bcos\b', 'ecb_cosine')
+        }
         if ($name -eq 'ftanim') {
             $adapted = $adapted.Replace('    r5->n_costume_tobjs = r4->x8;', "    DiscU32* xC;`r`n    r5->n_costume_tobjs = r4->x8;")
             $adapted = $adapted.Replace('    DiscU32* xC = DP(DiscU32, r4->xC);', '    xC = DP(DiscU32, r4->xC);')
@@ -72,12 +97,15 @@ foreach ($source in $sources) {
         "/FI$root/src/xdk/gameplay_probe_compat.h", "/Fo$output/$name.obj",
         "/I$(Split-Path "$root/upstream/melee-pc/src/$source")", $inputSource)
     # Force overlay guards before source-relative includes can select originals.
-    $forced = @("/FI$overlay/melee/ft/forward.h", "/FI$overlay/melee/ft/kinds/ftCommon/forward.h")
+    $forced = @("/FI$overlay/melee/ft/forward.h", "/FI$overlay/melee/ft/kinds/ftCommon/forward.h", "/FI$overlay/melee/ft/types.h")
     $lines = & $compiler @arguments @forced
     $result = $LASTEXITCODE
     $lines | Out-File -Encoding utf8 "$output/$name.log"
     Write-Output "$source exit=$result"
+    $results += [pscustomobject]@{ Source = $source; Object = "$name.obj"; ExitCode = $result }
     $lines | Select-String 'error ' | Select-Object -First 8
     if ($result -ne 0) { ++$failed }
 }
+@{ Complete = ($failed -eq 0); Objects = $results } | ConvertTo-Json -Depth 4 |
+    Set-Content -Encoding UTF8 "$output/manifest.json"
 if ($failed) { throw "$failed gameplay compilation probes failed; see $output" }

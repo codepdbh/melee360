@@ -5,7 +5,11 @@ $root = Split-Path -Parent $PSScriptRoot
 $dumpbin = Join-Path $env:XEDK 'bin/win32/dumpbin.exe'
 if (!(Test-Path $dumpbin)) { throw 'XDK dumpbin unavailable.' }
 $probe = Join-Path $root 'build-x360/gameplay-probe'
-$objects = @(Get-ChildItem $probe -Filter '*.obj')
+$manifestPath = Join-Path $probe 'manifest.json'
+if (!(Test-Path $manifestPath)) { throw 'Run tools/probe_gameplay_xdk.ps1 to create a current manifest.' }
+$manifest = Get-Content -Raw $manifestPath | ConvertFrom-Json
+if (!$manifest.Complete) { throw 'Last gameplay probe did not complete successfully; refusing stale objects.' }
+$objects = @($manifest.Objects | ForEach-Object { Get-Item (Join-Path $probe $_.Object) })
 if (!$objects.Count) { throw 'Run tools/probe_gameplay_xdk.ps1 first.' }
 $definitions = @{}
 $references = @{}

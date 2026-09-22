@@ -486,6 +486,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Original jobj.c compilation failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Original wobj.c compilation failed.' }
 
 Write-Host '[M360][XEX] linking Xbox 360 PowerPC PE'
+& (Join-Path $PSScriptRoot 'probe_gameplay_xdk.ps1')
+$gameplayLayoutObject = Join-Path $root 'build-x360/gameplay-probe/gameplay_layout_probe.obj'
 $menuAnimObject = Join-Path $build 'mn_22EC.obj'
 $menuSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/mn/mn_22EC.c')
 $menuSlice = $menuSource.Substring(0, $menuSource.IndexOf('float mn_8022EC18('))
@@ -513,7 +515,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original menu animation compilation failed.' }
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
-    $menuAnimObject,
+    $menuAnimObject, $gameplayLayoutObject,
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject, $bootObject, $archiveObject,
     $titleSceneObject, $gcmObject,

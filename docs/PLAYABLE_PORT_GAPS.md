@@ -26,10 +26,10 @@ The HUD vertex capacity was increased and quad submissions are chunked.
 
 ## Gameplay compiler probe
 
-Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles 19 original
+Run `tools/probe_gameplay_xdk.ps1` with XEDK configured. It compiles 27 original
 translation units independently into the ignored `build-x360/gameplay-probe`
-directory. It fails if any unit fails; it neither links them into the XEX nor
-replaces the working binary.
+directory, plus a native layout test. It fails if any unit fails. The XEX build
+runs this probe and links only its layout test, not the fighter gameplay objects.
 The probe-only compatibility header preserves static assertions.
 
 Title, menu-animation and fighter Wait units now compile in C. The probe
@@ -38,9 +38,10 @@ preserving their expressions while making them valid C constant expressions.
 Original upstream files are not edited. Predicate, OSCalendarTime and
 RETURN_IF are supplied by the compatibility header.
 
-All 19 compilation probes now pass, including fighter.c, ftcommon, ftanim,
+All 27 original compilation probes now pass, including fighter.c, ftcommon, ftanim,
 ftaction, ftcoll, ftparts, ftdata, Wait, Walk, Jump, Fall, Dash, Run, Turn,
-Landing, Attack1, AttackAir, title and menu. Indexed castle
+Landing, Attack1, AttackAir, title and menu, plus ftwalkcommon, ft_081B,
+ft_0892, ftchangeparam, mpcoll, mplib, lbcollision and lbvector. Indexed castle
 offsetof checks are expressed as base offsets plus element/member offsets in
 generated overlays; the assertions remain active. Floating-point classification
 uses XDK _fpclass, with explicit handling of float subnormals before promotion.
@@ -52,13 +53,29 @@ explicitly cast native relocated animation-table slots. Upstream sources are
 not changed. Compiler warnings still require review before runtime integration.
 
 Run `tools/audit_gameplay_symbols.ps1` after the probe and runtime build to
-inventory references absent from their object definitions. The current 19-object
-probe reports 1,229 distinct symbols, saved to ignored
+inventory references absent from their object definitions. It writes the current
+unresolved-symbol count and requesting modules to
 `build-x360/gameplay-probe/unresolved-symbols.json` with requesting modules.
 This conservative object-level inventory includes SDK/library references and
 unreachable functions; it is not a linker test or a count of runtime failures.
 It also assumes the existing runtime objects are current. No missing gameplay
-functions have been replaced with success-returning stubs.
+functions have been replaced with success-returning stubs. The audit now reads
+the successful compilation manifest rather than every old object in the folder.
+Interrupted or failed probes invalidate that manifest.
+
+## Verified native fighter layout slice
+
+The XDK gave the mixed u8/u16 animation bitfield at Fighter+0x596 separate
+allocation units, placing x598 at 0x59C and input at 0x624. A generated header
+overlay uses a single u16 allocation unit. Explicit assertions now check x598
+at 0x598, input at 0x620, key movement fields and selected disc-record sizes.
+They do not depend on the legacy disabled ASSERT_SIZE macro. This is not a
+validation of the entire Fighter structure or every bitfield.
+
+`gameplay_layout_probe.c` also checks the integer/bitfield animation-flag aliases
+in the XEX. The latest Xenia trace reports `gameplay.layout: 1`, then successful
+boot and Present at frame 120. This is a target compatibility test, not running
+fighter state transitions or combat. No new playable scene is claimed.
 
 The XEX now invokes original `mn_8022ED6C` and `mn_8022F298` for title animation
 looping. The build extracts these two function bodies verbatim from mn_22EC.c

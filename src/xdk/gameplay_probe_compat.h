@@ -3,6 +3,12 @@
 #include "hsdjobj_xdk_compat.h"
 #include <float.h>
 #include <math.h>
+#ifndef M_TAU
+#define M_TAU 6.283185307179586
+#endif
+#ifndef SDATA
+#define SDATA
+#endif
 #define F32_MAX FLT_MAX
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))

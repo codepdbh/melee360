@@ -18,6 +18,7 @@ extern "C" void* HSD_MemAlloc(int size);
 extern "C" void HSD_Free(void* ptr);
 extern "C" int M360_HsdAnimSelfTest(void);
 extern "C" int M360_HsdJObjSelfTest(void);
+extern "C" int M360_GameplayLayoutProbe(void);
 
 #include "hsd_class_xdk_compat.h"
 extern "C" {
@@ -737,6 +738,7 @@ void __cdecl main()
 
     MeleeBootStatus boot;
     TraceStage("boot.begin", GetTickCount());
+    TraceStage("gameplay.layout", M360_GameplayLayoutProbe());
     const bool bootSucceeded = M360_BootMelee("game:\\melee.iso", &boot);
     TraceStage("boot.complete", bootSucceeded);
     if (boot.bannerDecoded)
