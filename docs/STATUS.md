@@ -24,7 +24,7 @@
 - M21 XDK HAL archive relocation: complete in Xenia Canary (381,781-byte `GmTtAll.dat`, 1,909 relocations, first public root `ScTitle_cam_int1_camanim`)
 - M22 Title scene graph load: XEX resolves the 12 symbols requested by `gmtitle.c`, constructs both real JObj trees, binds their animation graphs and reports joint/DObj counts on screen
 - M23 Title render-data graph: DObj now retains runtime MObj/PObj/TObj objects, material and PE data, GX attribute/display-list pointers, texture image descriptors, palettes and LOD/TEV metadata; XEX reports real material, polygon and texture counts
-- M24 First real title texture: XEX decodes the common tiled GameCube texture formats (including paletted and CMPR), uploads the first `GmTtAll.dat` image to D3D9, and lets A/Start switch it interactively with the ISO banner while title animation continues
+- M24 First real title texture: XEX decodes the common tiled GameCube texture formats (including paletted and CMPR), uploads the first `GmTtAll.dat` image to D3D9, and lets LB+RB switch it interactively with the ISO banner while title animation continues. A/Start are no longer diagnostic view shortcuts.
 - M25 First real GX mesh: XEX parses each bounded PObj display list using HAL's `n_display << 5` byte length, accepts direct/index8/index16 position, color and TEX0 attributes, triangulates GX triangles/quads/strips/fans, applies the live JObj matrices and submits the result as chunked D3D9 triangle lists; the HUD reports the resulting `TRIS` count
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos

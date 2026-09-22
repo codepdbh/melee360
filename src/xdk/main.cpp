@@ -405,7 +405,7 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
             1);
     AddText(g_muted, 76, 672,
             "NATIVE POWERPC / GAMECUBE FST / RGB5A3 / HAL ARCHIVE", 2);
-    AddText(g_muted, 980, 616, "A START VIEW", 1);
+    AddText(g_muted, 980, 616, "LB+RB VIEW", 1);
     AddText(g_muted, 1100, 616, "Y EXIT", 1);
 }
 
@@ -772,10 +772,16 @@ void __cdecl main()
         const HSD_PadStatus& input = HSD_PadGameStatus[0];
         if (input.button & HSD_PAD_Y)
             break;
-        if (input.trigger & (HSD_PAD_A | HSD_PAD_START)) {
+        // Keep confirmation buttons available for the original scene input.
+        // Xenia's configured keyboard X is Start, not controller X.
+        const unsigned debugViewChord = HSD_PAD_L | HSD_PAD_R;
+        if ((input.button & debugViewChord) == debugViewChord &&
+            (input.trigger & debugViewChord)) {
             titleView = (titleView + 1) % 3;
             TraceStage("input.view", titleView);
         }
+        if (input.trigger & HSD_PAD_START)
+            TraceStage("input.start.pending_scene", 1);
 
         if (boot.titleScene.animationsBound)
             M360_AnimateTitleScene();

@@ -71,13 +71,15 @@ Run it with a local Xenia Canary build:
 The launcher enables Xenia's keyboard-as-controller mode. Default Canary
 bindings retained by the bootstrap are:
 
-- `;`: cycle GX mesh / title texture / disc banner (Xbox A)
-- `X`: cycle GX mesh / title texture / disc banner (Start)
+- `1` + `3`: cycle GX mesh / title texture / disc banner (LB+RB together)
+- `X`: Start, reserved for original scene integration; currently only logged
 - `P`: exit (Xbox Y)
 
-An Xbox-compatible controller uses A or Start to cycle the displayed title
+An Xbox-compatible controller uses LB+RB together to cycle the displayed title
 resource and Y to exit. When geometry was decoded successfully, the viewer
 starts in GX mesh mode and the HUD shows the number of generated `TRIS`.
+Neither A nor Start switches diagnostic views. Start does not yet enter a menu
+or match; the trace records `input.start.pending_scene` to make that explicit.
 Pass `-DisableKeyboard` if keyboard emulation should remain disabled.
 
 This is an interactive native title-resource milestone, not a claim that

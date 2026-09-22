@@ -59,7 +59,7 @@ LibXenon implementations.
 | Real title-scene descriptors | ✅ JObj, DObj, MObj, PObj and TObj graphs loaded from the ISO, including GX display lists and image descriptors |
 | GameCube texture decoding | ✅ I4/I8/IA4/IA8/RGB565/RGB5A3/RGBA8/CI4/CI8/CMPR decoded from the title archive and uploaded to D3D9 |
 | GX display-list translation | ✅ Title PObj triangles, quads, strips and fans plus direct/indexed position, color and UV attributes are translated to material-colored D3D9 triangles |
-| Interactive native title viewer | ✅ A/Start cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances |
+| Interactive native title viewer | ✅ LB+RB cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances; Start is reserved for scene integration |
 | Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal
