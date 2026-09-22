@@ -18,6 +18,10 @@ struct MeleeBootStatus {
     unsigned relocationCount;
     unsigned publicCount;
     unsigned externalCount;
+    unsigned menuArchiveSize;
+    unsigned menuSymbolsResolved;
+    bool menuArchiveFound;
+    bool menuArchiveValid;
     char gameId[7];
     char title[65];
     char firstPublicSymbol[65];

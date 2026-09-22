@@ -10,5 +10,8 @@ bool M360_ParseHsdArchive(unsigned char* image, unsigned imageSize,
                           char* firstSymbol, size_t firstSymbolCapacity,
                           void** firstRoot);
 void* M360_GetHsdPublic(const char* symbol);
+bool M360_ParseMenuHsdArchive(unsigned char* image, unsigned imageSize,
+                              unsigned* resolvedSymbols);
+void* M360_GetMenuHsdPublic(const char* symbol);
 
 #endif

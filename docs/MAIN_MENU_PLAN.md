@@ -2,7 +2,9 @@
 
 Research notes for replacing the placeholder MAIN MENU screen with the original
 Melee main menu. Upstream paths are relative to `upstream/melee-pc/src/`.
-Nothing here is implemented yet.
+The archive-loading foundation is now implemented: the XEX parses the menu
+archive alongside the title archive and resolves 83/83 requested symbols in
+Xenia. The original menu scene and its rendering are still pending.
 
 ## Scene flow
 
@@ -116,10 +118,10 @@ native stand-ins for save/card/audio/leaf submenus. Skip gmmenumode's
 lbCardNew/lbSnap work by calling `mnMain_Scene_OnEnter` with
 `MenuEnterData{0,0,1}`.
 
-1. P0, assets: `src/xdk/melee_lb_xdk.c` (`lbArchive_LoadSymbols`,
-   `lbFileGetSize`, lbHeap, lbLang over gcm), multi-archive support, host test
-   for 83/83 symbols and 351/189/192/184 counts, trace
-   `menu.archive.symbols: 83`.
+1. P0, assets: multi-archive relocation and 83/83 public-symbol resolution
+   are running in Xenia (`menu.archive.symbols: 83`). Next: provide the original
+   `lbArchive_LoadSymbols`/language/heap boundary and validate the loaded JObj
+   counts before calling the menu scene.
 2. P1, static real menu: `melee_menu_scene_xdk.cpp` driver, `cobj.c` with GX
    shimmed, native `HSD_JObjDisp` in `melee_render_hsd_xdk.cpp` (generalising
    the title's PObj decode), `mnMain_Scene_OnEnter` called from

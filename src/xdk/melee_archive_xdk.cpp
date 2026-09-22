@@ -66,6 +66,7 @@ extern "C" {
 namespace {
 
 HSD_Archive s_titleArchive;
+HSD_Archive s_menuArchive;
 
 }
 
@@ -97,4 +98,50 @@ void* M360_GetHsdPublic(const char* symbol)
     if (!symbol || !s_titleArchive.data || !s_titleArchive.symbols)
         return 0;
     return HSD_ArchiveGetPublicAddress(&s_titleArchive, symbol);
+}
+
+bool M360_ParseMenuHsdArchive(unsigned char* image, unsigned imageSize,
+                              unsigned* resolvedSymbols)
+{
+    if (!image || !resolvedSymbols)
+        return false;
+    *resolvedSymbols = 0;
+    if (HSD_ArchiveParse(&s_menuArchive, image, imageSize) != 0 ||
+        !s_menuArchive.data || !s_menuArchive.symbols)
+        return false;
+    static const char* const modelNames[] = {
+        "MenMainBack", "MenMainPanel", "MenMainConTop", "MenMainCursor",
+        "MenMainConRl", "MenMainCursorRl", "MenMainNmRl",
+        "MenMainCursorTr01", "MenMainCursorTr02", "MenMainCursorTr03",
+        "MenMainCursorTr04", "MenMainCursorRl01", "MenMainCursorRl02",
+        "MenMainCursorRl03", "MenMainCursorRl04", "MenMainCursorRl05",
+        "MenMainConIs", "MenMainCursorIs", "MenMainConSs", "MenMainCursorSs"
+    };
+    static const char* const suffixes[] = {
+        "_Top_joint", "_Top_animjoint", "_Top_matanim_joint",
+        "_Top_shapeanim_joint"
+    };
+    char name[80];
+    for (unsigned model = 0; model < 20; ++model) {
+        for (unsigned part = 0; part < 4; ++part) {
+            strcpy(name, modelNames[model]);
+            strcat(name, suffixes[part]);
+            if (HSD_ArchiveGetPublicAddress(&s_menuArchive, name))
+                ++*resolvedSymbols;
+        }
+    }
+    static const char* const sceneSymbols[] = {
+        "ScMenMain_cam_int1_camera", "ScMenMain_scene_lights", "ScMenMain_fog"
+    };
+    for (unsigned i = 0; i < 3; ++i)
+        if (HSD_ArchiveGetPublicAddress(&s_menuArchive, sceneSymbols[i]))
+            ++*resolvedSymbols;
+    return *resolvedSymbols == 83;
+}
+
+void* M360_GetMenuHsdPublic(const char* symbol)
+{
+    if (!symbol || !s_menuArchive.data || !s_menuArchive.symbols)
+        return 0;
+    return HSD_ArchiveGetPublicAddress(&s_menuArchive, symbol);
 }

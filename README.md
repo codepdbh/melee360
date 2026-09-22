@@ -64,6 +64,7 @@ LibXenon implementations.
 | Real Melee music output | ✅ `menu01.hps` read from the ISO, HALPST/DSP-ADPCM decoded natively and streamed through XAudio2 at boot, looping; host test checks decode continuity and Xenia outputs audible sound |
 | Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
 | Title-to-menu flow | 🚧 Start reaches a temporary menu screen; original `mnmain` scene is not yet active |
+| Original menu archive | ✅ XEX loads `MnMaAll.usd` from the user's ISO and resolves all 83 requested symbols in Xenia |
 | Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal

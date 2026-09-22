@@ -31,6 +31,7 @@
 
 - M28 Opening movie: `MvOpen.mth` from the user's ISO decodes and presents in Xenia. The latest trace reached frame 634 with zero decode errors while audio samples advanced.
 - M29 Title-to-menu flow: Start reaches a temporary menu screen. `mnmain.c` compiles but the original menu scene is not yet active.
+- M30 Menu archive load: the XEX relocates `MnMaAll.usd` from the user's ISO in a second HAL archive and resolves all 83 model, camera, light and fog symbols required by `mnMain_Scene_OnEnter`. Xenia reports `menu.archive.symbols: 83` and `menu.archive.ready: 1`. JObj construction and drawing remain pending.
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic

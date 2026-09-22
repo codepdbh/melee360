@@ -172,6 +172,23 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
     else if (!status->titleArchiveValid)
         SetError(status, "GmTtAll validation failed");
 
+    struct m360_gcm_file menuFile;
+    if (m360_gcm_find(&gcm, status->languageUS ? "MnMaAll.usd" : "MnMaAll.dat",
+                      &menuFile)) {
+        status->menuArchiveFound = true;
+        status->menuArchiveSize = menuFile.size;
+        if (menuFile.size >= 0x20 && menuFile.size <= 8 * 1024 * 1024) {
+            unsigned char* menuImage = static_cast<unsigned char*>(malloc(menuFile.size));
+            if (menuImage &&
+                m360_gcm_read(&gcm, &menuFile, 0, menuImage, menuFile.size) ==
+                    menuFile.size) {
+                status->menuArchiveValid = M360_ParseMenuHsdArchive(
+                    menuImage, menuFile.size, &status->menuSymbolsResolved);
+            }
+            if (!status->menuArchiveValid)
+                free(menuImage);
+        }
+    }
     m360_gcm_unmount(&gcm);
     fclose(image);
     return status->discValid && status->fstMounted &&

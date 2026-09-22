@@ -792,6 +792,10 @@ void __cdecl main()
     TraceStage("movie.init", movieReady);
 
     MeleeFlow flow;
+    TraceStage("menu.archive.found", boot.menuArchiveFound);
+    TraceStage("menu.archive.bytes", boot.menuArchiveSize);
+    TraceStage("menu.archive.symbols", boot.menuSymbolsResolved);
+    TraceStage("menu.archive.ready", boot.menuArchiveValid);
     M360_FlowStart(&flow, &audio);
     TraceStage("audio.file.found", audio.fileFound);
     TraceStage("audio.file.size", audio.fileSize);
