@@ -125,7 +125,10 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
     }
 
     struct m360_gcm_file archiveFile;
-    if (m360_gcm_find(&gcm, "GmTtAll.dat", &archiveFile)) {
+    struct m360_gcm_file languageFile;
+    status->languageUS = m360_gcm_find(&gcm, "usa.ini", &languageFile) != 0;
+    if (m360_gcm_find(&gcm, status->languageUS ? "GmTtAll.usd" : "GmTtAll.dat",
+                      &archiveFile)) {
         status->titleArchiveFound = true;
         status->titleArchiveSize = archiveFile.size;
         unsigned char header[0x20];
@@ -167,7 +170,7 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
     if (!status->bannerDecoded)
         SetError(status, "opening.bnr decode failed");
     else if (!status->titleArchiveValid)
-        SetError(status, "GmTtAll.dat validation failed");
+        SetError(status, "GmTtAll validation failed");
 
     m360_gcm_unmount(&gcm);
     fclose(image);

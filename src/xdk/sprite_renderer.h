@@ -37,10 +37,24 @@ public:
 
 private:
     IDirect3DTexture9* ResolveTitleTexture(IDirect3DDevice9* device, const void* key);
-    const void* textureKeys_[64];
-    IDirect3DTexture9* titleTextures_[64];
+    void DrawTitleMesh(IDirect3DDevice9* device);
+    const void* textureKeys_[128];
+    IDirect3DTexture9* titleTextures_[128];
     unsigned textureCount_;
     const void* vertexTextures_[32766];
+    const void* vertexTextures1_[32766];
+    unsigned vertexBlend_[32766];
+    struct TitleVertex {
+        float x, y, z, w;
+        float red, green, blue, alpha;
+        float u, v;
+        float u1, v1, fog, unused;
+    };
+    TitleVertex titleVertices_[32766];
+    IDirect3DVertexShader9* titleVertexShader_;
+    IDirect3DPixelShader9* titlePixelShader_;
+    IDirect3DVertexDeclaration9* titleDeclaration_;
+    IDirect3DTexture9* whiteTexture_;
     struct Vertex {
         float x;
         float y;
@@ -66,7 +80,6 @@ private:
     IDirect3DTexture9* gameTexture_;
     Vertex bannerVertices_[4];
     Vertex gameVertices_[4];
-    Vertex titleVertices_[kMaxTitleVertices];
     unsigned titleVertexCount_;
     bool bannerQueued_;
     bool gameTextureQueued_;

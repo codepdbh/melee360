@@ -16,33 +16,24 @@ const unsigned kBufferFrames = 4096;
 IXAudio2* s_engine = 0;
 IXAudio2MasteringVoice* s_master = 0;
 IXAudio2SourceVoice* s_source = 0;
+FILE* s_image = 0;
+m360_gcm s_gcm;
+bool s_mounted = false;
 unsigned char* s_track = 0;
 m360_hps_stream s_stream;
 short s_pcm[kBufferCount][kBufferFrames * M360_HPS_MAX_CHANNELS];
 unsigned s_nextBuffer = 0;
 
-bool LoadTrack(const char* isoPath, const char* track,
-               MeleeAudioStatus* status)
+bool LoadTrack(const char* track, MeleeAudioStatus* status)
 {
-    FILE* image = fopen(isoPath, "rb");
-    if (!image)
+    m360_gcm_file file;
+    if (!s_mounted || !m360_gcm_find(&s_gcm, track, &file))
         return false;
-    m360_gcm gcm;
-    bool loaded = false;
-    if (m360_gcm_mount(&gcm, image) == 0) {
-        m360_gcm_file file;
-        if (m360_gcm_find(&gcm, track, &file)) {
-            status->fileFound = true;
-            status->fileSize = file.size;
-            s_track = static_cast<unsigned char*>(malloc(file.size));
-            loaded = s_track &&
-                     m360_gcm_read(&gcm, &file, 0, s_track, file.size) ==
-                         file.size;
-        }
-        m360_gcm_unmount(&gcm);
-    }
-    fclose(image);
-    return loaded;
+    status->fileFound = true;
+    status->fileSize = file.size;
+    s_track = static_cast<unsigned char*>(malloc(file.size));
+    return s_track &&
+           m360_gcm_read(&s_gcm, &file, 0, s_track, file.size) == file.size;
 }
 
 bool SubmitNext(MeleeAudioStatus* status)
@@ -74,26 +65,50 @@ void Snapshot(MeleeAudioStatus* status)
 
 } // namespace
 
-bool M360_AudioStart(const char* isoPath, const char* track,
-                     MeleeAudioStatus* status)
+bool M360_AudioInit(const char* isoPath, MeleeAudioStatus* status)
 {
     ZeroMemory(status, sizeof(*status));
     status->createResult = status->masterResult = status->sourceResult =
         status->startResult = E_FAIL;
-    if (!LoadTrack(isoPath, track, status) ||
-        !m360_hps_stream_open(&s_stream, s_track, status->fileSize))
-        return false;
-    status->headerValid = true;
-    status->sampleRate = s_stream.header.sample_rate;
-    status->channels = s_stream.header.channels;
-
+    s_image = fopen(isoPath, "rb");
+    s_mounted = s_image && m360_gcm_mount(&s_gcm, s_image) == 0;
     status->createResult = XAudio2Create(&s_engine, 0,
                                          XAUDIO2_DEFAULT_PROCESSOR);
     if (FAILED(status->createResult))
         return false;
     status->masterResult = s_engine->CreateMasteringVoice(&s_master);
-    if (FAILED(status->masterResult))
+    return s_mounted && SUCCEEDED(status->masterResult);
+}
+
+void M360_AudioStop(MeleeAudioStatus* status)
+{
+    if (s_source) {
+        s_source->Stop(0);
+        s_source->FlushSourceBuffers();
+        s_source->DestroyVoice();
+        s_source = 0;
+    }
+    free(s_track);
+    s_track = 0;
+    s_nextBuffer = 0;
+    status->playing = false;
+}
+
+bool M360_AudioPlay(const char* track, MeleeAudioStatus* status)
+{
+    M360_AudioStop(status);
+    status->fileFound = status->headerValid = status->finished = false;
+    status->fileSize = status->sampleRate = status->channels = 0;
+    status->buffersSubmitted = status->samplesPlayed = 0;
+    status->sourceResult = status->startResult = E_FAIL;
+    _snprintf(status->track, sizeof(status->track) - 1, "%s", track);
+    ++status->trackSwitches;
+    if (!s_master || !LoadTrack(track, status) ||
+        !m360_hps_stream_open(&s_stream, s_track, status->fileSize))
         return false;
+    status->headerValid = true;
+    status->sampleRate = s_stream.header.sample_rate;
+    status->channels = s_stream.header.channels;
 
     WAVEFORMATEX format;
     ZeroMemory(&format, sizeof(format));
@@ -117,15 +132,17 @@ bool M360_AudioStart(const char* isoPath, const char* track,
 
 void M360_AudioUpdate(MeleeAudioStatus* status)
 {
-    if (!status->playing)
+    if (!status->playing || !s_source)
         return;
     XAUDIO2_VOICE_STATE state;
     s_source->GetState(&state);
     status->samplesPlayed = static_cast<unsigned>(state.SamplesPlayed);
-    for (unsigned queued = state.BuffersQueued; queued < kBufferCount;
-         ++queued) {
+    unsigned queued = state.BuffersQueued;
+    for (; queued < kBufferCount; ++queued) {
         if (!SubmitNext(status))
             break;
     }
+    if (!queued)
+        status->finished = true;
     Snapshot(status);
 }

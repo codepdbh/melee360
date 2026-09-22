@@ -4,6 +4,8 @@
 #include "melee_pad_xdk.h"
 #include "melee_boot_xdk.h"
 #include "melee_audio_xdk.h"
+#include "melee_flow_xdk.h"
+#include "melee_movie_xdk.h"
 #include "sprite_renderer.h"
 
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
@@ -344,7 +346,6 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
     AddOutline(g_panel, 62, 125, 1156, 500, 3);
     AddRect(g_cyan, 62, 125, 7, 500);
     AddRect(g_panel, 95, 270, 1090, 2);
-    AddOutline(g_panel, 335, 292, 610, 224, 3);
 
     AddText(g_green, 62, 25, "MELEE360", 6);
     AddText(g_white, 430, 38, "GALE01 NATIVE BOOT", 3);
@@ -362,7 +363,8 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
     AddText(g_cyan, 96, 188, "OPENING BANNER", 2);
     AddText(boot.bannerDecoded ? g_green : g_white, 350, 188,
             boot.bannerDecoded ? "DECODED" : "FAILED", 2);
-    AddText(g_cyan, 600, 188, "GMTTALL.DAT", 2);
+    AddText(g_cyan, 600, 188,
+            boot.languageUS ? "GMTTALL.USD" : "GMTTALL.DAT", 2);
     AddText(boot.titleArchiveValid ? g_green : g_white, 835, 188,
             boot.titleArchiveRelocated ? "RELOCATED" : "FAILED", 2);
 
@@ -410,8 +412,7 @@ void BuildScene(bool meleeCodePassed, const MeleeBootStatus& boot)
             1);
     AddText(g_muted, 76, 672,
             "NATIVE POWERPC / GAMECUBE FST / RGB5A3 / HAL ARCHIVE", 2);
-    AddText(g_muted, 980, 616, "LB+RB VIEW", 1);
-    AddText(g_muted, 1100, 616, "Y EXIT", 1);
+    AddText(g_muted, 1010, 616, "BACK HIDES HUD", 1);
 }
 
 SpriteColor ToSpriteColor(D3DCOLOR color, float alpha = 1.0f)
@@ -445,43 +446,47 @@ void DrawRect(SpriteRenderer& renderer, LONG x, LONG y, LONG width,
                      ToSpriteColor(color, alpha));
 }
 
-void RenderBackdrop(SpriteRenderer& renderer, DWORD now)
+void RenderHudBackdrop(SpriteRenderer& renderer)
 {
-    const SpriteColor skyTop = { 0.035f, 0.020f, 0.120f, 1.0f };
-    const SpriteColor skyBottom = { 0.010f, 0.100f, 0.160f, 1.0f };
-    const SpriteColor horizonTop = { 0.10f, 0.20f, 0.30f, 0.45f };
-    const SpriteColor horizonBottom = { 0.01f, 0.04f, 0.09f, 0.0f };
-    renderer.AddGradientQuad(0.0f, 0.0f, 1280.0f, 720.0f,
-                             skyTop, skyBottom);
-    renderer.AddGradientQuad(0.0f, 300.0f, 1280.0f, 320.0f,
-                             horizonTop, horizonBottom);
-
-    const D3DCOLOR starColor = D3DCOLOR_XRGB(153, 220, 255);
-    for (unsigned i = 0; i < 34; ++i) {
-        const LONG x = static_cast<LONG>((i * 193u + 71u) % 1240u) + 20;
-        const LONG y = static_cast<LONG>((i * 83u + 37u) % 310u) + 95;
-        const LONG size = ((i + now / 350) % 5 == 0) ? 3 : 2;
-        DrawRect(renderer, x, y, size, size, starColor, 0.72f);
-    }
-
-    const D3DCOLOR moon = D3DCOLOR_XRGB(171, 231, 245);
-    DrawRect(renderer, 1045, 285, 74, 12, moon, 0.16f);
-    DrawRect(renderer, 1032, 297, 100, 34, moon, 0.16f);
-    DrawRect(renderer, 1025, 331, 114, 42, moon, 0.16f);
-    DrawRect(renderer, 1032, 373, 100, 34, moon, 0.16f);
-    DrawRect(renderer, 1045, 407, 74, 12, moon, 0.16f);
-
-    const D3DCOLOR skyline = D3DCOLOR_XRGB(10, 25, 48);
-    for (unsigned building = 0; building < 18; ++building) {
-        const LONG x = 70 + static_cast<LONG>(building) * 68;
-        const LONG height = 45 + static_cast<LONG>((building * 47) % 105);
-        DrawRect(renderer, x, 574 - height, 52, height, skyline, 0.82f);
-    }
-
-    const SpriteColor panelTop = { 0.025f, 0.045f, 0.095f, 0.92f };
-    const SpriteColor panelBottom = { 0.008f, 0.018f, 0.045f, 0.96f };
+    const SpriteColor shade = { 0.0f, 0.0f, 0.0f, 0.55f };
+    renderer.AddGradientQuad(0.0f, 0.0f, 1280.0f, 100.0f, shade, shade);
+    const SpriteColor panelTop = { 0.025f, 0.045f, 0.095f, 0.80f };
+    const SpriteColor panelBottom = { 0.008f, 0.018f, 0.045f, 0.85f };
     renderer.AddGradientQuad(62.0f, 125.0f, 1156.0f, 500.0f,
                              panelTop, panelBottom);
+    renderer.AddGradientQuad(62.0f, 660.0f, 1156.0f, 40.0f, shade, shade);
+}
+
+void BuildHudStatus(const MeleeFlow& flow, const MeleeMovieStatus& movie,
+                    const MeleeAudioStatus& audio, unsigned frameUs)
+{
+    g_dynamic.count = 0;
+    AddText(g_dynamic, 96, 300, "FLOW", 2);
+    AddText(g_dynamic, 220, 300, M360_FlowStateName(flow.state), 2);
+    AddText(g_dynamic, 96, 330, "MOVIE FRAME", 2);
+    AddUnsigned(g_dynamic, 270, 330, movie.currentFrame, 2);
+    AddText(g_dynamic, 360, 330, "DECODED", 2);
+    AddUnsigned(g_dynamic, 470, 330, movie.framesDecoded, 2);
+    AddText(g_dynamic, 96, 360, "DECODE US", 2);
+    AddUnsigned(g_dynamic, 240, 360, movie.decodeUsAverage, 2);
+    AddText(g_dynamic, 360, 360, "FRAME US", 2);
+    AddUnsigned(g_dynamic, 470, 360, frameUs, 2);
+    AddText(g_dynamic, 96, 390, "AUDIO", 2);
+    AddText(g_dynamic, 190, 390, audio.playing ? audio.track : "SILENT", 2);
+}
+
+void RenderMenuPlaceholder(SpriteRenderer& renderer, const MeleeFlow& flow)
+{
+    const SpriteColor top = { 0.02f, 0.03f, 0.10f, 1.0f };
+    const SpriteColor bottom = { 0.00f, 0.00f, 0.02f, 1.0f };
+    renderer.AddGradientQuad(160.0f, 0.0f, 960.0f, 720.0f, top, bottom);
+    g_dynamic.count = 0;
+    AddText(g_dynamic, 460, 250, "MAIN MENU", 6);
+    AddText(g_dynamic, 322, 360, "NEXT MILESTONE: ORIGINAL MNMAIN SCENE", 2);
+    AddText(g_dynamic, 322, 400,
+            flow.rulesBgm == 0x36 ? "MUSIC: MENU3.HPS" : "MUSIC: MENU01.HPS", 2);
+    AddText(g_dynamic, 322, 480, "B: BACK TO TITLE", 2);
+    RenderBatch(renderer, g_dynamic);
 }
 
 void ResetGame(GameState& game)
@@ -617,6 +622,11 @@ void RenderGame(SpriteRenderer& renderer, const GameState& game, DWORD now)
 }
 
 } // namespace
+
+void M360_Trace(const char* stage, unsigned value)
+{
+    TraceStage(stage, value);
+}
 
 void __cdecl main()
 {
@@ -774,70 +784,117 @@ void __cdecl main()
                                      : "[M360][BOOT] GALE01 boot failed\n");
 
     MeleeAudioStatus audio;
-    const bool audioStarted =
-        M360_AudioStart("game:\\melee.iso", "audio/menu01.hps", &audio);
+    const bool audioReady = M360_AudioInit("game:\\melee.iso", &audio);
+    TraceStage("audio.xaudio2_create.hr", static_cast<unsigned>(audio.createResult));
+    TraceStage("audio.mastering_voice.hr", static_cast<unsigned>(audio.masterResult));
+    TraceStage("audio.ready", audioReady);
+    const bool movieReady = M360_MovieInit(device, "game:\\melee.iso");
+    TraceStage("movie.init", movieReady);
+
+    MeleeFlow flow;
+    M360_FlowStart(&flow, &audio);
     TraceStage("audio.file.found", audio.fileFound);
     TraceStage("audio.file.size", audio.fileSize);
     TraceStage("audio.sample_rate", audio.sampleRate);
     TraceStage("audio.channels", audio.channels);
-    TraceStage("audio.xaudio2_create.hr", static_cast<unsigned>(audio.createResult));
-    TraceStage("audio.mastering_voice.hr", static_cast<unsigned>(audio.masterResult));
     TraceStage("audio.source_voice.hr", static_cast<unsigned>(audio.sourceResult));
     TraceStage("audio.start.hr", static_cast<unsigned>(audio.startResult));
-    TraceStage("audio.adpcm_frames", audio.adpcmFrames);
-    TraceStage("audio.buffers_submitted", audio.buffersSubmitted);
-    TraceStage("audio.playing", audioStarted);
+    TraceStage("audio.playing", audio.playing);
 
-    unsigned titleView = titleMeshVertexCount ? 2u :
-                         (titleTextureDecoded ? 1u : 0u);
+    bool hudVisible = false;
+    WORD previousPadButtons = 0;
     unsigned frameCount = 0;
+    unsigned frameUs = 0;
+    unsigned frameUsMax = 0;
+    unsigned __int64 frameUsTotal = 0;
+    unsigned framesOver20ms = 0;
+    LARGE_INTEGER frequency;
+    LARGE_INTEGER previousFrame;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&previousFrame);
     for (;;) {
-        const DWORD now = GetTickCount();
-
         M360_AudioUpdate(&audio);
         HSD_PadRenewStatus();
         gm_EvaluateAllControllerInputs();
-        const HSD_PadStatus& input = HSD_PadGameStatus[0];
-        if (input.button & HSD_PAD_Y)
-            break;
-        // Keep confirmation buttons available for the original scene input.
-        // Xenia's configured keyboard X is Start, not controller X.
-        const unsigned debugViewChord = HSD_PAD_L | HSD_PAD_R;
-        if ((input.button & debugViewChord) == debugViewChord &&
-            (input.trigger & debugViewChord)) {
-            titleView = (titleView + 1) % 3;
-            TraceStage("input.view", titleView);
+        WORD padButtons = 0;
+        for (DWORD user = 0; user < XUSER_MAX_COUNT; ++user) {
+            XINPUT_STATE pad;
+            ZeroMemory(&pad, sizeof(pad));
+            if (XInputGetState(user, &pad) == ERROR_SUCCESS)
+                padButtons |= pad.Gamepad.wButtons;
         }
-        if (gm_GetButtonsTriggered(4) & HSD_PAD_START)
-            TraceStage("input.start.pending_scene", 1);
+        const bool backPressed = (padButtons & XINPUT_GAMEPAD_BACK) &&
+                                 !(previousPadButtons & XINPUT_GAMEPAD_BACK);
+        previousPadButtons = padButtons;
+        if (backPressed) {
+            hudVisible = !hudVisible;
+            TraceStage("input.hud", hudVisible);
+        }
+        const unsigned __int64 triggered = gm_GetButtonsTriggered(4);
+        if (triggered) {
+            TraceStage("input.triggered.frame", frameCount);
+            TraceStage("input.triggered.buttons", static_cast<unsigned>(triggered));
+            TraceStage("input.triggered.menu", static_cast<unsigned>(triggered >> 32));
+        }
+        M360_FlowUpdate(&flow, triggered, &audio);
 
-        if (boot.titleScene.animationsBound)
-            M360_AnimateTitleScene();
-        if (titleView == 2 && boot.titleScene.modelsLoaded)
-            titleMeshVertexCount = M360_BuildTitleMesh(g_titleMesh, 32766);
+        titleMeshVertexCount = flow.titleVisible
+            ? M360_BuildTitleMesh(g_titleMesh, 32766) : 0;
 
-        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(12, 16, 40),
-                      1.0f, 0);
+        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
         renderer.Begin();
-        RenderBackdrop(renderer, now);
-        RenderBatch(renderer, g_panel);
-        RenderBatch(renderer, g_cyan);
-        RenderBatch(renderer, g_white);
-        RenderBatch(renderer, g_muted);
-        RenderBatch(renderer, g_green);
-        if (titleView == 2 && titleMeshVertexCount)
-            renderer.AddTitleMesh(g_titleMesh, titleMeshVertexCount);
-        else if (titleView == 1 && titleTextureDecoded)
-            renderer.AddGameTexture(352.0f, 292.0f, 576.0f, 224.0f);
-        else if (boot.bannerDecoded)
-            renderer.AddBanner(352.0f, 308.0f, 576.0f, 192.0f);
+        if (flow.state == kFlowMainMenu)
+            RenderMenuPlaceholder(renderer, flow);
+        else
+            renderer.AddQuad(160.0f, 0.0f, 960.0f, 720.0f,
+                             ToSpriteColor(M360_TitleClearColor()));
         renderer.End(device);
+        if (flow.movieVisible)
+            M360_MovieDraw(device);
+        if (titleMeshVertexCount) {
+            RECT scissor = { 160, 0, 1120, 720 };
+            device->SetScissorRect(&scissor);
+            device->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE);
+            renderer.Begin();
+            renderer.AddTitleMesh(g_titleMesh, titleMeshVertexCount);
+            renderer.End(device);
+            device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+        }
+        MeleeMovieStatus movie;
+        M360_MovieGetStatus(&movie);
+        if (hudVisible) {
+            renderer.Begin();
+            RenderHudBackdrop(renderer);
+            RenderBatch(renderer, g_panel);
+            RenderBatch(renderer, g_cyan);
+            RenderBatch(renderer, g_white);
+            RenderBatch(renderer, g_muted);
+            RenderBatch(renderer, g_green);
+            BuildHudStatus(flow, movie, audio, frameUs);
+            RenderBatch(renderer, g_dynamic);
+            if (boot.bannerDecoded)
+                renderer.AddBanner(720.0f, 330.0f, 384.0f, 128.0f);
+            renderer.End(device);
+        }
         const HRESULT presented = device->Present(0, 0, 0, 0);
         ++frameCount;
+
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        frameUs = static_cast<unsigned>((now.QuadPart - previousFrame.QuadPart) *
+                                        1000000 / frequency.QuadPart);
+        previousFrame = now;
+        if (frameCount > 1) {
+            frameUsTotal += frameUs;
+            if (frameUs > frameUsMax)
+                frameUsMax = frameUs;
+            if (frameUs > 20000)
+                ++framesOver20ms;
+        }
         if (frameCount == 1 || frameCount == 120) {
             TraceStage("present.frame", frameCount);
             TraceStage("present.result", static_cast<unsigned>(presented));
-            TraceStage("present.view", titleView);
+            TraceStage("present.hud", hudVisible);
             unsigned hash = 2166136261u;
             const unsigned char* bytes =
                 reinterpret_cast<const unsigned char*>(g_titleMesh);
@@ -846,18 +903,32 @@ void __cdecl main()
             TraceStage("mesh.hash", hash);
             TraceStage("mesh.vertices", titleMeshVertexCount);
         }
-        if (frameCount == 120 || frameCount == 600 || frameCount == 1200) {
-            TraceStage("audio.frame", frameCount);
-            TraceStage("audio.buffers_submitted", audio.buffersSubmitted);
+        if (frameCount % 300 == 0) {
+            TraceStage("loop.frame", frameCount);
+            TraceStage("loop.flow_state", static_cast<unsigned>(flow.state));
+            TraceStage("loop.scene_tick", flow.sceneTick);
+            TraceStage("loop.frame_us_avg",
+                       static_cast<unsigned>(frameUsTotal / (frameCount - 1)));
+            TraceStage("loop.frame_us_max", frameUsMax);
+            TraceStage("loop.frames_over_20ms", framesOver20ms);
+            TraceStage("loop.mesh_vertices", titleMeshVertexCount);
+            if (flow.state == kFlowOpening) {
+                TraceStage("movie.frame", movie.currentFrame);
+                TraceStage("movie.visible", flow.movieVisible);
+                TraceStage("movie.decoded", movie.framesDecoded);
+                TraceStage("movie.presented", movie.framesPresented);
+                TraceStage("movie.late_updates", movie.framesLate);
+                TraceStage("movie.skipped", movie.framesSkipped);
+                TraceStage("movie.errors", movie.decodeErrors);
+                TraceStage("movie.decode_us_last", movie.decodeUsLast);
+                TraceStage("movie.decode_us_avg", movie.decodeUsAverage);
+                TraceStage("movie.decode_us_max", movie.decodeUsMax);
+                TraceStage("movie.upload_us_last", movie.uploadUsLast);
+            }
+            TraceStage("audio.playing", audio.playing);
             TraceStage("audio.samples_played", audio.samplesPlayed);
-            TraceStage("audio.adpcm_frames", audio.adpcmFrames);
-            TraceStage("audio.blocks_entered", audio.blocksEntered);
-            TraceStage("audio.loops", audio.loops);
+            TraceStage("audio.buffers_submitted", audio.buffersSubmitted);
             TraceStage("audio.history_mismatches", audio.historyMismatches);
         }
     }
-
-    renderer.Shutdown();
-    device->Release();
-    d3d->Release();
 }

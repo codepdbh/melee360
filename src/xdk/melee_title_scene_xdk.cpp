@@ -12,8 +12,10 @@ extern "C" {
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/cobj.h>
 #include <sysdolphin/baselib/wobj.h>
+#include <sysdolphin/baselib/fog.h>
 #include <melee/mn/types.h>
 float mn_8022ED6C(HSD_JObj*, AnimLoopSettings*);
+float mn_8022F298(HSD_JObj*);
 }
 
 namespace {
@@ -25,9 +27,20 @@ struct TitleModelSymbols {
     HSD_ShapeAnimJoint* shapeAnim;
 };
 
-HSD_JObj* s_titleModels[2];
+enum { kLogo, kBackground, kFlash, kModelCount };
+
+HSD_JObj* s_titleModels[kModelCount];
+bool s_visible[kModelCount];
+bool s_openingMode;
+bool s_backgroundStarted;
+AnimLoopSettings s_logoLoop = { 0, 1600.0f, 400.0f };
+AnimLoopSettings s_backgroundLoop = { 0, 1330.0f, 130.0f };
+HSD_FogDesc* s_fog;
 HSD_TObj* s_firstTexture;
 const HSD_TObj* s_drawTexture;
+unsigned s_drawBlend;
+unsigned s_drawCull;
+bool s_drawVertexColor;
 HSD_CameraDescPerspective* s_camera;
 
 bool ProjectCamera(MeleeTitleVertex* vertices, unsigned* count)
@@ -74,10 +87,24 @@ bool ProjectCamera(MeleeTitleVertex* vertices, unsigned* count)
             }
             const float vx = d[0]*x[0]+d[1]*x[1]+d[2]*x[2];
             const float vy = d[0]*y[0]+d[1]*y[1]+d[2]*y[2];
-            triangle[i].x = 640 + 105*s_camera->aspect *
+            triangle[i].x = 640 + 480 *
                 ((c*vx+s*vy)*focal/(depth*s_camera->aspect));
-            triangle[i].y = 404 - 105*((-s*vx+c*vy)*focal/depth);
+            triangle[i].y = 360 - 360*((-s*vx+c*vy)*focal/depth);
             triangle[i].z = 0;
+            triangle[i].fog = 0.0f;
+            if (s_fog && s_fog->end > s_fog->start) {
+                const float fog = (depth - s_fog->start) / (s_fog->end - s_fog->start);
+                triangle[i].fog = fog < 0.0f ? 0.0f : (fog > 1.0f ? 1.0f : fog);
+            }
+        }
+        if (visible && triangle[0].cull) {
+            const float cross =
+                (triangle[1].x - triangle[0].x) * (triangle[2].y - triangle[0].y) -
+                (triangle[1].y - triangle[0].y) * (triangle[2].x - triangle[0].x);
+            if ((triangle[0].cull & 2) && cross < 0.0f)
+                visible = false;
+            if ((triangle[0].cull & 1) && cross > 0.0f)
+                visible = false;
         }
         if (visible)
             for (unsigned i = 0; i < 3; ++i) vertices[output++] = triangle[i];
@@ -158,7 +185,7 @@ bool DecodeTexture(const HSD_TObj* texture, unsigned* pixels)
                         ((p & 1) ? 0 : 4)) & 15;
                     const unsigned color = format == GX_TF_C4
                         ? PaletteColor(texture, nibble)
-                        : (0xFF000000u | (Expand4To8(nibble) * 0x010101u));
+                        : Expand4To8(nibble) * 0x01010101u;
                     PutPixel(pixels, width, height, bx + p % 8, by + p / 8,
                              color);
                 }
@@ -179,7 +206,7 @@ bool DecodeTexture(const HSD_TObj* texture, unsigned* pixels)
                         const unsigned intensity = Expand4To8(value & 15);
                         color = (alpha << 24) | (intensity * 0x010101u);
                     } else {
-                        color = 0xFF000000u | (value * 0x010101u);
+                        color = value * 0x01010101u;
                     }
                     PutPixel(pixels, width, height, bx + p % 8, by + p / 8,
                              color);
@@ -350,8 +377,9 @@ unsigned DecodeColor(const unsigned char* data, GXCompType type)
 }
 
 struct ParsedVertex {
-    float x, y, z, u, v;
+    float x, y, z, u, v, u1, v1;
     unsigned color;
+    bool hasColor;
 };
 
 const unsigned char* ParseVertex(const HSD_VtxDescList* descriptors,
@@ -359,7 +387,9 @@ const unsigned char* ParseVertex(const HSD_VtxDescList* descriptors,
                                  ParsedVertex* vertex)
 {
     vertex->x = vertex->y = vertex->z = vertex->u = vertex->v = 0.0f;
+    vertex->u1 = vertex->v1 = 0.0f;
     vertex->color = 0xFFFFFFFFu;
+    vertex->hasColor = false;
     unsigned descriptorCount = 0;
     for (const HSD_VtxDescList* desc = descriptors;
          desc && desc->attr != GX_VA_NULL && descriptorCount < 32;
@@ -392,8 +422,15 @@ const unsigned char* ParseVertex(const HSD_VtxDescList* descriptors,
             if (desc->comp_cnt == GX_TEX_ST)
                 vertex->v = ReadComponent(value + size,
                                           desc->comp_type, desc->frac);
+        } else if (desc->attr == GX_VA_TEX1) {
+            const unsigned size = ComponentSize(desc->comp_type);
+            vertex->u1 = ReadComponent(value, desc->comp_type, desc->frac);
+            if (desc->comp_cnt == GX_TEX_ST)
+                vertex->v1 = ReadComponent(value + size,
+                                           desc->comp_type, desc->frac);
         } else if (desc->attr == GX_VA_CLR0) {
             vertex->color = DecodeColor(value, desc->comp_type);
+            vertex->hasColor = true;
         }
     }
     return stream;
@@ -431,6 +468,24 @@ void TransformVertex(const HSD_JObj* jobj, ParsedVertex* vertex)
                 jobj->mtx[2][2] * z + jobj->mtx[2][3];
 }
 
+void TextureCoord(const HSD_TObj* t, const ParsedVertex& source, float* outU,
+                  float* outV)
+{
+    const bool second = t && t->src == GX_TG_TEX1;
+    *outU = second ? source.u1 : source.u;
+    *outV = second ? source.v1 : source.v;
+    if (!t || !t->repeat_s || !t->repeat_t)
+        return;
+    const float scaleU = fabsf(t->scale.x) < 1e-6f ? 0.0f : t->repeat_s / t->scale.x;
+    const float scaleV = fabsf(t->scale.y) < 1e-6f ? 0.0f : t->repeat_t / t->scale.y;
+    const float u = *outU - t->translate.x;
+    const float v = *outV - t->translate.y -
+        (t->wrap_t == GX_MIRROR && scaleV != 0.0f ? 1.0f / scaleV : 0.0f);
+    const float c = cosf(-t->rotate.z), s = sinf(-t->rotate.z);
+    *outU = (c * u - s * v) * scaleU;
+    *outV = (s * u + c * v) * scaleV;
+}
+
 void EmitVertex(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
                 const ParsedVertex& source, unsigned materialColor)
 {
@@ -440,10 +495,16 @@ void EmitVertex(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
     target.x = source.x;
     target.y = source.y;
     target.z = source.z;
-    target.u = source.u;
-    target.v = source.v;
-    target.color = source.color == 0xFFFFFFFFu ? materialColor : source.color;
+    TextureCoord(s_drawTexture, source, &target.u, &target.v);
+    target.texture1 = s_drawTexture ? s_drawTexture->next : 0;
+    TextureCoord(static_cast<const HSD_TObj*>(target.texture1), source,
+                 &target.u1, &target.v1);
+    target.fog = 0.0f;
+    target.color = s_drawVertexColor && source.hasColor ? source.color
+                                                        : materialColor;
     target.texture = s_drawTexture;
+    target.blend = s_drawBlend;
+    target.cull = s_drawCull;
 }
 
 void EmitTriangle(MeleeTitleVertex* output, unsigned capacity, unsigned* count,
@@ -463,6 +524,13 @@ void DecodePObj(const HSD_JObj* jobj, const HSD_DObj* dobj,
         return;
     unsigned materialColor = 0xFFFFFFFFu;
     s_drawTexture = dobj->mobj ? dobj->mobj->tobj : 0;
+    s_drawCull = (pobj->flags >> 14) & 3;
+    s_drawVertexColor = dobj->mobj && (dobj->mobj->rendermode & RENDER_VERTEX);
+    const HSD_PEDesc* pe = dobj->mobj ? dobj->mobj->pe : 0;
+    s_drawBlend = pe ? 0x80000000u | (static_cast<unsigned>(pe->type) << 16) |
+                       (static_cast<unsigned>(pe->src_factor) << 8) |
+                       pe->dst_factor
+                     : 0;
     if (dobj->mobj && dobj->mobj->mat) {
         const HSD_Material* mat = dobj->mobj->mat;
         const unsigned alpha = static_cast<unsigned>(mat->alpha * 255.0f);
@@ -527,19 +595,47 @@ void DecodePObj(const HSD_JObj* jobj, const HSD_DObj* dobj,
     }
 }
 
-void DecodeJObj(HSD_JObj* jobj, MeleeTitleVertex* output,
+void DecodeJObj(HSD_JObj* jobj, unsigned pass, MeleeTitleVertex* output,
                 unsigned capacity, unsigned* count)
 {
     for (HSD_JObj* node = jobj; node && *count < capacity; node = node->next) {
+        if (node->flags & JOBJ_INSTANCE)
+            continue;
         HSD_JObjSetupMatrix(node);
-        if (!(node->flags & (JOBJ_SPLINE | JOBJ_PTCL))) {
-            for (HSD_DObj* dobj = node->u.dobj; dobj; dobj = dobj->next)
+        if ((node->flags & (pass << 18)) && !(node->flags & JOBJ_HIDDEN) &&
+            !(node->flags & (JOBJ_SPLINE | JOBJ_PTCL))) {
+            for (HSD_DObj* dobj = node->u.dobj; dobj; dobj = dobj->next) {
+                if ((dobj->flags & DOBJ_HIDDEN) || !(dobj->flags & (pass << 1)))
+                    continue;
                 for (HSD_PObj* pobj = dobj->pobj; pobj; pobj = pobj->next)
                     DecodePObj(node, dobj, pobj, output, capacity, count);
+            }
         }
-        if (!(node->flags & JOBJ_INSTANCE))
-            DecodeJObj(node->child, output, capacity, count);
+        if (node->flags & (pass << 28))
+            DecodeJObj(node->child, pass, output, capacity, count);
     }
+}
+
+HSD_JObj* JointByIndex(HSD_JObj* root, int target)
+{
+    HSD_JObj* jobj = root;
+    for (int index = 0; jobj && index != target; ++index) {
+        if (!(jobj->flags & JOBJ_INSTANCE) && jobj->child) {
+            jobj = jobj->child;
+            continue;
+        }
+        while (jobj && !jobj->next)
+            jobj = jobj->parent;
+        jobj = jobj ? jobj->next : NULL;
+    }
+    return jobj;
+}
+
+void HideJoint(HSD_JObj* root, int index)
+{
+    HSD_JObj* jobj = JointByIndex(root, index);
+    if (jobj)
+        HSD_JObjSetFlagsAll(jobj, JOBJ_HIDDEN);
 }
 
 void CountTree(HSD_JObj* jobj, MeleeTitleSceneStatus* status)
@@ -609,7 +705,7 @@ bool M360_LoadTitleScene(MeleeTitleSceneStatus* status)
     s_camera = static_cast<HSD_CameraDescPerspective*>(
         Resolve("ScTitle_cam_int1_camera", status));
     Resolve("ScTitle_scene_lights", status);
-    Resolve("ScTitle_fog", status);
+    s_fog = static_cast<HSD_FogDesc*>(Resolve("ScTitle_fog", status));
 
     TitleModelSymbols background;
     background.joint = static_cast<HSD_Joint*>(
@@ -627,37 +723,114 @@ bool M360_LoadTitleScene(MeleeTitleSceneStatus* status)
     if (!status->symbolsResolved || !title.joint || !background.joint)
         return false;
 
-    s_titleModels[0] = HSD_JObjLoadJoint(title.joint);
-    s_titleModels[1] = HSD_JObjLoadJoint(background.joint);
-    status->modelCount = (s_titleModels[0] ? 1u : 0u) +
-                         (s_titleModels[1] ? 1u : 0u);
-    status->modelsLoaded = status->modelCount == 2;
+    s_titleModels[kLogo] = HSD_JObjLoadJoint(title.joint);
+    s_titleModels[kBackground] = HSD_JObjLoadJoint(background.joint);
+    s_titleModels[kFlash] = HSD_JObjLoadJoint(title.joint);
+    status->modelCount = (s_titleModels[kLogo] ? 1u : 0u) +
+                         (s_titleModels[kBackground] ? 1u : 0u);
+    status->modelsLoaded = status->modelCount == 2 && s_titleModels[kFlash];
     if (!status->modelsLoaded)
         return false;
 
-    HSD_JObjAddAnimAll(s_titleModels[0], title.anim, title.matAnim,
+    HSD_JObjAddAnimAll(s_titleModels[kLogo], title.anim, title.matAnim,
                        title.shapeAnim);
-    HSD_JObjAddAnimAll(s_titleModels[1], background.anim, background.matAnim,
-                       background.shapeAnim);
-    HSD_JObjReqAnimAll(s_titleModels[0], 0.0f);
-    HSD_JObjReqAnimAll(s_titleModels[1], 0.0f);
-    HSD_JObjAnimAll(s_titleModels[0]);
-    HSD_JObjAnimAll(s_titleModels[1]);
+    HSD_JObjAddAnimAll(s_titleModels[kBackground], background.anim,
+                       background.matAnim, background.shapeAnim);
+    HSD_JObjAddAnimAll(s_titleModels[kFlash], title.anim, title.matAnim,
+                       title.shapeAnim);
+    HSD_JObjReqAnimAll(s_titleModels[kFlash], s_logoLoop.loop_frame);
+    HSD_JObjAnimAll(s_titleModels[kFlash]);
+    Vec3 flashOffset = { 0.0f, -3.0f, 0.0f };
+    HSD_JObjSetTranslate(s_titleModels[kFlash], &flashOffset);
+    HideJoint(s_titleModels[kFlash], 3);
+    HideJoint(s_titleModels[kFlash], 1);
+    HideJoint(s_titleModels[kLogo], 7);
+    M360_TitleEnter(false);
     status->animationsBound = true;
 
-    CountTree(s_titleModels[0], status);
-    CountTree(s_titleModels[1], status);
+    CountTree(s_titleModels[kLogo], status);
+    CountTree(s_titleModels[kBackground], status);
     return true;
 }
 
-void M360_AnimateTitleScene(void)
+void M360_TitleEnter(bool openingMode)
 {
-    static AnimLoopSettings loops[2] = { { 0, 1600.0f, 400.0f },
-                                         { 0, 1330.0f, 130.0f } };
-    if (s_titleModels[0])
-        mn_8022ED6C(s_titleModels[0], &loops[0]);
-    if (s_titleModels[1])
-        mn_8022ED6C(s_titleModels[1], &loops[1]);
+    s_openingMode = openingMode;
+    s_backgroundStarted = !openingMode;
+    s_visible[kLogo] = !openingMode;
+    s_visible[kBackground] = !openingMode;
+    s_visible[kFlash] = false;
+    if (!s_titleModels[kLogo] || !s_titleModels[kBackground])
+        return;
+    HSD_JObjReqAnimAll(s_titleModels[kLogo],
+                       openingMode ? s_logoLoop.start_frame : s_logoLoop.loop_frame);
+    HSD_JObjAnimAll(s_titleModels[kLogo]);
+    HSD_JObjReqAnimAll(s_titleModels[kBackground],
+                       openingMode ? s_backgroundLoop.start_frame : 130.0f);
+    HSD_JObjAnimAll(s_titleModels[kBackground]);
+}
+
+void M360_Trace(const char* stage, unsigned value);
+static void DebugDump(HSD_JObj* root)
+{
+    int index = 0;
+    for (HSD_JObj* j = root; j; j = JointByIndex(root, ++index)) {
+        M360_Trace("dbg.joint", index);
+        M360_Trace("dbg.flags", j->flags);
+        unsigned tris = 0;
+        for (HSD_DObj* d = (j->flags & (JOBJ_SPLINE | JOBJ_PTCL)) ? 0 : j->u.dobj; d; d = d->next) {
+            M360_Trace("dbg.dobj.flags", d->flags);
+            if (d->mobj) {
+                M360_Trace("dbg.rm", d->mobj->rendermode);
+                if (d->mobj->mat) {
+                    M360_Trace("dbg.diffuse", (d->mobj->mat->diffuse.r << 16) | (d->mobj->mat->diffuse.g << 8) | d->mobj->mat->diffuse.b);
+                    M360_Trace("dbg.alpha100", static_cast<unsigned>(d->mobj->mat->alpha * 100));
+                }
+            }
+            ++tris;
+        }
+        if (index > 40) break;
+    }
+}
+
+bool M360_TitleUpdate(unsigned sceneTick)
+{
+    static unsigned debugFrames = 0;
+    if (!s_openingMode && ++debugFrames == 90)
+        DebugDump(s_titleModels[kLogo]);
+    if (!s_titleModels[kLogo] || !s_titleModels[kBackground])
+        return false;
+    if (!s_openingMode) {
+        mn_8022ED6C(s_titleModels[kLogo], &s_logoLoop);
+        mn_8022ED6C(s_titleModels[kBackground], &s_backgroundLoop);
+        return true;
+    }
+    s_visible[kFlash] = sceneTick >= 0x3B6 && sceneTick < 0x3CE;
+    if (sceneTick < 0x140A)
+        return false;
+    s_visible[kLogo] = true;
+    if (sceneTick > 5400) {
+        mn_8022ED6C(s_titleModels[kLogo], &s_logoLoop);
+    } else {
+        HSD_JObjReqAnimAll(s_titleModels[kLogo],
+                           static_cast<float>(sceneTick - 5130));
+        HSD_JObjAnimAll(s_titleModels[kLogo]);
+    }
+    if (s_backgroundStarted) {
+        mn_8022ED6C(s_titleModels[kBackground], &s_backgroundLoop);
+    } else if (mn_8022F298(s_titleModels[kLogo]) >= 270.0f) {
+        s_backgroundStarted = true;
+        s_visible[kBackground] = true;
+    }
+    return s_backgroundStarted;
+}
+
+unsigned M360_TitleClearColor(void)
+{
+    if (!s_fog)
+        return 0xFF000000u;
+    return 0xFF000000u | (s_fog->color.r << 16) | (s_fog->color.g << 8) |
+           s_fog->color.b;
 }
 
 bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
@@ -690,6 +863,13 @@ bool M360_DecodeTitleTexture(const void* handle, unsigned** pixels,
     return true;
 }
 
+unsigned M360_TitleTextureWrap(const void* handle)
+{
+    const HSD_TObj* texture = static_cast<const HSD_TObj*>(handle);
+    return texture ? (static_cast<unsigned>(texture->wrap_s) & 3) |
+                     ((static_cast<unsigned>(texture->wrap_t) & 3) << 2) : 0;
+}
+
 void M360_FreeDecodedTitleTexture(unsigned* pixels)
 {
     free(pixels);
@@ -699,9 +879,14 @@ unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity)
 {
     if (!vertices || capacity < 3)
         return 0;
+    static const unsigned passes[3] = { 1, 4, 2 };
+    static const unsigned order[kModelCount] = { kBackground, kLogo, kFlash };
     unsigned count = 0;
-    DecodeJObj(s_titleModels[0], vertices, capacity, &count);
-    DecodeJObj(s_titleModels[1], vertices, capacity, &count);
+    for (unsigned pass = 0; pass < 3; ++pass)
+        for (unsigned model = 0; model < kModelCount; ++model)
+            if (s_visible[order[model]])
+                DecodeJObj(s_titleModels[order[model]], passes[pass], vertices,
+                           capacity, &count);
     if (!count)
         return 0;
     if (ProjectCamera(vertices, &count))
@@ -718,14 +903,14 @@ unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity)
     const float rangeY = maxY - minY;
     if (rangeX <= 0.0001f || rangeY <= 0.0001f)
         return 0;
-    const float scaleX = 560.0f / rangeX;
-    const float scaleY = 210.0f / rangeY;
+    const float scaleX = 900.0f / rangeX;
+    const float scaleY = 680.0f / rangeY;
     const float scale = scaleX < scaleY ? scaleX : scaleY;
     const float centerX = (minX + maxX) * 0.5f;
     const float centerY = (minY + maxY) * 0.5f;
     for (unsigned i = 0; i < count; ++i) {
         vertices[i].x = 640.0f + (vertices[i].x - centerX) * scale;
-        vertices[i].y = 404.0f - (vertices[i].y - centerY) * scale;
+        vertices[i].y = 360.0f - (vertices[i].y - centerY) * scale;
         vertices[i].z = 0.0f;
     }
     return count - (count % 3);

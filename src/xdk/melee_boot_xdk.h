@@ -12,6 +12,7 @@ struct MeleeBootStatus {
     bool titleArchiveValid;
     bool titleArchiveRelocated;
     bool titlePublicRootResolved;
+    bool languageUS;
     unsigned entryCount;
     unsigned titleArchiveSize;
     unsigned relocationCount;

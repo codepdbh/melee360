@@ -192,6 +192,16 @@ if ($LASTEXITCODE -ne 0) { throw 'Sprite vertex shader compilation failed.' }
 & $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$pixelShaderHeader" `
     '/Vng_melee360SpritePS' $pixelShaderSource
 if ($LASTEXITCODE -ne 0) { throw 'Sprite pixel shader compilation failed.' }
+& $shaderCompiler '/nologo' '/Tvs_3_0' '/Emain' "/Fh$(Join-Path $build 'title_vs.h')" `
+    '/Vng_melee360TitleVS' (Join-Path $root 'src\xdk\shaders\title_vs.hlsl')
+if ($LASTEXITCODE -ne 0) { throw 'Title vertex shader compilation failed.' }
+& $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$(Join-Path $build 'title_ps.h')" `
+    '/Vng_melee360TitlePS' (Join-Path $root 'src\xdk\shaders\title_ps.hlsl')
+if ($LASTEXITCODE -ne 0) { throw 'Title pixel shader compilation failed.' }
+$moviePixelShaderHeader = Join-Path $build 'movie_ps.h'
+& $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$moviePixelShaderHeader" `
+    '/Vng_melee360MoviePS' (Join-Path $root 'src\xdk\shaders\movie_ps.hlsl')
+if ($LASTEXITCODE -ne 0) { throw 'Movie YUV pixel shader compilation failed.' }
 
 Write-Host '[M360][XEX] compiling D3D9 sprite renderer'
 $spriteArgs = @(
@@ -259,6 +269,25 @@ $audioObject = Join-Path $build 'melee_audio_xdk.obj'
     "/Fo$audioObject", (Join-Path $root 'src\xdk\melee_audio_xdk.cpp'))
 if ($LASTEXITCODE -ne 0) { throw 'XAudio2 stream compilation failed.' }
 $audioObjects += $audioObject
+
+Write-Host '[M360][XEX] compiling MTH/THP-JPEG movie player and boot flow'
+$movieObjects = @()
+foreach ($movieSource in @('src\common\jpeg_decode.c', 'src\common\mth.c')) {
+    $movieObject = Join-Path $build ([IO.Path]::GetFileNameWithoutExtension($movieSource) + '.obj')
+    & $compiler @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
+        '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$includeXbox", "/I$includeSys",
+        "/Fo$movieObject", (Join-Path $root $movieSource))
+    if ($LASTEXITCODE -ne 0) { throw "$movieSource compilation failed." }
+    $movieObjects += $movieObject
+}
+foreach ($movieSource in @('src\xdk\melee_movie_xdk.cpp', 'src\xdk\melee_flow_xdk.cpp')) {
+    $movieObject = Join-Path $build ([IO.Path]::GetFileNameWithoutExtension($movieSource) + '.obj')
+    & $compiler @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+        '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$includeXbox", "/I$includeSys",
+        "/I$build", "/Fo$movieObject", (Join-Path $root $movieSource))
+    if ($LASTEXITCODE -ne 0) { throw "$movieSource compilation failed." }
+    $movieObjects += $movieObject
+}
 
 Write-Host '[M360][XEX] compiling PowerPC source'
 $compileArgs = @(
@@ -594,7 +623,7 @@ $linkArgs = @(
     $utilObject, $bytecodeObject,
     $hsdJObjWrapperObject, $jobjObject, $wobjObject,
     $hsdSynthWrapperObject, $synthObject, $devcomObject
-) + $audioObjects + @(
+) + $audioObjects + $movieObjects + @(
     'xaudio2.lib', 'xmcore.lib',
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
