@@ -62,6 +62,8 @@ LibXenon implementations.
 | Interactive native title viewer | ✅ LB+RB cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances; Start is reserved for scene integration |
 | Original HSD audio engine (`synth.c`/`devcom.c`) | ✅ Voice alloc/priority-stealing, ADSR-style volume ramp, pitch/pan curves and the DVD/ARAM command queue linked and host-validated; AX/AI/AR/DVD hardware entry points stubbed (no audible output yet) |
 | Real Melee music output | ✅ `menu01.hps` read from the ISO, HALPST/DSP-ADPCM decoded natively and streamed through XAudio2 at boot, looping; host test checks decode continuity and Xenia outputs audible sound |
+| Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
+| Title-to-menu flow | 🚧 Start reaches a temporary menu screen; original `mnmain` scene is not yet active |
 | Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal
@@ -118,7 +120,13 @@ This verifies native PowerPC execution, memory, endian behavior, linked Melee
 code and a status screen written by the guest ELF into tiled Xbox 360
 framebuffer memory. It is an integration milestone, not gameplay yet.
 
-![MELEE360 native guest framebuffer running in Xenon Emulator](docs/images/xenon-emulator-guest-framebuffer.png)
+### Capturas verificadas
+
+![Pantalla del ELF nativo en Xenon Emulator, hito anterior](docs/images/xenon-emulator-guest-framebuffer.png)
+
+Esta captura corresponde al ELF en Xenon Emulator. La película actual en Xenia
+se verifica mediante la traza del XEX; todavía falta una captura visual válida
+de esa ventana para ampliar la galería.
 
 For the separate XDK/Xenia route, run `./tools/check_xdk.ps1` from PowerShell
 followed by `./tools/build_xex.ps1`, then see the

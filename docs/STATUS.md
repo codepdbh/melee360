@@ -29,6 +29,9 @@
 - M26 HSD audio engine (`synth.c`/`devcom.c`): complete; real voice-alloc/priority-stealing, ADSR-style volume-ramp stepping, pitch-ratio and constant-power pan curves, and the DVD/ARAM devcom command queue (enqueue/dequeue/cancel/free-list reuse) linked and host-validated; AX/AI/AR/DVD/OS hardware entry points stubbed (`AXAcquireVoice`/`AXFreeVoice` real priority-steal pool, `AXSetVoice*` record state, `ARAlloc` real bump allocator, `ARQPostRequest`/`DVDReadAsyncPrio` synchronous stand-ins, no audible output yet)
 - M27 First audible Melee music: XEX loads `/audio/menu01.hps` (main-menu BGM) from the ISO via the GCM reader, parses HALPST header/block chain, decodes stereo 32 kHz DSP-ADPCM incrementally (`src/common/hps.c`, `dsp_adpcm.c`) and streams 4x4096-frame PCM buffers through an XAudio2 source voice, looping at block 4 (7.168 s) like `synth.c`; Xenia reports all XAudio2 HRESULTs 0, ~real-time `SamplesPlayed`, and a non-zero host peak meter
 
+- M28 Opening movie: `MvOpen.mth` from the user's ISO decodes and presents in Xenia. The latest trace reached frame 634 with zero decode errors while audio samples advanced.
+- M29 Title-to-menu flow: Start reaches a temporary menu screen. `mnmain.c` compiles but the original menu scene is not yet active.
+
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
 tone, FAT/device discovery, and read-only `GALE01` header validation.
