@@ -6,6 +6,9 @@
 #include "melee_audio_xdk.h"
 #include "melee_flow_xdk.h"
 #include "melee_movie_xdk.h"
+#include "hsd_render_xdk.h"
+#include "menu_scene_xdk.h"
+#include "melee_title_scene_xdk.h"
 #include "sprite_renderer.h"
 
 extern "C" unsigned int lbTime_8000AEC8(unsigned int a, unsigned int b);
@@ -210,7 +213,6 @@ RectBatch g_muted = { {}, 0, D3DCOLOR_XRGB(139, 158, 181) };
 RectBatch g_panel = { {}, 0, D3DCOLOR_XRGB(24, 39, 61) };
 RectBatch g_dynamic = { {}, 0, D3DCOLOR_XRGB(238, 244, 252) };
 SpriteRenderer g_renderer;
-MeleeTitleVertex g_titleMesh[32766];
 
 void TraceStage(const char* stage, unsigned value)
 {
@@ -739,6 +741,8 @@ void __cdecl main()
     present.MultiSampleType = D3DMULTISAMPLE_NONE;
     present.SwapEffect = D3DSWAPEFFECT_DISCARD;
     present.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+    present.EnableAutoDepthStencil = TRUE;
+    present.AutoDepthStencilFormat = D3DFMT_D24S8;
 
     IDirect3DDevice9* device = 0;
     HRESULT result = d3d->CreateDevice(0, D3DDEVTYPE_HAL, 0,
@@ -755,6 +759,9 @@ void __cdecl main()
         d3d->Release();
         return;
     }
+
+    const bool hsdRenderReady = M360_HsdRenderInit(device);
+    TraceStage("hsd.render.ready", hsdRenderReady);
 
     MeleeBootStatus boot;
     TraceStage("boot.begin", GetTickCount());
@@ -773,10 +780,16 @@ void __cdecl main()
                                    titleTextureWidth, titleTextureHeight);
         M360_FreeDecodedTitleTexture(titleTexturePixels);
     }
-    unsigned titleMeshVertexCount =
-        M360_BuildTitleMesh(g_titleMesh, 32766);
-    boot.titleScene.meshVertexCount = titleMeshVertexCount;
-    TraceStage("mesh.vertices", titleMeshVertexCount);
+    M360HsdRenderStats renderStats;
+    M360_HsdRenderBeginFrame();
+    M360_HsdRenderAllowErase(false);
+    M360_TitleRender();
+    M360_HsdRenderGetStats(&renderStats);
+    M360_HsdRenderEndFrame();
+    device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+    boot.titleScene.meshVertexCount = renderStats.triangles * 3;
+    unsigned titleMeshVertexCount = boot.titleScene.meshVertexCount;
+    TraceStage("mesh.vertices", boot.titleScene.meshVertexCount);
     BuildScene(meleeCodePassed, boot);
     M360_HSDPadInit();
     TraceStage("menu.input.tests", M360_MenuInputSelfTest());
@@ -796,37 +809,7 @@ void __cdecl main()
     TraceStage("menu.archive.bytes", boot.menuArchiveSize);
     TraceStage("menu.archive.symbols", boot.menuSymbolsResolved);
     TraceStage("menu.archive.ready", boot.menuArchiveValid);
-    unsigned menuModels = 0;
-    unsigned menuJoints = 0;
-    const bool menuModelsReady = boot.menuArchiveValid &&
-        M360_LoadMenuModels(&menuModels, &menuJoints);
-    TraceStage("menu.models.loaded", menuModels);
-    TraceStage("menu.models.joints", menuJoints);
-    TraceStage("menu.models.ready", menuModelsReady);
-    TraceStage("menu.models.visible.main", menuModelsReady ? 3 : 0);
-    const unsigned menuPreviewVertices = menuModelsReady
-        ? M360_BuildMenuMesh(g_titleMesh, 32766) : 0;
-    TraceStage("menu.mesh.vertices", menuPreviewVertices);
-    const void* menuTextureInstances[512] = {};
-    const void* menuTextureImages[512] = {};
-    unsigned menuTextureInstanceCount = 0;
-    unsigned menuTextureImageCount = 0;
-    for (unsigned vertex = 0; vertex < menuPreviewVertices; ++vertex) {
-        const void* instance = g_titleMesh[vertex].texture;
-        if (!instance) continue;
-        unsigned match = 0;
-        for (; match < menuTextureInstanceCount; ++match)
-            if (menuTextureInstances[match] == instance) break;
-        if (match == menuTextureInstanceCount && match < 512)
-            menuTextureInstances[menuTextureInstanceCount++] = instance;
-        const void* imageKey = M360_TitleTextureImageKey(instance);
-        for (match = 0; match < menuTextureImageCount; ++match)
-            if (menuTextureImages[match] == imageKey) break;
-        if (match == menuTextureImageCount && match < 512)
-            menuTextureImages[menuTextureImageCount++] = imageKey;
-    }
-    TraceStage("menu.texture.instances", menuTextureInstanceCount);
-    TraceStage("menu.texture.images", menuTextureImageCount);
+    M360_FlowSetMenuAvailable(boot.menuArchiveValid && hsdRenderReady);
     M360_FlowStart(&flow, &audio);
     TraceStage("audio.file.found", audio.fileFound);
     TraceStage("audio.file.size", audio.fileSize);
@@ -843,11 +826,16 @@ void __cdecl main()
     unsigned frameUsMax = 0;
     unsigned __int64 frameUsTotal = 0;
     unsigned framesOver20ms = 0;
+    unsigned __int64 workUsWindow = 0;
+    unsigned workUsMax = 0;
+    unsigned workFrames = 0;
     LARGE_INTEGER frequency;
     LARGE_INTEGER previousFrame;
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&previousFrame);
     for (;;) {
+        LARGE_INTEGER workStart;
+        QueryPerformanceCounter(&workStart);
         M360_AudioUpdate(&audio);
         HSD_PadRenewStatus();
         gm_EvaluateAllControllerInputs();
@@ -873,31 +861,29 @@ void __cdecl main()
         }
         M360_FlowUpdate(&flow, triggered, &audio);
 
-        if (flow.state == kFlowMainMenu && menuModelsReady)
-            M360_UpdateMenuModels(flow.menuKind, flow.menuSelection);
-        titleMeshVertexCount = flow.state == kFlowMainMenu && menuModelsReady
-            ? M360_BuildMenuMesh(g_titleMesh, 32766)
-            : (flow.titleVisible ? M360_BuildTitleMesh(g_titleMesh, 32766) : 0);
-
-        device->Clear(0, 0, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+        const bool menuScene = flow.state == kFlowMainMenu && M360_FlowMenuActive();
+        device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+                      D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
         renderer.Begin();
-        if (flow.state == kFlowMainMenu && !titleMeshVertexCount)
+        if (flow.state == kFlowMainMenu && !menuScene)
             RenderMenuPlaceholder(renderer, flow);
-        else
+        else if (!menuScene)
             renderer.AddQuad(160.0f, 0.0f, 960.0f, 720.0f,
                              ToSpriteColor(M360_TitleClearColor()));
         renderer.End(device);
         if (flow.movieVisible)
             M360_MovieDraw(device);
-        if (titleMeshVertexCount) {
-            RECT scissor = { 160, 0, 1120, 720 };
-            device->SetScissorRect(&scissor);
-            device->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE);
-            renderer.Begin();
-            renderer.AddTitleMesh(g_titleMesh, titleMeshVertexCount);
-            renderer.End(device);
-            device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+        M360_HsdRenderBeginFrame();
+        if (menuScene) {
+            M360_HsdRenderAllowErase(true);
+            M360_MenuSceneRender();
+        } else if (flow.titleVisible) {
+            M360_HsdRenderAllowErase(false);
+            M360_TitleRender();
         }
+        M360_HsdRenderGetStats(&renderStats);
+        M360_HsdRenderEndFrame();
+        titleMeshVertexCount = renderStats.triangles * 3;
         MeleeMovieStatus movie;
         M360_MovieGetStatus(&movie);
         if (hudVisible) {
@@ -914,6 +900,14 @@ void __cdecl main()
                 renderer.AddBanner(720.0f, 330.0f, 384.0f, 128.0f);
             renderer.End(device);
         }
+        LARGE_INTEGER workEnd;
+        QueryPerformanceCounter(&workEnd);
+        const unsigned workUs = static_cast<unsigned>(
+            (workEnd.QuadPart - workStart.QuadPart) * 1000000 / frequency.QuadPart);
+        workUsWindow += workUs;
+        ++workFrames;
+        if (workUs > workUsMax)
+            workUsMax = workUs;
         const HRESULT presented = device->Present(0, 0, 0, 0);
         ++frameCount;
 
@@ -935,23 +929,33 @@ void __cdecl main()
             TraceStage("present.frame", frameCount);
             TraceStage("present.result", static_cast<unsigned>(presented));
             TraceStage("present.hud", hudVisible);
-            unsigned hash = 2166136261u;
-            const unsigned char* bytes =
-                reinterpret_cast<const unsigned char*>(g_titleMesh);
-            for (unsigned i = 0; i < titleMeshVertexCount * sizeof(MeleeTitleVertex); ++i)
-                hash = (hash ^ bytes[i]) * 16777619u;
-            TraceStage("mesh.hash", hash);
             TraceStage("mesh.vertices", titleMeshVertexCount);
+            TraceStage("hsd.draw_calls", renderStats.drawCalls);
+            TraceStage("hsd.textures", renderStats.textures);
+            TraceStage("hsd.tev_stages", renderStats.tevStages);
+            TraceStage("hsd.envelope_vertices", renderStats.envelopeVertices);
+            TraceStage("hsd.unsupported", renderStats.unsupported);
+            TraceStage("hsd.decode_failures", renderStats.decodeFailures);
         }
         if (frameCount % 300 == 0) {
             TraceStage("loop.frame", frameCount);
             TraceStage("loop.flow_state", static_cast<unsigned>(flow.state));
             TraceStage("loop.scene_tick", flow.sceneTick);
+            TraceStage("loop.work_us_avg", static_cast<unsigned>(workUsWindow / workFrames));
+            TraceStage("loop.work_us_max", workUsMax);
+            workUsWindow = 0;
+            workUsMax = 0;
+            workFrames = 0;
             TraceStage("loop.frame_us_avg",
                        static_cast<unsigned>(frameUsTotal / (frameCount - 1)));
             TraceStage("loop.frame_us_max", frameUsMax);
             TraceStage("loop.frames_over_20ms", framesOver20ms);
             TraceStage("loop.mesh_vertices", titleMeshVertexCount);
+            TraceStage("loop.hsd_draw_calls", renderStats.drawCalls);
+            if (flow.state == kFlowMainMenu) {
+                TraceStage("loop.menu_kind", flow.menuKind);
+                TraceStage("loop.menu_selection", flow.menuSelection);
+            }
             if (flow.state == kFlowOpening) {
                 TraceStage("movie.frame", movie.currentFrame);
                 TraceStage("movie.visible", flow.movieVisible);

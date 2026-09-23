@@ -80,6 +80,10 @@ $archiveSource = Join-Path $root 'src\xdk\melee_archive_xdk.cpp'
 $archiveHeader = Join-Path $root 'src\xdk\melee_archive_xdk.h'
 $titleSceneSource = Join-Path $root 'src\xdk\melee_title_scene_xdk.cpp'
 $titleSceneHeader = Join-Path $root 'src\xdk\melee_title_scene_xdk.h'
+$hsdRenderSource = Join-Path $root 'src\xdk\hsd_render_xdk.cpp'
+$hsdTextureSource = Join-Path $root 'src\xdk\hsd_texture_xdk.c'
+$menuSceneSource = Join-Path $root 'src\xdk\menu_scene_xdk.c'
+$sceneCompat = Join-Path $root 'src\xdk\hsd_scene_compat.h'
 $gcmSource = Join-Path $root 'src\common\gcm.c'
 $vertexShaderSource = Join-Path $root 'src\xdk\shaders\sprite_vs.hlsl'
 $pixelShaderSource = Join-Path $root 'src\xdk\shaders\sprite_ps.hlsl'
@@ -96,6 +100,8 @@ $spriteObject = Join-Path $build 'sprite_renderer.obj'
 $bootObject = Join-Path $build 'melee_boot_xdk.obj'
 $archiveObject = Join-Path $build 'melee_archive_xdk.obj'
 $titleSceneObject = Join-Path $build 'melee_title_scene_xdk.obj'
+$hsdRenderObject = Join-Path $build 'hsd_render_xdk.obj'
+$hsdTextureObject = Join-Path $build 'hsd_texture_xdk.obj'
 $gcmObject = Join-Path $build 'gcm.obj'
 $memoryObject = Join-Path $build 'memory.obj'
 $memoryWrapperObject = Join-Path $build 'memory_xdk.obj'
@@ -151,6 +157,8 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
                          $atlasGenerator, $bootSource, $bootHeader,
                          $archiveSource, $archiveHeader,
                          $titleSceneSource, $titleSceneHeader,
+                         $hsdRenderSource, $hsdTextureSource, $menuSceneSource,
+                         $sceneCompat,
                          $gcmSource, $memoryCompat, $memorySource,
                          $memoryWrapper, $hsdClassCompat, $hsdClassWrapper,
                          $hashSource, $debugSource, $classSource,
@@ -192,12 +200,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Sprite vertex shader compilation failed.' }
 & $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$pixelShaderHeader" `
     '/Vng_melee360SpritePS' $pixelShaderSource
 if ($LASTEXITCODE -ne 0) { throw 'Sprite pixel shader compilation failed.' }
-& $shaderCompiler '/nologo' '/Tvs_3_0' '/Emain' "/Fh$(Join-Path $build 'title_vs.h')" `
-    '/Vng_melee360TitleVS' (Join-Path $root 'src\xdk\shaders\title_vs.hlsl')
-if ($LASTEXITCODE -ne 0) { throw 'Title vertex shader compilation failed.' }
-& $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$(Join-Path $build 'title_ps.h')" `
-    '/Vng_melee360TitlePS' (Join-Path $root 'src\xdk\shaders\title_ps.hlsl')
-if ($LASTEXITCODE -ne 0) { throw 'Title pixel shader compilation failed.' }
+& $shaderCompiler '/nologo' '/Tvs_3_0' '/Emain' "/Fh$(Join-Path $build 'hsd_vs.h')" `
+    '/Vng_melee360HsdVS' (Join-Path $root 'src\xdk\shaders\hsd_vs.hlsl')
+if ($LASTEXITCODE -ne 0) { throw 'HSD vertex shader compilation failed.' }
+& $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$(Join-Path $build 'hsd_ps.h')" `
+    '/Vng_melee360HsdPS' (Join-Path $root 'src\xdk\shaders\hsd_ps.hlsl')
+if ($LASTEXITCODE -ne 0) { throw 'HSD pixel shader compilation failed.' }
 $moviePixelShaderHeader = Join-Path $build 'movie_ps.h'
 & $shaderCompiler '/nologo' '/Tps_3_0' '/Emain' "/Fh$moviePixelShaderHeader" `
     '/Vng_melee360MoviePS' (Join-Path $root 'src\xdk\shaders\movie_ps.hlsl')
@@ -236,7 +244,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original HAL archive parser compilation failed
 
 Write-Host '[M360][XEX] compiling real title scene loader'
 $titleSceneArgs = @(
-    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W3',
+    '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
     '/D_XBOX', '/DXBOX', '/DNDEBUG',
     "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
     "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
@@ -244,6 +252,17 @@ $titleSceneArgs = @(
 )
 & $compiler $titleSceneArgs
 if ($LASTEXITCODE -ne 0) { throw 'Real title scene loader compilation failed.' }
+
+Write-Host '[M360][XEX] compiling native HSD scene renderer'
+& $compiler @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/Fo$hsdTextureObject", $hsdTextureSource)
+if ($LASTEXITCODE -ne 0) { throw 'GX texture decoder compilation failed.' }
+& $compiler @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')", "/I$build",
+    "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
+    "/Fo$hsdRenderObject", $hsdRenderSource)
+if ($LASTEXITCODE -ne 0) { throw 'HSD scene renderer compilation failed.' }
 
 $gcmArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
@@ -420,7 +439,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original id.c compilation failed.' }
 Write-Host '[M360][XEX] compiling XDK gobj bridge'
 $gobjWrapperArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
-    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    '/DM360_NATIVE_RENDER', '/D_XBOX', '/DXBOX', '/DNDEBUG',
     "/I$includeXbox", "/I$includeSys",
     "/I$(Join-Path $root 'upstream\melee-pc\src')",
     "/Fo$gobjWrapperObject", $gobjWrapper
@@ -522,7 +541,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original bytecode.c compilation failed.' }
 Write-Host '[M360][XEX] compiling XDK HSD jobj bridge'
 $hsdJObjWrapperArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
-    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    '/DM360_NATIVE_RENDER', '/D_XBOX', '/DXBOX', '/DNDEBUG',
     "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
     "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
     "/Fo$hsdJObjWrapperObject", $hsdJObjWrapper
@@ -580,37 +599,73 @@ $menuInputArgs = @('/nologo','/c','/TC','/O2','/MT','/D_XBOX','/DXBOX',
 if ($LASTEXITCODE -ne 0) { throw 'Original menu input compilation failed.' }
 & $compiler ($menuInputArgs + @("/Fo$menuInputTestObject", (Join-Path $root 'src/xdk/menu_input_xdk.c')))
 if ($LASTEXITCODE -ne 0) { throw 'Menu input self-test compilation failed.' }
-$menuAnimObject = Join-Path $build 'mn_22EC.obj'
-$menuSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/mn/mn_22EC.c')
-$menuSlice = $menuSource.Substring(0, $menuSource.IndexOf('float mn_8022EC18('))
-foreach ($function in @('mn_8022ED6C', 'mn_8022F298')) {
-    $start = $menuSource.IndexOf("float $function(")
-    if ($start -lt 0) { throw "Missing original function: $function" }
-    $cursor = $menuSource.IndexOf('{', $start)
+function Get-CFunction([string]$Text, [string]$Signature) {
+    $start = $Text.IndexOf($Signature)
+    if ($start -lt 0) { throw "Missing original function: $Signature" }
+    $cursor = $Text.IndexOf('{', $start)
     $depth = 1
     ++$cursor
-    while ($depth -gt 0 -and $cursor -lt $menuSource.Length) {
-        if ($menuSource[$cursor] -eq '{') { ++$depth }
-        if ($menuSource[$cursor] -eq '}') { --$depth }
+    while ($depth -gt 0 -and $cursor -lt $Text.Length) {
+        if ($Text[$cursor] -eq '{') { ++$depth }
+        if ($Text[$cursor] -eq '}') { --$depth }
         ++$cursor
     }
-    if ($depth -ne 0) { throw "Unbalanced source: $function" }
-    $menuSlice += "`r`n" + $menuSource.Substring($start, $cursor - $start) + "`r`n"
+    if ($depth -ne 0) { throw "Unbalanced source: $Signature" }
+    return $Text.Substring($start, $cursor - $start)
 }
-$menuSlicePath = Join-Path $build 'menu_animation_slice.c'
-Set-Content -Encoding ASCII $menuSlicePath $menuSlice
-& $compiler (@('/nologo','/c','/TC','/O2','/MT','/Gy','/D_XBOX','/DXBOX',
-    "/I$(Join-Path $root 'upstream/melee-pc/src/melee/mn')",
-    "/FI$(Join-Path $root 'src/xdk/gameplay_probe_compat.h')",
-    "/Fo$menuAnimObject", $menuSlicePath) + $hsdCommonInc)
-if ($LASTEXITCODE -ne 0) { throw 'Original menu animation compilation failed.' }
+function Get-CPrologue([string]$Text, [string]$FirstSignature) {
+    $end = $Text.IndexOf($FirstSignature)
+    if ($end -lt 0) { throw "Missing original function: $FirstSignature" }
+    return $Text.Substring(0, $end)
+}
+$meleeSrc = Join-Path $root 'upstream/melee-pc/src'
+$displaySource = Get-Content -Raw (Join-Path $baselibDir 'displayfunc.c')
+$matrixStart = $displaySource.IndexOf('Vec3 zOne = ')
+$displaySlice = (Get-CPrologue $displaySource 'void HSD_ZListInitAllocData') +
+    $displaySource.Substring($matrixStart, $displaySource.IndexOf('void HSD_JObjDispSub') - $matrixStart)
+Set-Content -Encoding ASCII (Join-Path $build 'displayfunc_matrix_slice.c') $displaySlice
+$spDisplaySource = Get-Content -Raw (Join-Path $meleeSrc 'melee/lb/lbspdisplay.c')
+$spDisplaySlice = (Get-CPrologue $spDisplaySource 'HSD_LObj* lb_80011AC4(') +
+    (Get-CFunction $spDisplaySource 'HSD_LObj* lb_80011AC4(') + "`r`n" +
+    (Get-CFunction $spDisplaySource 'int lb_80011E24(') + "`r`n" +
+    (Get-CFunction $spDisplaySource 'int lb_8001204C(') + "`r`n"
+Set-Content -Encoding ASCII (Join-Path $build 'lbspdisplay_joint_slice.c') $spDisplaySlice
+$lbJointSource = Get-Content -Raw (Join-Path $meleeSrc 'melee/lb/lb_00B0.c')
+$lbJointSlice = (Get-CPrologue $lbJointSource 'static ') +
+    (Get-CFunction $lbJointSource 'void lb_8000B1CC(') + "`r`n"
+Set-Content -Encoding ASCII (Join-Path $build 'lb_00B0_slice.c') $lbJointSlice
+$sceneObjects = @()
+$sceneSources = @(
+    @{ Source = (Join-Path $baselibDir 'cobj.c'); Dir = $baselibDir },
+    @{ Source = (Join-Path $baselibDir 'fog.c'); Dir = $baselibDir },
+    @{ Source = (Join-Path $baselibDir 'lobj.c'); Dir = $baselibDir },
+    @{ Source = (Join-Path $build 'displayfunc_matrix_slice.c'); Dir = $baselibDir },
+    @{ Source = (Join-Path $build 'lbspdisplay_joint_slice.c'); Dir = (Join-Path $meleeSrc 'melee/lb') },
+    @{ Source = (Join-Path $build 'lb_00B0_slice.c'); Dir = (Join-Path $meleeSrc 'melee/lb') },
+    @{ Source = (Join-Path $meleeSrc 'melee/mn/mnmain.c'); Dir = (Join-Path $meleeSrc 'melee/mn') },
+    @{ Source = (Join-Path $meleeSrc 'melee/mn/mn_22EC.c'); Dir = (Join-Path $meleeSrc 'melee/mn') },
+    @{ Source = $menuSceneSource; Dir = (Join-Path $root 'src/xdk') },
+    @{ Source = (Join-Path $root 'src/xdk/hsd_gx_xdk.c'); Dir = (Join-Path $root 'src/xdk') }
+)
+Write-Host '[M360][XEX] compiling original camera/fog/light/menu scene code'
+foreach ($scene in $sceneSources) {
+    $sceneObject = Join-Path $build ([IO.Path]::GetFileNameWithoutExtension($scene.Source) + '_scene.obj')
+    $level = if ($scene.Source.StartsWith((Join-Path $root 'src'))) { '/W4' } else { '/W3' }
+    & $compiler (@('/nologo', '/c', '/TC', '/O2', '/MT', '/GS-', $level,
+        '/D_XBOX', '/DXBOX', '/DNDEBUG',
+        "/I$(Join-Path $root 'build-x360/gameplay-probe/include')", "/I$($scene.Dir)",
+        "/I$(Join-Path $root 'src/xdk')", "/FI$sceneCompat", "/Fo$sceneObject",
+        $scene.Source) + $hsdCommonInc)
+    if ($LASTEXITCODE -ne 0) { throw "Scene source compilation failed: $($scene.Source)" }
+    $sceneObjects += $sceneObject
+}
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
-    $menuAnimObject, $gameplayLayoutObject, $menuInputObject, $menuInputTestObject,
+    $gameplayLayoutObject, $menuInputObject, $menuInputTestObject,
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject, $bootObject, $archiveObject,
-    $titleSceneObject, $gcmObject,
+    $titleSceneObject, $hsdRenderObject, $hsdTextureObject, $gcmObject,
     $memoryObject, $memoryWrapperObject,
     $hsdClassWrapperObject, $hashObject, $debugObject, $classObject,
     $objectObject, $objallocObject, $idObject,
@@ -623,7 +678,7 @@ $linkArgs = @(
     $utilObject, $bytecodeObject,
     $hsdJObjWrapperObject, $jobjObject, $wobjObject,
     $hsdSynthWrapperObject, $synthObject, $devcomObject
-) + $audioObjects + $movieObjects + @(
+) + $sceneObjects + $audioObjects + $movieObjects + @(
     'xaudio2.lib', 'xmcore.lib',
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )

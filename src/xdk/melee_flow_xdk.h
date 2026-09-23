@@ -33,5 +33,7 @@ void M360_FlowStart(MeleeFlow* flow, MeleeAudioStatus* audio);
 void M360_FlowUpdate(MeleeFlow* flow, unsigned __int64 buttonsTriggered,
                      MeleeAudioStatus* audio);
 const char* M360_FlowStateName(MeleeFlowState state);
+void M360_FlowSetMenuAvailable(bool available);
+bool M360_FlowMenuActive(void);
 
 #endif

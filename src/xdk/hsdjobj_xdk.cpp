@@ -21,6 +21,7 @@ M360JObjStubState g_m360JObjStub;
  * displayfunc.c is a GX renderer (zlist, immediate-mode GX, TEV state), so
  * the entry points jobj.c calls are counting no-ops. */
 
+#ifndef M360_NATIVE_RENDER
 static void RecordVMtx(MtxPtr vmtx)
 {
     g_m360JObjStub.lastVMtx = vmtx;
@@ -65,6 +66,8 @@ void HSD_JObjMakePositionMtx(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx)
     g_m360JObjStub.makePositionMtx++;
     g_m360JObjStub.lastJObj = jobj;
 }
+
+#endif
 
 } /* extern "C" */
 

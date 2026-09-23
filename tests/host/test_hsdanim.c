@@ -1888,6 +1888,7 @@ static void test_dobj_load_and_default_class(void)
     HSD_ClassInfo* ci = HSD_CLASS_INFO(&hsdDObj);
     HSD_ClassInfo* ti = HSD_CLASS_INFO(&hsdTestDObj);
     HSD_DObjDesc dd[3];
+    HSD_MObjDesc mdesc;
     HSD_DObj* d;
     HSD_MObj* mo = (HSD_MObj*) zalloc(sizeof(HSD_MObj));
     static char name[] = "hsd_dobj";
@@ -1943,34 +1944,35 @@ static void test_dobj_load_and_default_class(void)
     CHECK(HSD_CLASS_METHOD(d) == ci);
     HSD_DObjRemove(d);
 
-    mo->rendermode = 0;
-    g_m360AnimStub.mobjLoadDescResult = mo;
+    memset(&mdesc, 0, sizeof(mdesc));
+    mdesc.rendermode = 0;
+    dd[1].mobjdesc = &mdesc;
     g_m360AnimStub.mobjRemove = 0;
     dd[1].next = NULL;
     d = HSD_DObjLoadDesc(&dd[1]);
-    CHECK(d->mobj == mo);
+    CHECK(d->mobj != NULL && d->mobj->rendermode == RENDER_TOON);
     CHECK((d->flags & 0xE) == 2);
     HSD_DObjRemove(d);
     CHECK(g_m360AnimStub.mobjRemove == 1);
 
-    mo->rendermode = 0x40000000;
+    mdesc.rendermode = 0x40000000;
     d = HSD_DObjLoadDesc(&dd[1]);
     CHECK((d->flags & 0xE) == 8);
     HSD_DObjRemove(d);
 
-    mo->rendermode = 0x60000000 | 0x0000FFFF;
+    mdesc.rendermode = 0x60000000 | 0x0000FFFF;
     d = HSD_DObjLoadDesc(&dd[1]);
     CHECK((d->flags & 0xE) == 4);
     HSD_DObjRemove(d);
 
-    mo->rendermode = 0x02000000;
+    mdesc.rendermode = 0x02000000;
     d = HSD_DObjLoadDesc(&dd[1]);
     CHECK((d->flags & 0xE) == 2);
     HSD_DObjSetFlags(d, 0xF01);
     HSD_DObjModifyFlags(d, 8, 0xE);
     CHECK(d->flags == 0xF09);
     HSD_DObjRemove(d);
-    g_m360AnimStub.mobjLoadDescResult = NULL;
+    dd[1].mobjdesc = NULL;
     free(mo);
     CHECK(ci->head.nb_exist == 0);
     CHECK(ti->head.nb_exist == 0);

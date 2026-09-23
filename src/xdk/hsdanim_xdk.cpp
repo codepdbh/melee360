@@ -4,6 +4,7 @@ extern "C" {
 #include <sysdolphin/baselib/aobj.h>
 #include <sysdolphin/baselib/dobj.h>
 #include <sysdolphin/baselib/jobj.h>
+#include <sysdolphin/baselib/list.h>
 #include <sysdolphin/baselib/mobj.h>
 #include <sysdolphin/baselib/memory.h>
 #include <sysdolphin/baselib/object.h>
@@ -221,6 +222,7 @@ HSD_TObj* HSD_TObjLoadDesc(HSD_TObjDesc* desc)
         if (tobj->tev)
             memcpy(tobj->tev, desc->tev, sizeof(HSD_TObjTev));
     }
+    tobj->tlut_no = 0xFF;
     PSMTXIdentity(tobj->mtx);
     return tobj;
 }
@@ -248,6 +250,35 @@ void HSD_TObjAddAnimAll(HSD_TObj* tobj, HSD_TexAnim* texanim)
                          : NULL;
         tobj->imagetbl = match ? match->imagetbl : NULL;
         tobj->n_imagetbl = match ? match->n_imagetbl : 0;
+        if (tobj->tluttbl) {
+            for (unsigned i = 0; tobj->tluttbl[i]; ++i)
+                HSD_Free(tobj->tluttbl[i]);
+            HSD_Free(tobj->tluttbl);
+            tobj->tluttbl = NULL;
+        }
+        tobj->tlut_no = 0xFF;
+        if (match && match->tluttbl && match->n_tluttbl) {
+            const unsigned count = match->n_tluttbl;
+            tobj->tluttbl = static_cast<HSD_Tlut**>(
+                HSD_MemAlloc((count + 1) * sizeof(HSD_Tlut*)));
+            if (tobj->tluttbl) {
+                memset(tobj->tluttbl, 0, (count + 1) * sizeof(HSD_Tlut*));
+                for (unsigned i = 0; i < count; ++i) {
+                    const HSD_TlutDesc* desc = reinterpret_cast<const HSD_TlutDesc*>(
+                        static_cast<uintptr_t>(match->tluttbl[i].v));
+                    if (!desc)
+                        continue;
+                    HSD_Tlut* palette = static_cast<HSD_Tlut*>(HSD_MemAlloc(sizeof(HSD_Tlut)));
+                    if (!palette)
+                        continue;
+                    palette->lut = desc->lut;
+                    palette->fmt = desc->fmt;
+                    palette->tlut_name = desc->tlut_name;
+                    palette->n_entries = desc->n_entries;
+                    tobj->tluttbl[i] = palette;
+                }
+            }
+        }
     }
 }
 
@@ -265,6 +296,17 @@ static void M360_TObjUpdate(void* object, enum_t type, HSD_ObjData* value)
                 static_cast<uintptr_t>(tobj->imagetbl[frame].v));
         break;
     }
+    case HSD_A_T_TCLT: {
+        const int index = static_cast<int>(value->fv);
+        if (tobj->tluttbl && index >= 0) {
+            unsigned count = 0;
+            while (tobj->tluttbl[count])
+                ++count;
+            if (static_cast<unsigned>(index) < count)
+                tobj->tlut_no = static_cast<u8>(index);
+        }
+        break;
+    }
     case HSD_A_T_BLEND: case HSD_A_T_TS_BLEND:
         tobj->blending = value->fv;
         break;
@@ -275,6 +317,18 @@ static void M360_TObjUpdate(void* object, enum_t type, HSD_ObjData* value)
     case HSD_A_T_ROTX: tobj->rotate.x = value->fv; break;
     case HSD_A_T_ROTY: tobj->rotate.y = value->fv; break;
     case HSD_A_T_ROTZ: tobj->rotate.z = value->fv; break;
+    case HSD_A_T_KONST_R: if (tobj->tev) tobj->tev->konst.r = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_KONST_G: if (tobj->tev) tobj->tev->konst.g = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_KONST_B: if (tobj->tev) tobj->tev->konst.b = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_KONST_A: if (tobj->tev) tobj->tev->konst.a = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV0_R: if (tobj->tev) tobj->tev->tev0.r = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV0_G: if (tobj->tev) tobj->tev->tev0.g = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV0_B: if (tobj->tev) tobj->tev->tev0.b = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV0_A: if (tobj->tev) tobj->tev->tev0.a = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV1_R: if (tobj->tev) tobj->tev->tev1.r = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV1_G: if (tobj->tev) tobj->tev->tev1.g = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV1_B: if (tobj->tev) tobj->tev->tev1.b = (u8) (255.0f * value->fv); break;
+    case HSD_A_T_TEV1_A: if (tobj->tev) tobj->tev->tev1.a = (u8) (255.0f * value->fv); break;
     }
 }
 
@@ -297,6 +351,11 @@ void HSD_TObjRemoveAll(HSD_TObj* tobj)
     while (tobj) {
         HSD_TObj* next = tobj->next;
         HSD_AObjRemove(tobj->aobj);
+        if (tobj->tluttbl) {
+            for (unsigned i = 0; tobj->tluttbl[i]; ++i)
+                HSD_Free(tobj->tluttbl[i]);
+            HSD_Free(tobj->tluttbl);
+        }
         HSD_Free(tobj->tev);
         HSD_Free(tobj->lod);
         HSD_Free(tobj->tlut);
@@ -396,6 +455,29 @@ HSD_PObj* HSD_PObjLoadDesc(HSD_PObjDesc* pobjdesc)
             }
             pobj->u.shape_set = shape;
         }
+    } else if (pobj_type(pobj) == POBJ_ENVELOPE && pobjdesc->u.envelope_p) {
+        HSD_SList** tail = &pobj->u.envelope_list;
+        for (DiscU32* slot = pobjdesc->u.envelope_p; slot->v; ++slot) {
+            HSD_Envelope* first = NULL;
+            HSD_Envelope** link = &first;
+            for (HSD_EnvelopeDesc* edesc = reinterpret_cast<HSD_EnvelopeDesc*>(
+                     static_cast<uintptr_t>(slot->v));
+                 edesc->joint; ++edesc) {
+                HSD_Envelope* envelope = static_cast<HSD_Envelope*>(
+                    HSD_MemAlloc(sizeof(HSD_Envelope)));
+                if (!envelope)
+                    break;
+                memset(envelope, 0, sizeof(*envelope));
+                envelope->weight = edesc->weight;
+                *link = envelope;
+                link = &envelope->next;
+            }
+            *tail = HSD_SListAlloc();
+            if (!*tail)
+                break;
+            (*tail)->data = first;
+            tail = &(*tail)->next;
+        }
     }
     return pobj;
 }
@@ -411,6 +493,18 @@ void HSD_PObjRemoveAll(HSD_PObj* pobj)
             if (pobj->u.shape_set->flags & SHAPESET_ADDITIVE)
                 HSD_Free(pobj->u.shape_set->blend.bp);
             HSD_Free(pobj->u.shape_set);
+        } else if (pobj_type(pobj) == POBJ_ENVELOPE) {
+            HSD_SList* list = pobj->u.envelope_list;
+            while (list) {
+                HSD_Envelope* envelope = static_cast<HSD_Envelope*>(list->data);
+                while (envelope) {
+                    HSD_Envelope* following = envelope->next;
+                    HSD_JObjUnrefThis(envelope->jobj);
+                    HSD_Free(envelope);
+                    envelope = following;
+                }
+                list = HSD_SListRemove(list);
+            }
         }
         HSD_Free(pobj);
         pobj = next;
@@ -427,6 +521,21 @@ void HSD_PObjResolveRefsAll(HSD_PObj* pobj, HSD_PObjDesc* desc)
             pobj->u.jobj = static_cast<HSD_JObj*>(
                 HSD_IDGetDataFromTable(NULL,
                     reinterpret_cast<uintptr_t>(desc->u.joint), NULL));
+        } else if (pobj_type(pobj) == POBJ_ENVELOPE && desc->u.envelope_p) {
+            DiscU32* slot = desc->u.envelope_p;
+            for (HSD_SList* list = pobj->u.envelope_list; list && slot->v;
+                 list = list->next, ++slot) {
+                HSD_EnvelopeDesc* edesc = reinterpret_cast<HSD_EnvelopeDesc*>(
+                    static_cast<uintptr_t>(slot->v));
+                for (HSD_Envelope* envelope = static_cast<HSD_Envelope*>(list->data);
+                     envelope && edesc->joint; envelope = envelope->next, ++edesc) {
+                    HSD_JObjUnrefThis(envelope->jobj);
+                    envelope->jobj = static_cast<HSD_JObj*>(HSD_IDGetDataFromTable(
+                        NULL, reinterpret_cast<uintptr_t>(edesc->joint), NULL));
+                    if (envelope->jobj)
+                        HSD_JObjRefThis(envelope->jobj);
+                }
+            }
         }
     }
 }

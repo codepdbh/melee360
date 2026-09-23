@@ -3,8 +3,6 @@
 
 #include <xtl.h>
 
-struct MeleeTitleVertex;
-
 struct SpriteColor {
     float red;
     float green;
@@ -30,32 +28,11 @@ public:
     bool UploadGameTexture(IDirect3DDevice9* device, const unsigned* pixels,
                            unsigned width, unsigned height);
     void AddGameTexture(float x, float y, float width, float height);
-    void AddTitleMesh(const MeleeTitleVertex* vertices, unsigned count);
     void End(IDirect3DDevice9* device);
     void Shutdown();
     bool UsesExternalAtlas() const;
 
 private:
-    IDirect3DTexture9* ResolveTitleTexture(IDirect3DDevice9* device, const void* key);
-    void DrawTitleMesh(IDirect3DDevice9* device);
-    const void* textureImageKeys_[512];
-    const void* texturePaletteKeys_[512];
-    IDirect3DTexture9* titleTextures_[512];
-    unsigned textureCount_;
-    const void* vertexTextures_[32766];
-    const void* vertexTextures1_[32766];
-    unsigned vertexBlend_[32766];
-    struct TitleVertex {
-        float x, y, z, w;
-        float red, green, blue, alpha;
-        float u, v;
-        float u1, v1, fog, unused;
-    };
-    TitleVertex titleVertices_[32766];
-    IDirect3DVertexShader9* titleVertexShader_;
-    IDirect3DPixelShader9* titlePixelShader_;
-    IDirect3DVertexDeclaration9* titleDeclaration_;
-    IDirect3DTexture9* whiteTexture_;
     struct Vertex {
         float x;
         float y;
@@ -70,7 +47,6 @@ private:
     };
 
     static const unsigned kMaxQuads = 16384;
-    static const unsigned kMaxTitleVertices = 32766;
     Vertex vertices_[kMaxQuads * 4];
     unsigned quadCount_;
     IDirect3DVertexShader9* vertexShader_;
@@ -81,7 +57,6 @@ private:
     IDirect3DTexture9* gameTexture_;
     Vertex bannerVertices_[4];
     Vertex gameVertices_[4];
-    unsigned titleVertexCount_;
     bool bannerQueued_;
     bool gameTextureQueued_;
     bool externalAtlas_;

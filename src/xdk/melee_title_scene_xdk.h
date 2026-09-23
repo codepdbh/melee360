@@ -20,33 +20,14 @@ struct MeleeTitleSceneStatus {
     unsigned meshVertexCount;
 };
 
-struct MeleeTitleVertex {
-    float x, y, z;
-    float u, v;
-    float u1, v1;
-    float fog;
-    unsigned color;
-    const void* texture;
-    const void* texture1;
-    unsigned blend;
-    unsigned cull;
-};
-
 bool M360_LoadTitleScene(MeleeTitleSceneStatus* status);
 void M360_TitleEnter(bool openingMode);
 bool M360_TitleUpdate(unsigned sceneTick);
+bool M360_TitleAnyVisible(void);
+void M360_TitleRender(void);
 unsigned M360_TitleClearColor(void);
 bool M360_DecodeFirstTitleTexture(unsigned** pixels, unsigned* width,
                                   unsigned* height);
 void M360_FreeDecodedTitleTexture(unsigned* pixels);
-unsigned M360_TitleTextureWrap(const void* texture);
-const void* M360_TitleTextureImageKey(const void* texture);
-const void* M360_TitleTexturePaletteKey(const void* texture);
-unsigned M360_BuildTitleMesh(MeleeTitleVertex* vertices, unsigned capacity);
-bool M360_LoadMenuModels(unsigned* loadedModels, unsigned* loadedJoints);
-void M360_UpdateMenuModels(unsigned kind, unsigned selection);
-unsigned M360_BuildMenuMesh(MeleeTitleVertex* vertices, unsigned capacity);
-bool M360_DecodeTitleTexture(const void* texture, unsigned** pixels,
-                            unsigned* width, unsigned* height);
 
 #endif

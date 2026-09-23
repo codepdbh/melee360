@@ -21,6 +21,7 @@ extern "C" {
  * attribution; nothing else in the ported cluster defines it yet. */
 unsigned int aurora_draw_tag;
 
+#ifndef M360_NATIVE_RENDER
 u8 HSD_CObjSetCurrent(HSD_CObj* cobj)
 {
     (void) cobj;
@@ -50,5 +51,7 @@ void HSD_FogSet(HSD_Fog* fog)
 {
     (void) fog;
 }
+
+#endif
 
 } /* extern "C" */
