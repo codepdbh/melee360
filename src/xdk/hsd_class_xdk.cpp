@@ -7,6 +7,7 @@
 
 #if defined(_XBOX)
 #include <xtl.h>
+void M360_Trace(const char* stage, unsigned value);
 #endif
 
 extern "C" void OSReport(char* fmt, ...)
@@ -47,6 +48,7 @@ extern "C" void OSPanic(char* file, int line, char* msg, ...)
               line);
     full[sizeof(full) - 1] = '\0';
     OutputDebugStringA(full);
+    M360_Trace(full, static_cast<unsigned>(line));
 #else
     std::fprintf(stderr, "[M360][PANIC] %s (%s:%d)\n", buffer, file, line);
 #endif

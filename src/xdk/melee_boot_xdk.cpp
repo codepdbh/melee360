@@ -10,6 +10,7 @@ extern "C" {
 namespace {
 
 unsigned char* s_titleArchiveImage = 0;
+char s_isoPath[260];
 
 unsigned ReadBE32(const unsigned char* bytes)
 {
@@ -81,6 +82,7 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
     if (!status)
         return false;
     ZeroMemory(status, sizeof(*status));
+    strncpy(s_isoPath, isoPath, sizeof(s_isoPath) - 1);
 
     FILE* image = fopen(isoPath, "rb");
     if (!image) {
@@ -193,4 +195,29 @@ bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status)
     fclose(image);
     return status->discValid && status->fstMounted &&
            status->bannerDecoded && status->titleArchiveValid;
+}
+
+extern "C" unsigned char* M360_ReadDiscFile(const char* name, unsigned* size)
+{
+    *size = 0;
+    FILE* image = fopen(s_isoPath, "rb");
+    if (!image)
+        return 0;
+    struct m360_gcm gcm;
+    unsigned char* data = 0;
+    if (m360_gcm_mount(&gcm, image) == 0) {
+        struct m360_gcm_file file;
+        if (m360_gcm_find(&gcm, name, &file) && file.size) {
+            data = static_cast<unsigned char*>(_aligned_malloc(file.size, 32));
+            if (data && m360_gcm_read(&gcm, &file, 0, data, file.size) == file.size) {
+                *size = file.size;
+            } else {
+                _aligned_free(data);
+                data = 0;
+            }
+        }
+        m360_gcm_unmount(&gcm);
+    }
+    fclose(image);
+    return data;
 }

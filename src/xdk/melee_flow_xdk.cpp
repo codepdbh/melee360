@@ -3,6 +3,7 @@
 #include "melee_movie_xdk.h"
 #include "melee_title_scene_xdk.h"
 #include "menu_scene_xdk.h"
+#include "match_xdk.h"
 
 extern "C" int HSD_Randi(int max_val);
 
@@ -68,6 +69,8 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         M360_MenuSceneLeave();
         s_menuActive = false;
     }
+    if (flow->state == kFlowMatch && state != kFlowMatch)
+        M360_MatchLeave();
     flow->state = state;
     flow->sceneTick = 0;
     ++flow->transitions;
@@ -98,6 +101,12 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         flow->titleFrames = 0;
         flow->movieVisible = false;
         flow->titleVisible = true;
+    } else if (state == kFlowMatch) {
+        M360_AudioStop(audio);
+        s_playingBgm = -1;
+        flow->movieVisible = false;
+        flow->titleVisible = false;
+        M360_MatchEnter();
     } else {
         flow->menuSelection = 0;
         flow->menuKind = 0;
@@ -180,10 +189,19 @@ void UpdateMenu(MeleeFlow* flow, unsigned __int64 buttons, MeleeAudioStatus* aud
     if (result == M360_MENU_TO_TITLE) {
         M360_Trace("menu.exit.title", flow->sceneTick);
         EnterState(flow, kFlowTitle, audio);
+    } else if (result == M360_MENU_TO_MATCH) {
+        EnterState(flow, kFlowMatch, audio);
     } else if (result == M360_MENU_RESTART) {
         M360_Trace("menu.exit.restart", flow->sceneTick);
         M360_MenuSceneEnter(0, 0);
     }
+}
+
+void UpdateMatch(MeleeFlow* flow, MeleeAudioStatus* audio)
+{
+    ++flow->sceneTick;
+    if (M360_MatchFrame() == M360_MATCH_TO_MENU)
+        EnterState(flow, kFlowMainMenu, audio);
 }
 
 } // namespace
@@ -196,7 +214,11 @@ void M360_FlowStart(MeleeFlow* flow, MeleeAudioStatus* audio)
     QueryPerformanceFrequency(&flow->frequency);
     flow->rulesBgm = kBgmMenu01;
     flow->state = kFlowMainMenu;
+#ifdef M360_BOOT_TO_MATCH
+    EnterState(flow, kFlowMatch, audio);
+#else
     EnterState(flow, kFlowOpening, audio);
+#endif
 }
 
 void M360_FlowUpdate(MeleeFlow* flow, unsigned __int64 buttonsTriggered,
@@ -205,6 +227,7 @@ void M360_FlowUpdate(MeleeFlow* flow, unsigned __int64 buttonsTriggered,
     switch (flow->state) {
     case kFlowOpening: UpdateOpening(flow, buttonsTriggered, audio); break;
     case kFlowTitle: UpdateTitle(flow, buttonsTriggered, audio); break;
+    case kFlowMatch: UpdateMatch(flow, audio); break;
     default: UpdateMenu(flow, buttonsTriggered, audio); break;
     }
 }
@@ -214,8 +237,14 @@ const char* M360_FlowStateName(MeleeFlowState state)
     switch (state) {
     case kFlowOpening: return "OPENING MOVIE";
     case kFlowTitle: return "TITLE";
+    case kFlowMatch: return "MATCH";
     default: return "MAIN MENU";
     }
+}
+
+extern "C" void M360_MatchTrace(const char* stage, unsigned value)
+{
+    M360_Trace(stage, value);
 }
 
 extern "C" void M360_MenuTrace(const char* stage, unsigned value)

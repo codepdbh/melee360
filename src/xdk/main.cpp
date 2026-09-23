@@ -8,6 +8,7 @@
 #include "melee_movie_xdk.h"
 #include "hsd_render_xdk.h"
 #include "menu_scene_xdk.h"
+#include "match_xdk.h"
 #include "melee_title_scene_xdk.h"
 #include "sprite_renderer.h"
 
@@ -491,6 +492,33 @@ void RenderMenuPlaceholder(SpriteRenderer& renderer, const MeleeFlow& flow)
     RenderBatch(renderer, g_dynamic);
 }
 
+void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
+{
+    static const char* const names[2] = { "MARIO P1", "MARIO CPU" };
+    static const D3DCOLOR colors[2] = { D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255) };
+    for (unsigned i = 0; i < match.fighters && i < 2; ++i) {
+        const LONG x = 380 + static_cast<LONG>(i) * 340;
+        DrawRect(renderer, x - 12, 606, 250, 96, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
+        g_dynamic.count = 0;
+        g_dynamic.color = colors[i];
+        AddText(g_dynamic, x, 614, names[i], 2);
+        RenderBatch(renderer, g_dynamic);
+        g_dynamic.count = 0;
+        g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+        AddUnsigned(g_dynamic, x + 10, 640, match.damage[i], 6);
+        AddText(g_dynamic, x + 150, 662, "%", 3);
+        RenderBatch(renderer, g_dynamic);
+    }
+    g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    if (match.paused) {
+        DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.35f);
+        g_dynamic.count = 0;
+        AddText(g_dynamic, 540, 300, "PAUSE", 6);
+        AddText(g_dynamic, 420, 380, "START: RESUME   B: MAIN MENU", 2);
+        RenderBatch(renderer, g_dynamic);
+    }
+}
+
 void ResetGame(GameState& game)
 {
     game.playerX = 145.0f;
@@ -678,6 +706,7 @@ void __cdecl main()
 
         HSD_GObjLibInitDataType gobjInit;
         HSD_GObjSetInitDefaults(&gobjInit);
+        gobjInit.gproc_pri_max = 0x18;
         HSD_GObjInit(&gobjInit);
 
         HSD_GObj* gobj = GObj_Create(1, 0, 0);
@@ -846,6 +875,10 @@ void __cdecl main()
             if (XInputGetState(user, &pad) == ERROR_SUCCESS)
                 padButtons |= pad.Gamepad.wButtons;
         }
+        if (padButtons != previousPadButtons) {
+            TraceStage("input.xinput.frame", frameCount);
+            TraceStage("input.xinput.buttons", padButtons);
+        }
         const bool backPressed = (padButtons & XINPUT_GAMEPAD_BACK) &&
                                  !(previousPadButtons & XINPUT_GAMEPAD_BACK);
         previousPadButtons = padButtons;
@@ -862,12 +895,13 @@ void __cdecl main()
         M360_FlowUpdate(&flow, triggered, &audio);
 
         const bool menuScene = flow.state == kFlowMainMenu && M360_FlowMenuActive();
+        const bool matchScene = flow.state == kFlowMatch;
         device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
                       D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
         renderer.Begin();
         if (flow.state == kFlowMainMenu && !menuScene)
             RenderMenuPlaceholder(renderer, flow);
-        else if (!menuScene)
+        else if (!menuScene && !matchScene)
             renderer.AddQuad(160.0f, 0.0f, 960.0f, 720.0f,
                              ToSpriteColor(M360_TitleClearColor()));
         renderer.End(device);
@@ -877,6 +911,9 @@ void __cdecl main()
         if (menuScene) {
             M360_HsdRenderAllowErase(true);
             M360_MenuSceneRender();
+        } else if (matchScene) {
+            M360_HsdRenderAllowErase(true);
+            M360_MatchRender();
         } else if (flow.titleVisible) {
             M360_HsdRenderAllowErase(false);
             M360_TitleRender();
@@ -886,6 +923,13 @@ void __cdecl main()
         titleMeshVertexCount = renderStats.triangles * 3;
         MeleeMovieStatus movie;
         M360_MovieGetStatus(&movie);
+        M360MatchStatus match;
+        M360_MatchGetStatus(&match);
+        if (matchScene) {
+            renderer.Begin();
+            RenderMatchHud(renderer, match);
+            renderer.End(device);
+        }
         if (hudVisible) {
             renderer.Begin();
             RenderHudBackdrop(renderer);
@@ -952,6 +996,14 @@ void __cdecl main()
             TraceStage("loop.frames_over_20ms", framesOver20ms);
             TraceStage("loop.mesh_vertices", titleMeshVertexCount);
             TraceStage("loop.hsd_draw_calls", renderStats.drawCalls);
+            if (matchScene) {
+                TraceStage("loop.match_frame", match.frame);
+                TraceStage("loop.match_motion_p1", match.motion[0]);
+                TraceStage("loop.match_x_p1", static_cast<unsigned>(static_cast<int>(match.posX[0])));
+                TraceStage("loop.match_y_p1", static_cast<unsigned>(static_cast<int>(match.posY[0])));
+                TraceStage("loop.match_damage_p2", match.damage[1]);
+                TraceStage("loop.match_hits", match.hits);
+            }
             if (flow.state == kFlowMainMenu) {
                 TraceStage("loop.menu_kind", flow.menuKind);
                 TraceStage("loop.menu_selection", flow.menuSelection);

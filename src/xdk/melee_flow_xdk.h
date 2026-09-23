@@ -8,7 +8,8 @@
 enum MeleeFlowState {
     kFlowOpening,
     kFlowTitle,
-    kFlowMainMenu
+    kFlowMainMenu,
+    kFlowMatch
 };
 
 struct MeleeFlow {

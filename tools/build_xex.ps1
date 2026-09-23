@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch] $BootToMatch)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -299,9 +299,10 @@ foreach ($movieSource in @('src\common\jpeg_decode.c', 'src\common\mth.c')) {
     if ($LASTEXITCODE -ne 0) { throw "$movieSource compilation failed." }
     $movieObjects += $movieObject
 }
+$flowDefine = if ($BootToMatch) { '/DM360_BOOT_TO_MATCH' } else { '/DM360_BOOT_NORMAL' }
 foreach ($movieSource in @('src\xdk\melee_movie_xdk.cpp', 'src\xdk\melee_flow_xdk.cpp')) {
     $movieObject = Join-Path $build ([IO.Path]::GetFileNameWithoutExtension($movieSource) + '.obj')
-    & $compiler @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+    & $compiler @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4', $flowDefine,
         '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$includeXbox", "/I$includeSys",
         "/I$build", "/Fo$movieObject", (Join-Path $root $movieSource))
     if ($LASTEXITCODE -ne 0) { throw "$movieSource compilation failed." }
@@ -645,6 +646,7 @@ $sceneSources = @(
     @{ Source = (Join-Path $meleeSrc 'melee/mn/mnmain.c'); Dir = (Join-Path $meleeSrc 'melee/mn') },
     @{ Source = (Join-Path $meleeSrc 'melee/mn/mn_22EC.c'); Dir = (Join-Path $meleeSrc 'melee/mn') },
     @{ Source = $menuSceneSource; Dir = (Join-Path $root 'src/xdk') },
+    @{ Source = (Join-Path $root 'src/xdk/match_scene_xdk.c'); Dir = (Join-Path $root 'src/xdk') },
     @{ Source = (Join-Path $root 'src/xdk/hsd_gx_xdk.c'); Dir = (Join-Path $root 'src/xdk') }
 )
 Write-Host '[M360][XEX] compiling original camera/fog/light/menu scene code'
@@ -659,6 +661,8 @@ foreach ($scene in $sceneSources) {
     if ($LASTEXITCODE -ne 0) { throw "Scene source compilation failed: $($scene.Source)" }
     $sceneObjects += $sceneObject
 }
+Write-Host '[M360][XEX] compiling original fighter states and native match glue'
+$matchObjects = @(& (Join-Path $PSScriptRoot 'build_match_xdk.ps1') -Compiler $compiler -Build $build)
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
@@ -678,11 +682,13 @@ $linkArgs = @(
     $utilObject, $bytecodeObject,
     $hsdJObjWrapperObject, $jobjObject, $wobjObject,
     $hsdSynthWrapperObject, $synthObject, $devcomObject
-) + $sceneObjects + $audioObjects + $movieObjects + @(
+) + $sceneObjects + $matchObjects + $audioObjects + $movieObjects + @(
     'xaudio2.lib', 'xmcore.lib',
     'd3d9.lib', 'd3dx9.lib', 'xapilib.lib', 'xboxkrnl.lib'
 )
-& $linker $linkArgs
+$linkResponse = Join-Path $build 'link.rsp'
+Set-Content -Encoding ASCII $linkResponse ($linkArgs | ForEach-Object { '"' + $_ + '"' })
+& $linker "@$linkResponse"
 if ($LASTEXITCODE -ne 0) { throw 'XDK PE link failed.' }
 
 Write-Host '[M360][XEX] building dist/default.xex'

@@ -8,7 +8,8 @@ extern "C" {
 enum {
     M360_MENU_CONTINUE = 0,
     M360_MENU_TO_TITLE = 1,
-    M360_MENU_RESTART = 2
+    M360_MENU_RESTART = 2,
+    M360_MENU_TO_MATCH = 3
 };
 
 void M360_MenuSceneEnter(unsigned kind, unsigned selection);

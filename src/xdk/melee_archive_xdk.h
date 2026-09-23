@@ -14,4 +14,8 @@ bool M360_ParseMenuHsdArchive(unsigned char* image, unsigned imageSize,
                               unsigned* resolvedSymbols);
 void* M360_GetMenuHsdPublic(const char* symbol);
 
+extern "C" void* M360_ArchiveOpen(unsigned char* image, unsigned imageSize);
+extern "C" void* M360_ArchiveFind(void* archive, const char* symbol);
+extern "C" const char* M360_ArchiveFirstSymbol(void* archive);
+
 #endif

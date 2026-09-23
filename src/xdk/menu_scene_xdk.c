@@ -240,6 +240,9 @@ int M360_MenuSceneFrame(void)
         return M360_MENU_TO_TITLE;
     case GM_MENU:
         return M360_MENU_RESTART;
+    case GM_VS:
+        M360_MenuTrace("menu.exit.quick_match", (unsigned) s_exitData.pending_mode);
+        return M360_MENU_TO_MATCH;
     default:
         M360_MenuTrace("menu.leaf.unported:mode", (unsigned) s_exitData.pending_mode);
         return M360_MENU_CONTINUE;

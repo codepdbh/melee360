@@ -31,5 +31,6 @@ struct MeleeBootStatus {
 };
 
 bool M360_BootMelee(const char* isoPath, MeleeBootStatus* status);
+extern "C" unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
 
 #endif

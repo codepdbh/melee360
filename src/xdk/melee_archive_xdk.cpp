@@ -145,3 +145,31 @@ void* M360_GetMenuHsdPublic(const char* symbol)
         return 0;
     return HSD_ArchiveGetPublicAddress(&s_menuArchive, symbol);
 }
+
+extern "C" void* M360_ArchiveOpen(unsigned char* image, unsigned imageSize)
+{
+    HSD_Archive* archive = static_cast<HSD_Archive*>(malloc(sizeof(HSD_Archive)));
+    if (!archive || !image)
+        return 0;
+    ZeroMemory(archive, sizeof(*archive));
+    if (HSD_ArchiveParse(archive, image, imageSize) != 0 || !archive->symbols) {
+        free(archive);
+        return 0;
+    }
+    return archive;
+}
+
+extern "C" void* M360_ArchiveFind(void* archive, const char* symbol)
+{
+    if (!archive || !symbol)
+        return 0;
+    return HSD_ArchiveGetPublicAddress(static_cast<HSD_Archive*>(archive), symbol);
+}
+
+extern "C" const char* M360_ArchiveFirstSymbol(void* archive)
+{
+    HSD_Archive* a = static_cast<HSD_Archive*>(archive);
+    if (!a || !a->header.nb_public || !a->public_info)
+        return 0;
+    return a->symbols + a->public_info[0].symbol;
+}
