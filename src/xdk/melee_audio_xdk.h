@@ -27,5 +27,12 @@ bool M360_AudioInit(const char* isoPath, MeleeAudioStatus* status);
 bool M360_AudioPlay(const char* track, MeleeAudioStatus* status);
 void M360_AudioStop(MeleeAudioStatus* status);
 void M360_AudioUpdate(MeleeAudioStatus* status);
+unsigned M360_AudioSfxSubmitted(void);
+unsigned M360_AudioSfxMisses(void);
+#ifdef __cplusplus
+extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
+#else
+void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
+#endif
 
 #endif

@@ -9,7 +9,9 @@ enum {
     M360_MENU_CONTINUE = 0,
     M360_MENU_TO_TITLE = 1,
     M360_MENU_RESTART = 2,
-    M360_MENU_TO_MATCH = 3
+    M360_MENU_TO_MATCH = 3,
+    M360_MENU_TO_CLASSIC = 4,
+    M360_MENU_TO_ADVENTURE = 5
 };
 
 void M360_MenuSceneEnter(unsigned kind, unsigned selection);

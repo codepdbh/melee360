@@ -62,11 +62,14 @@ LibXenon implementations.
 | Interactive native title viewer | ✅ LB+RB cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances; Start is reserved for scene integration |
 | Original HSD audio engine (`synth.c`/`devcom.c`) | ✅ Voice alloc/priority-stealing, ADSR-style volume ramp, pitch/pan curves and the DVD/ARAM command queue linked and host-validated; AX/AI/AR/DVD hardware entry points stubbed (no audible output yet) |
 | Real Melee music output | ✅ `menu01.hps` read from the ISO, HALPST/DSP-ADPCM decoded natively and streamed through XAudio2 at boot, looping; host test checks decode continuity and Xenia outputs audible sound |
+| Character sound effects | 🚧 Original SEM/SSM samples now use nibble-correct DSP decoding and separate mono/stereo buffers. 21 SSM entries match an independent decoder; XAudio2 submission/buffer reuse checked on the host. Audible in-game confirmation remains pending |
 | Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
-| Title-to-menu flow | 🚧 Start reaches a menu mesh built from original `MnMaAll.usd` models; original `mnmain` logic and full visual effects remain pending |
-| Original menu archive | ✅ XEX loads `MnMaAll.usd` from the user's ISO and resolves all 83 requested symbols in Xenia |
-| Original menu geometry | 🚧 Xenia loads 20 model trees and 351 joints; the main scene submits 2,982 vertices from Back, Panel and ConTop. Cursor clones, animation and visual fidelity remain pending |
-| Melee scene rendering, menus and gameplay | 🚧 First real title mesh runs; per-material texture/TEV state, cameras, menus and fighting gameplay remain |
+| Original menu scene and navigation | 🚧 Original `mnmain` scene lifecycle and shared HSD rendering are active; VS mode requests a quick match. Several menu leaves remain bridged/incomplete |
+| Quick-match boot | ✅ VS route loads Battlefield and two Mario fighters, then runs the native stage/fighter loop in Xenia; this validates integration, not playable controls or combat |
+| Classic and Adventure modes | 🚧 The original menu entries currently route to the same provisional VS arena. This is not the original Classic/Adventure progression: fighter roster, round/stage sequence, and results flow are still missing |
+| Fighter actions and combat | 🚧 Selected original common states, provisional Mario hitstun/damage motions, platform drop-through and ceiling collision are linked. Input/status traces and 4-stock rules are present; interactive movement/hits and original knockback remain unverified |
+| Local two-player quick match | 🚧 A connected second XInput controller controls P2; otherwise a basic CPU approaches and attacks |
+| Melee rendering and gameplay | 🚧 Original title/menu/stage/fighter graphs render; full material effects, match rules, fighter/stage selection and verified gameplay remain |
 
 The current `xenon.elf` is a platform and integration test. With a legal
 `GALE01` image on the USB drive it now opens `GmTtAll.dat`, runs the original

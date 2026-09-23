@@ -26,6 +26,12 @@ function Get-CFunction([string]$Text, [string]$Signature) {
     return $Text.Substring($start, $cursor - $start)
 }
 
+function Get-CPrologue([string]$Text, [string]$FirstSignature) {
+    $end = $Text.IndexOf($FirstSignature)
+    if ($end -lt 0) { throw "Missing original function: $FirstSignature" }
+    return $Text.Substring(0, $end)
+}
+
 function New-Slice([string]$Relative, [string]$FirstSignature, [string[]]$Signatures, [string]$Name) {
     $text = Get-Content -Raw (Join-Path $src $Relative)
     $end = $text.IndexOf($FirstSignature)
@@ -50,24 +56,38 @@ function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$Sta
 }
 
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
-$motionIds = @(14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,42,43,44,45,46)
+$motionIds = @(14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,42,43,44,45,46,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
 $tableStart = $motionText.IndexOf('MotionState ftData_MotionStateList[ftCo_MS_Count] = {')
 $headers = $motionText.Substring(0, $tableStart)
 $entries = [regex]::Matches($motionText.Substring($tableStart), '(?s)\n    \{\s*\n\s*// ftCo_MS_(\w+) = (\d+)\s*\n(.*?)\n    \},')
-$table = $headers + "`r`ntypedef struct M360MotionEntry { int msid; MotionState state; } M360MotionEntry;`r`n"
+$table = $headers + "`r`nvoid M360_Damage_Anim(HSD_GObj*);`r`nvoid M360_Damage_IASA(HSD_GObj*);`r`nvoid M360_Damage_Phys(HSD_GObj*);`r`nvoid M360_Damage_Coll(HSD_GObj*);`r`ntypedef struct M360MotionEntry { int msid; MotionState state; } M360MotionEntry;`r`n"
 $table += "const M360MotionEntry M360_MotionTable[] = {`r`n"
 $found = 0
 foreach ($entry in $entries) {
     $id = [int]$entry.Groups[2].Value
     if ($motionIds -notcontains $id) { continue }
-    $table += "    { $id, {`r`n        // ftCo_MS_$($entry.Groups[1].Value)`r`n$($entry.Groups[3].Value)`r`n    } },`r`n"
+    $body = $entry.Groups[3].Value
+    if ($id -ge 75 -and $id -le 91) {
+        $body = $body -replace 'ftCo_DamageFlyRoll_Anim|ftCo_DamageFly_Anim|ftCo_Damage_Anim', 'M360_Damage_Anim'
+        $body = $body -replace 'ftCo_DamageFlyRoll_IASA|ftCo_DamageFly_IASA|ftCo_Damage_IASA', 'M360_Damage_IASA'
+        $body = $body -replace 'ftCo_DamageFlyRoll_Phys|ftCo_DamageFly_Phys|ftCo_Damage_Phys', 'M360_Damage_Phys'
+        $body = $body -replace 'ftCo_DamageFlyRoll_Coll|ftCo_DamageFly_Coll|ftCo_Damage_Coll', 'M360_Damage_Coll'
+    }
+    $table += "    { $id, {`r`n        // ftCo_MS_$($entry.Groups[1].Value)`r`n$body`r`n    } },`r`n"
     ++$found
 }
 if ($found -ne $motionIds.Count) { throw "Motion table extraction found $found of $($motionIds.Count) entries." }
 $table += "};`r`nconst unsigned M360_MotionTableCount = $found;`r`n"
 $motionTable = Join-Path $out 'motion_table.c'
 Set-Content -Encoding ASCII $motionTable $table
+
+$damageSource = Get-Content -Raw (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Damage.c')
+$damageAngleSlice = (Get-CPrologue $damageSource 'float ftCo_Damage_CalcAngle(') +
+    (Get-CFunction $damageSource 'float ftCo_Damage_CalcAngle(') + "`r`n" +
+    (Get-CFunction $damageSource 'void ftCo_Damage_CalcVel(') + "`r`n"
+$damageAnglePath = Join-Path $out 'ftCo_DamageAngle_slice.c'
+Set-Content -Encoding ASCII $damageAnglePath $damageAngleSlice
 
 $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Wait.c') },
@@ -83,6 +103,7 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Fall.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_FallAerial.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Landing.c') },
+    @{ Path = $damageAnglePath; Dir = (Join-Path $src 'melee/ft/kinds/ftCommon') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Attack1.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftwalkcommon.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftaction.c') },

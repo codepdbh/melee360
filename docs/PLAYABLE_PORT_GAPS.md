@@ -1,28 +1,80 @@
-# Remaining work for playable Melee
+﻿# Remaining work for playable Melee
 
-The current XDK executable is a title-resource viewer. It loads original disc
-data and runs selected reconstructed HAL modules, but does not run a match.
-Successful linking, archive relocation and Present calls are not evidence of
-working Melee gameplay.
+The XDK executable now has a quick-match route from VS mode and a native match
+loop. It is still an integration prototype, not a verified playable match.
+Archive loading, fighter count and successful `Present` calls do not establish
+that the game responds correctly to a player or resolves combat correctly.
 
 ## Verified current path
 
-`main.cpp` loads `GmTtAll.dat`, constructs JObj trees, advances HAL animation,
-decodes display lists and submits a preview to D3D9. The latest guest trace
-reports 8,130 vertices and successful Present results at frames 1 and 120.
-The mesh hashes differ between those frames, confirming changing mesh data.
-The HUD vertex capacity was increased and quad submissions are chunked.
+`main.cpp` runs the original menu scene through the shared HSD renderer. VS
+selection enters `M360_MatchEnter`, which loads Battlefield (`GrNBa.dat`),
+creates stage/camera objects and loads two Mario fighters from the user's ISO.
+The match loop advances stage and fighter animation, updates selected original
+common motion states, checks stage collision and blast zones, and renders the
+scene. A local `dist/runtime-trace.txt` reached match frame 900 with two
+fighters and successful frame presentation. In that run P1 remained in Wait
+at `(0, 0)`, P2 damage stayed at zero, and the hit count stayed at zero. No
+input-driven match or successful hit is claimed by that trace.
+
+The current Xenia runtime trace records the original menu exiting with
+`GM_CLASSIC`, selecting mode 3, loading both fighters, and finding/playing
+`audio/vl_battle.hps` on arena entry. This only verifies that the menu launches
+the shared VS arena. The current five-round HUD/return controls are a scaffold;
+the original Classic/Adventure character roster, stage sequence, round setup,
+and results progression are not implemented. Do not treat either mode as
+playable yet.
+
+The `ft_PlaySFX` bridge resolves each game sound through `audio/smash2.sem`, finds the referenced SSM voice in the ISO, decodes its DSP-ADPCM sample, and submits it to XAudio2. The SEM table resolves 4,016 of its 4,035 streams to SSM entries; a small remainder points outside the available SSM ranges. Background HPS music remains a separate working path.
+
+The 2026-09-23 noise fix corrects three faults: treating the first sample byte
+as a DSP frame header, overwriting mono samples while expanding them to stereo,
+and writing into a buffer before its previous XAudio2 voice had stopped reading
+it. The shared decoder now uses nibble addresses, the voice's initial predictor
+and history, and the inclusive AX end address. PCM is decoded into separate
+scratch channels; an active voice is destroyed before reusing its output buffer.
+
+Host validation compared 21 mono/stereo SSM entries from `main`, `mario`, `fox`,
+`falco`, and `1padv` against vgmstream r2117: all 413,827 compared PCM values
+matched. Vgmstream trims 1-3 final samples differently; the port retains the
+inclusive AX endpoint. Clips still have a 65,536-frame cap. A host harness
+compiled the actual XDK audio source with an XAudio2 test double: 32 submissions
+preserved the decoded channels, pan and volume, and 24 active buffer replacements
+left the old PCM untouched until voice destruction. The rebuilt HPS test and
+nibble-boundary regression checks pass. Local validation scripts/results are in
+`build-x360/audio-validation/`. These checks do not establish audible playback
+in Xenia or on console; that still needs an in-game listening check.
 
 ## Missing integration
 
-- `tools/build_xex.ps1` does not compile the original title scene `gmtitle.c`
-  or fighter gameplay modules. The current main loop is a viewer loop.
-- `src/xdk/hsdjobj_xdk.cpp` still provides placeholder HSD draw callbacks and
-  current-camera handling. The preview renderer bypasses these callbacks.
-- The preview uses original camera descriptor values and a first-texture binding
-  per PObj. Full CObj handling, GX TEV effects, depth and skinning remain incomplete.
-- Scene transitions, fighter loading, action states, stage collision, combat,
-  match rules and game audio must be integrated and tested together.
+- Reproduce movement, jumping, attacks and hitstun in Xenia with recorded
+  controller input. Traces now include normalized axes/buttons and P1 motion
+  changes; no live Xenia run has verified that the original callbacks respond
+  to those inputs. Attack availability still depends on partially stubbed
+  fighter helpers.
+- Replace the provisional damage/knockback path with the original damage
+  state flow and validate hitlag, DI, tumble, landing and recovery behavior.
+  Damage motion IDs 75-91 now resolve through Mario's original motion/animation
+  data, but their temporary callbacks and hitstun timing are native scaffolding.
+- Verify an actual capsule/hurtbox contact in Xenia and check the new reaction
+  trace events (`fighter.hit.reaction_motion`, `fighter.hitstun.frames`); the
+  current saved runtime trace predates this change and contains no hit event.
+- Match setup is fixed to two Mario fighters on Battlefield with four stocks.
+  VS rules, fighter selection, stage selection, configurable stocks/time and
+  persistent results flow are not integrated. P2 uses a connected second
+  controller when available; otherwise a basic approach-and-attack CPU is used.
+- Stage collision now supports floor/wall checks, downward platform drop-through
+  and a basic ceiling crossing stop. Ledge grabs/slips, platform one-way edge
+  cases, moving geometry, hazards, items and the original full collision flags
+  remain incomplete.
+- Quick match now uses four stocks, reports a winner and returns to the menu
+  with B; a connected second XInput controller can control P2. The stock count
+  is fixed, there is no match timer, and VS setup still bypasses character/stage
+  select and results persistence.
+- Fighter model visibility/parts, material animation, effects, lighting and
+  hitboxes need visual and behavioral validation against the original scene.
+- Menu leaf screens use bridges for unsupported scenes; they do not implement
+  the full original menu lifecycle or data persistence.
 
 ## Gameplay compiler probe
 

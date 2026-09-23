@@ -37,6 +37,8 @@
 
 #include "menu_scene_xdk.h"
 
+extern void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
+
 extern MenuKindData mn_803EB6B0[0x22];
 void HSD_GObj_RunProcs(void);
 void HSD_GObj_80390FC0(void);
@@ -118,7 +120,11 @@ int lbAudioAx_80023694(void) { return 0; }
 int lbAudioAx_800236DC(void) { return 0; }
 void lbAudioAx_8002392C(void) {}
 int lbAudioAx_80023F28(int bgm) { M360_MenuPlayBgm(bgm); return 0; }
-void lbAudioAx_80024030(int sfx) { M360_MenuTrace("menu.sfx", (unsigned) sfx); }
+void lbAudioAx_80024030(int sfx)
+{
+    M360_MenuTrace("menu.sfx", (unsigned) sfx);
+    M360_AudioSfx((unsigned) sfx, 100, 64);
+}
 void lbCardGame_UpdatePowerTime(void) {}
 bool lbLang_IsSavedLanguageUS(void) { return true; }
 void lbMthp_8001F800(void) {}
@@ -243,6 +249,12 @@ int M360_MenuSceneFrame(void)
     case GM_VS:
         M360_MenuTrace("menu.exit.quick_match", (unsigned) s_exitData.pending_mode);
         return M360_MENU_TO_MATCH;
+    case GM_CLASSIC:
+        M360_MenuTrace("menu.exit.classic", (unsigned) s_exitData.pending_mode);
+        return M360_MENU_TO_CLASSIC;
+    case GM_ADVENTURE:
+        M360_MenuTrace("menu.exit.adventure", (unsigned) s_exitData.pending_mode);
+        return M360_MENU_TO_ADVENTURE;
     default:
         M360_MenuTrace("menu.leaf.unported:mode", (unsigned) s_exitData.pending_mode);
         return M360_MENU_CONTINUE;

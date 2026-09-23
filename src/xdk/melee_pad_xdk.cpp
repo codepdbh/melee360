@@ -29,8 +29,10 @@ u16 TranslateButtons(WORD buttons)
     if (buttons & XINPUT_GAMEPAD_X) translated |= PAD_BUTTON_X;
     if (buttons & XINPUT_GAMEPAD_Y) translated |= PAD_BUTTON_Y;
     if (buttons & XINPUT_GAMEPAD_START) translated |= PAD_BUTTON_START;
+    /* Bumpers map to GameCube digital shoulder functions: LB shields with L,
+     * while RB is Melee's Z/grab button. LT/RT remain analog L/R shields. */
     if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) translated |= PAD_TRIGGER_L;
-    if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) translated |= PAD_TRIGGER_R;
+    if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) translated |= PAD_TRIGGER_Z;
     return translated;
 }
 

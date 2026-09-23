@@ -48,8 +48,10 @@ original `HSD_ArchiveParse`, applies its relocation table and resolves the
 first public title root. It then constructs the title JObj/MObj/PObj/TObj
 graph, decodes its first tiled GameCube texture and translates the title PObj
 GX display lists into a D3D9 triangle list. It is a
-real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`; Melee's full
-scene renderer and gameplay loop are not running yet.
+real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`. The original
+menu scene and a fixed two-Mario Battlefield quick-match loop are now linked;
+the latter is still an integration prototype and has not passed interactive
+movement/combat validation. See [remaining gameplay gaps](PLAYABLE_PORT_GAPS.md).
 
 Controller input also passes through the original
 `upstream/melee-pc/src/sysdolphin/baselib/controller.c`. The Xbox adapter
@@ -57,10 +59,13 @@ implements `PADRead` over XInput, after which the original HSD code performs
 stick clamping and normalization plus button trigger, release and repeat state.
 The prototype reads `HSD_PadGameStatus`, rather than consuming XInput directly.
 
-Attack contact is evaluated by the original `lb_8000D148` segment-distance
-routine from `upstream/melee-pc/src/melee/lb/lb_00CE.c`. The source is included
-unchanged through a C-linkage XDK wrapper; only its CRT-conflicting private
-`expf`/`powf` symbol names are remapped during compilation.
+The prototype combat sandbox uses the original `lb_8000D148` segment-distance
+routine from `upstream/melee-pc/src/melee/lb/lb_00CE.c`. The quick-match
+fighter bridge currently checks relocated hit capsules against transformed
+hurtbox segments and applies provisional knockback; full original damage-state
+behavior remains pending. The original helper is included unchanged through a
+C-linkage XDK wrapper; only its CRT-conflicting private `expf`/`powf` symbol
+names are remapped during compilation.
 
 Run it with a local Xenia Canary build:
 
@@ -68,19 +73,25 @@ Run it with a local Xenia Canary build:
 ./tools/run_xenia.ps1 -XeniaPath C:\path\to\xenia_canary.exe
 ```
 
-The launcher enables Xenia's keyboard-as-controller mode. Default Canary
-bindings retained by the bootstrap are:
+The launcher enables Xenia's keyboard-as-controller mode and applies these
+bindings:
 
 - `1` + `3`: cycle GX mesh / title texture / disc banner (LB+RB together)
-- `X`: Start, reserved for original scene integration; currently only logged
-- `P`: exit (Xbox Y)
+- `WASD`: move
+- `J/K/L/I`: GameCube A/B/X/Y
+- `Enter`: Start/confirm
+- `1/3`: LB shield / RB grab (GameCube Z; together they also cycle title diagnostics)
+- `Q/E`: LT/RT shield
+- `Arrow keys`: C-stick; `Ctrl` + `WASD`: D-pad
 
-An Xbox-compatible controller uses LB+RB together to cycle the displayed title
-resource and Y to exit. When geometry was decoded successfully, the viewer
-starts in GX mesh mode and the HUD shows the number of generated `TRIS`.
-Neither A nor Start switches diagnostic views. Start does not yet enter a menu
-or match; the trace records `input.start.pending_scene` to make that explicit.
+An Xbox-compatible controller maps A/B/X/Y by matching face-button labels,
+Start to confirm, LB/LT to GameCube L, RT to GameCube R, and RB to GameCube Z
+(grab). X/Y jump during combat. LB+RB title-resource diagnostics are retained in the title viewer.
 Pass `-DisableKeyboard` if keyboard emulation should remain disabled.
+
+This interactive executable now runs the original menu scene and offers a VS
+quick-match path, but gameplay remains incomplete. Use the title-resource
+viewer notes below when inspecting the diagnostic title view.
 
 This is an interactive native title-resource milestone, not a claim that
 Melee gameplay has been ported. The first PObj GX display-list translation is
@@ -92,9 +103,10 @@ back to the atlas white texel. Multiple texture stages, TEV, animated texture
 selection and texture matrices remain unimplemented.
 
 Runtime diagnostics append boot completion, decoded vertex count and the
-results of frames 1 and 120 to `game:\runtime-trace.txt`. For a local Xenia
-diagnostic run, pass `--allow_game_relative_writes=true`; the resulting file
-is under the ignored `dist/` directory. Without write access, tracing is skipped.
+results of frames 1 and 120 to `game:\runtime-trace.txt`. The
+`tools/run_xenia.ps1` launcher enables `--allow_game_relative_writes=true` so
+Xenia can write the trace under ignored `dist/`. Without write access, tracing
+is skipped.
 View IDs are 0 (banner), 1 (texture), and 2 (mesh). A successful `Present`
 result verifies submission, not visual correctness.
 

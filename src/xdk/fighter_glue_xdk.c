@@ -8,11 +8,13 @@
 #include <melee/ft/ftaction.h>
 #include <melee/ft/ftanim.h>
 #include <melee/ft/ftcamera.h>
+#include <melee/ft/ftcoll.h>
 #include <melee/ft/ftcommon.h>
 #include <melee/ft/ftdata.h>
 #include <melee/ft/ftparts.h>
 #include <melee/ft/types.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Fall.h>
+#include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/lb/lbanim.h>
 #include <melee/mp/mplib.h>
@@ -30,6 +32,8 @@
 #pragma warning(pop)
 
 #include "match_xdk.h"
+
+extern void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
 
 typedef union AnimFn {
     void (*fn)(void);
@@ -90,6 +94,8 @@ typedef struct M360Fighter {
     M360Hitbox hitboxes[kMaxHitboxes];
     int hitTarget;
     float hitlag;
+    unsigned flinchFrames;
+    int traceMotion;
 } M360Fighter;
 
 ftCommonData* p_ftCommonData;
@@ -159,6 +165,12 @@ int M360_FighterLoad(void)
                (unsigned) (s_ftData->x0->walk_max_vel * 1000.0f + 0.5f));
     M360_MatchTrace("fighter.attr.max_jumps", (unsigned) s_ftData->x0->max_jumps);
     return s_animImage != NULL;
+}
+
+void M360_FighterResetMatch(void)
+{
+    s_hitCount = 0;
+    memset(s_fighters, 0, sizeof(s_fighters));
 }
 
 static FigaTree* LoadTree(int anim)
@@ -424,6 +436,10 @@ void Fighter_ChangeMotionState(Fighter_GObj* gobj, FtMotionId msid,
         msid = fp->ground_or_air == GA_Air ? ftCo_MS_Fall : ftCo_MS_Wait;
     }
     fp->motion_id = msid;
+    if (f->port == 0 && f->traceMotion != (int) msid) {
+        f->traceMotion = (int) msid;
+        M360_MatchTrace("fighter.p1.motion", (unsigned) msid);
+    }
     fp->facing_dir1 = fp->facing_dir;
     HSD_JObjSetTranslate(jobj, &fp->cur_pos);
     if (!(flags & Ft_MF_SkipHit)) {
@@ -607,6 +623,15 @@ static int GroundStep(HSD_GObj* gobj, int stopAtEdge)
     float y;
     int line;
     fp->coll_data.env_flags &= ~(Collide_LeftEdge | Collide_RightEdge);
+    if (fp->coll_data.floor.index >= 0 &&
+        (unsigned) fp->coll_data.floor.index < st->lineCount &&
+        (st->lines[fp->coll_data.floor.index].flags & M360_LINE_PLATFORM) &&
+        fp->input.lstick[0].y < -0.5f) {
+        fp->coll_data.floor.index = -1;
+        fp->ground_or_air = GA_Air;
+        fp->self_vel.y = -1.0f;
+        return 0;
+    }
     if (FloorAt(fp->cur_pos.x, fp->cur_pos.y + step, fp->cur_pos.y - step, 1, &y, &line)) {
         fp->cur_pos.y = y;
         SetFloor(fp, line);
@@ -732,9 +757,43 @@ static void AirWalls(Fighter* fp)
     }
 }
 
+static void AirCeilings(Fighter* fp)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    const float height = fp->ft_data && fp->ft_data->x3C
+        ? fp->ft_data->x3C->xC.x * fp->x34_scale.y : 12.0f;
+    unsigned i;
+    if (fp->cur_pos.y <= fp->prev_pos.y)
+        return;
+    for (i = 0; i < st->lineCount; ++i) {
+        const M360StageLine* l = &st->lines[i];
+        float lo, hi, t, lx, ly;
+        if (!(l->kind & M360_LINE_CEILING))
+            continue;
+        lo = l->x0 < l->x1 ? l->x0 : l->x1;
+        hi = l->x0 < l->x1 ? l->x1 : l->x0;
+        if (hi - lo < 1e-4f)
+            continue;
+        t = (fp->cur_pos.x - l->x0) / (l->x1 - l->x0);
+        if (t < 0.0f || t > 1.0f)
+            continue;
+        lx = l->x0 + (l->x1 - l->x0) * t;
+        ly = l->y0 + (l->y1 - l->y0) * t;
+        if (fp->prev_pos.y + height <= ly && fp->cur_pos.y + height >= ly) {
+            fp->cur_pos.y = ly - height;
+            if (fp->self_vel.y > 0.0f) fp->self_vel.y = 0.0f;
+            if (fp->x8c_kb_vel.y > 0.0f) fp->x8c_kb_vel.y = 0.0f;
+            fp->coll_data.ceiling.index = (s16) i;
+            (void) lx;
+            return;
+        }
+    }
+}
+
 void ft_800831CC(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjEvent cb)
 {
     AirWalls(GET_FIGHTER(gobj));
+    AirCeilings(GET_FIGHTER(gobj));
     if (AirStep(gobj, arg1))
         cb(gobj);
 }
@@ -742,6 +801,7 @@ void ft_800831CC(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjE
 void ft_800835B0(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjEvent cb)
 {
     AirWalls(GET_FIGHTER(gobj));
+    AirCeilings(GET_FIGHTER(gobj));
     if (AirStep(gobj, arg1))
         cb(gobj);
 }
@@ -803,8 +863,9 @@ Fighter_Part ftParts_GetBoneIndex(Fighter* fp, Fighter_Part part)
 
 static void UpdateInput(Fighter* fp)
 {
-    HSD_PadStatus* pad = &HSD_PadGameStatus[fp->x618_player_id];
     const int cpu = fp->x618_player_id >= 4;
+    HSD_PadStatus* pad = cpu ? NULL : &HSD_PadGameStatus[fp->x618_player_id];
+    int cpuAttack = 0;
     ftCommonData* cd = p_ftCommonData;
     fp->input.lstick[1] = fp->input.lstick[0];
     fp->input.cstick[1] = fp->input.cstick[0];
@@ -822,6 +883,32 @@ static void UpdateInput(Fighter* fp)
         else if (pad->button & HSD_PAD_DPADRIGHT)
             fp->input.lstick[0].x = 0.5f;
     }
+    if (!cpu && fp->input.lstick[0].y == 0.0f) {
+        if (pad->button & HSD_PAD_DPADUP)
+            fp->input.lstick[0].y = 0.5f;
+        else if (pad->button & HSD_PAD_DPADDOWN)
+            fp->input.lstick[0].y = -0.5f;
+    }
+    if (cpu) {
+        static unsigned cpuFrame;
+        Fighter* opponent = NULL;
+        unsigned i;
+        ++cpuFrame;
+        for (i = 0; i < kMaxFighters; ++i) {
+            if (&s_fighters[i].fighter != fp) {
+                opponent = &s_fighters[i].fighter;
+                break;
+            }
+        }
+        if (opponent) {
+            const float dx = opponent->cur_pos.x - fp->cur_pos.x;
+            const float dy = opponent->cur_pos.y - fp->cur_pos.y;
+            fp->input.lstick[0].x = fabsf(dx) > 38.0f ? (dx > 0.0f ? 1.0f : -1.0f) : 0.0f;
+            fp->input.lstick[0].y = dy > 36.0f ? 0.8f : 0.0f;
+            cpuAttack = fabsf(dx) < 112.0f && fabsf(dy) < 100.0f &&
+                        cpuFrame % 40u == 0;
+        }
+    }
     if (fabsf(fp->input.lstick[0].x) <= cd->horizontal_stick_deadzone)
         fp->input.lstick[0].x = 0.0f;
     if (fabsf(fp->input.lstick[0].y) <= cd->vertical_stick_deadzone)
@@ -833,6 +920,8 @@ static void UpdateInput(Fighter* fp)
     if (fp->input.triggers[0] <= cd->analog_shoulder_deadzone)
         fp->input.triggers[0] = 0.0f;
     fp->input.held_buttons[0] = cpu ? 0 : pad->button & ~(HSD_PAD_DPADLEFT | HSD_PAD_DPADRIGHT);
+    if (cpuAttack)
+        fp->input.held_buttons[0] |= HSD_PAD_A;
     if (fp->input.held_buttons[0] & (HSD_PAD_L | HSD_PAD_R)) {
         fp->input.held_buttons[0] |= HSD_PAD_LR;
         fp->input.triggers[0] = 1.0f;
@@ -899,6 +988,12 @@ static void UpdateInput(Fighter* fp)
     else if (fp->x67D < 0xFF) ++fp->x67D;
     if (fp->input.pressed_buttons & HSD_PAD_XY) fp->x67E = 0;
     else if (fp->x67E < 0xFF) ++fp->x67E;
+}
+
+void ft_PlaySFX(Fighter* fp, enum_t sfx_id, u8 sfx_vol, u8 sfx_pan)
+{
+    (void) fp;
+    M360_AudioSfx((unsigned) sfx_id, sfx_vol, sfx_pan);
 }
 
 static void ProcAnim(HSD_GObj* gobj)
@@ -1028,6 +1123,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->kind = Ft_Kind_Mario;
     fp->x597_bits = Ft_Kind_Mario;
     fp->x618_player_id = (u8) (port < 0 ? 4 : port);
+    f->traceMotion = -1;
     fp->x34_scale.x = fp->x34_scale.y = fp->x34_scale.z = 1.0f;
     fp->x18 = ftCo_MS_Count;
     fp->anim_id = -1;
@@ -1075,6 +1171,9 @@ void M360_FighterRespawn(void* handle, float x, float y)
     fp->coll_data.cur_pos = fp->cur_pos;
     fp->coll_data.floor.index = -1;
     Owner(gobj)->hitlag = 0.0f;
+    Owner(gobj)->flinchFrames = 0;
+    Owner(gobj)->hitTarget = -1;
+    memset(Owner(gobj)->hitboxes, 0, sizeof(Owner(gobj)->hitboxes));
     ftCo_Fall_Enter(gobj);
 }
 
@@ -1086,6 +1185,21 @@ unsigned M360_MatchPadTriggered(void)
 unsigned M360_MatchPadHeld(void)
 {
     return HSD_PadGameStatus[0].button;
+}
+
+float M360_MatchPadX(void)
+{
+    return HSD_PadGameStatus[0].nml_stickX;
+}
+
+float M360_MatchPadY(void)
+{
+    return HSD_PadGameStatus[0].nml_stickY;
+}
+
+int M360_MatchControllerConnected(unsigned port)
+{
+    return port < 4 && HSD_PadGameStatus[port].err >= 0;
 }
 
 void M360_FighterGetState(void* handle, float* x, float* y, float* facing,
@@ -1138,6 +1252,42 @@ static float SegmentDistance(const Vec3* p, const Vec3* a, const Vec3* b)
     return sqrtf(ap.x * ap.x + ap.y * ap.y + ap.z * ap.z);
 }
 
+void M360_Damage_Anim(HSD_GObj* gobj)
+{
+    M360Fighter* f = Owner(gobj);
+    Fighter* fp = &f->fighter;
+    if (f->flinchFrames && --f->flinchFrames)
+        return;
+    f->flinchFrames = 0;
+    if (fp->ground_or_air == GA_Air)
+        ftCo_Fall_Enter(gobj);
+    else
+        Fighter_ChangeMotionState(gobj, ftCo_MS_Wait, Ft_MF_None, 0.0f, 1.0f, 0.0f, NULL);
+}
+
+void M360_Damage_IASA(HSD_GObj* gobj)
+{
+    (void) gobj;
+}
+
+void M360_Damage_Phys(HSD_GObj* gobj)
+{
+    (void) gobj;
+}
+
+void M360_Damage_Coll(HSD_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    if (fp->ground_or_air == GA_Air)
+        ftCo_Fall_Coll(gobj);
+    else if (!GroundStep(gobj, 0)) {
+        fp->ground_or_air = GA_Air;
+        fp->coll_data.floor.index = -1;
+        Fighter_ChangeMotionState(gobj, (FtMotionId) 84, Ft_MF_None,
+                                  0.0f, 1.0f, 0.0f, NULL);
+    }
+}
+
 static int HurtOverlap(M360Fighter* target, const HitCapsule* hit)
 {
     Fighter* tfp = &target->fighter;
@@ -1164,6 +1314,7 @@ static void ApplyHit(M360Fighter* attacker, M360Fighter* target, HitCapsule* hit
     Fighter* afp = &attacker->fighter;
     Fighter* tfp = &target->fighter;
     float kb, angle, speed;
+    int reaction;
     tfp->dmg.x1838_percentTemp = hit->damage;
     kb = ftColl_80079AB0(tfp, hit, hit->unk_count, 1.0f, 1.0f, 1.0f, tfp->co_attrs.weight);
     tfp->dmg.x1830_percent += hit->damage;
@@ -1171,20 +1322,33 @@ static void ApplyHit(M360Fighter* attacker, M360Fighter* target, HitCapsule* hit
         tfp->dmg.x1830_percent = 999.0f;
     tfp->dmg.x1838_percentTemp = 0.0f;
     tfp->dmg.kb_applied = kb;
-    angle = hit->kb_angle == 361 ? (tfp->ground_or_air == GA_Air ? 45.0f : 0.0f)
-                                 : (float) hit->kb_angle;
+    tfp->dmg.x1848_kb_angle = hit->kb_angle;
+    angle = ftCo_Damage_CalcAngle(tfp, kb);
     speed = kb * p_ftCommonData->x100;
     tfp->facing_dir = afp->cur_pos.x < tfp->cur_pos.x ? -1.0f : 1.0f;
-    tfp->x8c_kb_vel.x = speed * cosf(angle * 0.017453292f) * afp->facing_dir;
-    tfp->x8c_kb_vel.y = speed * sinf(angle * 0.017453292f);
+    tfp->dmg.x18ac_time_since_hit = 0;
+    ftCo_Damage_CalcVel(tfp, speed * cosf(angle) * afp->facing_dir,
+                        speed * sinf(angle));
     tfp->self_vel.x = tfp->self_vel.y = 0.0f;
     tfp->gr_vel = 0.0f;
-    if (tfp->x8c_kb_vel.y > 0.0f) {
-        ftCommon_8007D5D4(tfp);
-        ftCo_Fall_Enter(target->gobj);
+    if (tfp->ground_or_air == GA_Ground && tfp->x8c_kb_vel.y > 0.5f) {
+        tfp->ground_or_air = GA_Air;
+        tfp->coll_data.floor.index = -1;
     }
+    reaction = tfp->ground_or_air == GA_Air ? 84 : 78;
+    if (kb >= 80.0f)
+        reaction = tfp->ground_or_air == GA_Air ? 88 : 83;
+    target->flinchFrames = (unsigned) (kb * 0.4f + 6.0f);
+    if (target->flinchFrames < 8) target->flinchFrames = 8;
+    if (target->flinchFrames > 60) target->flinchFrames = 60;
+    target->hitlag = hit->damage * 0.4f + 3.0f;
+    attacker->hitlag = target->hitlag;
+    Fighter_ChangeMotionState(target->gobj, (FtMotionId) reaction,
+                              Ft_MF_None, 0.0f, 1.0f, 0.0f, NULL);
     hit->x44 = 1;
     ++s_hitCount;
+    M360_MatchTrace("fighter.hit.reaction_motion", (unsigned) reaction);
+    M360_MatchTrace("fighter.hitstun.frames", target->flinchFrames);
     M360_MatchTrace("fighter.hit.damage", (unsigned) hit->damage);
     M360_MatchTrace("fighter.hit.knockback_x100", (unsigned) (kb * 100.0f));
     M360_MatchTrace("fighter.hit.target_percent", (unsigned) tfp->dmg.x1830_percent);
@@ -1214,4 +1378,10 @@ void M360_FighterResolveHits(void* attackerHandle, void* targetHandle)
 unsigned M360_FighterHitCount(void)
 {
     return s_hitCount;
+}
+
+bool ftColl_8007AC68(u32 kb_angle)
+{
+    return kb_angle != 361 && p_ftCommonData->unk_kb_angle_min <= kb_angle &&
+           kb_angle <= p_ftCommonData->unk_kb_angle_max;
 }

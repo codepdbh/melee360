@@ -216,7 +216,6 @@ SILENT_VOID(ft_800889F4, (Fighter* fp, FtSFXArr* sfx))
 SILENT_VOID(ft_800892A0, (Fighter_GObj* gobj))
 SILENT_VOID(ft_80089824, (Fighter_GObj* gobj))
 SILENT_VOID(ft_8008A1B8, (Fighter_GObj* gobj, u32 flags))
-SILENT_VOID(ft_PlaySFX, (Fighter* fp, enum_t a, u8 b, u8 c))
 SILENT_VOID(ftCamera_80076064, (Fighter* fp))
 SILENT_VOID(ftCo_8009E7B4, (Fighter* fp, u8 (*blend)[2]))
 SILENT_VOID(ftCo_8009F834, (Fighter_GObj* gobj, int a, Fighter_Part b, int c, int d, Vec3* e, Vec3* f, float g))
@@ -311,14 +310,6 @@ Vec2* ftCo_800DEEE8(Fighter* fp, Vec2* shift)
     (void) fp;
     shift->x = shift->y = 0.0f;
     return shift;
-}
-
-float ftCo_Damage_CalcAngle(Fighter* fp, float kb_applied)
-{
-    (void) fp;
-    (void) kb_applied;
-    Report("fighter.unported.ftCo_Damage_CalcAngle");
-    return 0.0f;
 }
 
 FighterKind ftLib_GetKind(HSD_GObj* gobj)

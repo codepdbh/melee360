@@ -494,22 +494,50 @@ void RenderMenuPlaceholder(SpriteRenderer& renderer, const MeleeFlow& flow)
 
 void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
 {
-    static const char* const names[2] = { "MARIO P1", "MARIO CPU" };
+    static const char* const names[2] = { "MARIO P1", "MARIO P2" };
     static const D3DCOLOR colors[2] = { D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255) };
+    DrawRect(renderer, 18, 16, 452, 62, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
+    g_dynamic.count = 0;
+    g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    AddText(g_dynamic, 30, 22, "MOVE: LEFT STICK / DPAD   A: ATTACK   X/Y: JUMP", 1);
+    if (match.campaignRounds) {
+        AddText(g_dynamic, 30, 40,
+                match.gameMode == 3 ? "CLASSIC" : "ADVENTURE", 1);
+        AddText(g_dynamic, 148, 40, "ROUND", 1);
+        AddNumber(g_dynamic, 200, 40, match.campaignRound + 1, 1);
+        AddText(g_dynamic, 218, 40, "/ 5   A: NEXT   B: MENU", 1);
+        AddText(g_dynamic, 30, 56, "START: PAUSE", 1);
+    } else {
+        AddText(g_dynamic, 30, 40, "START: PAUSE   B: RETURN AFTER MATCH", 1);
+    }
+    RenderBatch(renderer, g_dynamic);
     for (unsigned i = 0; i < match.fighters && i < 2; ++i) {
         const LONG x = 380 + static_cast<LONG>(i) * 340;
         DrawRect(renderer, x - 12, 606, 250, 96, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
         g_dynamic.count = 0;
         g_dynamic.color = colors[i];
-        AddText(g_dynamic, x, 614, names[i], 2);
+        AddText(g_dynamic, x, 614,
+                i == 1 && !match.human[1] ? "MARIO CPU" : names[i], 2);
         RenderBatch(renderer, g_dynamic);
         g_dynamic.count = 0;
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
         AddUnsigned(g_dynamic, x + 10, 640, match.damage[i], 6);
         AddText(g_dynamic, x + 150, 662, "%", 3);
+        AddText(g_dynamic, x + 12, 682, "STOCKS", 1);
+        AddUnsigned(g_dynamic, x + 92, 681, match.stocksRemaining[i], 3);
         RenderBatch(renderer, g_dynamic);
     }
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    if (match.matchOver) {
+        DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.48f);
+        g_dynamic.count = 0;
+        AddText(g_dynamic, 548, 300, match.winner == 0 ? "P1 WINS" : "P2 WINS", 6);
+        AddText(g_dynamic, 400, 382,
+                match.campaignRounds && match.winner == 0
+                    ? "A: NEXT FIGHT   B: MAIN MENU"
+                    : "B: RETURN TO MAIN MENU", 2);
+        RenderBatch(renderer, g_dynamic);
+    }
     if (match.paused) {
         DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.35f);
         g_dynamic.count = 0;
@@ -996,11 +1024,20 @@ void __cdecl main()
             TraceStage("loop.frames_over_20ms", framesOver20ms);
             TraceStage("loop.mesh_vertices", titleMeshVertexCount);
             TraceStage("loop.hsd_draw_calls", renderStats.drawCalls);
+            TraceStage("loop.audio.sfx_submitted", M360_AudioSfxSubmitted());
+            TraceStage("loop.audio.sfx_misses", M360_AudioSfxMisses());
             if (matchScene) {
                 TraceStage("loop.match_frame", match.frame);
                 TraceStage("loop.match_motion_p1", match.motion[0]);
                 TraceStage("loop.match_x_p1", static_cast<unsigned>(static_cast<int>(match.posX[0])));
                 TraceStage("loop.match_y_p1", static_cast<unsigned>(static_cast<int>(match.posY[0])));
+                TraceStage("loop.match_input_buttons", match.inputButtons);
+                TraceStage("loop.match_input_triggered", match.inputTriggered);
+                TraceStage("loop.match_stick_x_milli", static_cast<unsigned>(static_cast<int>(match.inputX * 1000.0f)));
+                TraceStage("loop.match_stick_y_milli", static_cast<unsigned>(static_cast<int>(match.inputY * 1000.0f)));
+                TraceStage("loop.match_motion_p2", match.motion[1]);
+                TraceStage("loop.match_x_p2", static_cast<unsigned>(static_cast<int>(match.posX[1])));
+                TraceStage("loop.match_y_p2", static_cast<unsigned>(static_cast<int>(match.posY[1])));
                 TraceStage("loop.match_damage_p2", match.damage[1]);
                 TraceStage("loop.match_hits", match.hits);
             }

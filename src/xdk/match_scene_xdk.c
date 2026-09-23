@@ -46,7 +46,11 @@ enum {
     kLinkFighter = 2,
     kMaxMapGObjs = 8,
     kMaxFighters = 2,
-    kRespawnFrames = 60
+    kRespawnFrames = 60,
+    kStartingStocks = 4,
+    kGameModeClassic = 3,
+    kGameModeAdventure = 4,
+    kCampaignRounds = 5
 };
 
 typedef struct CamGlobals {
@@ -91,12 +95,18 @@ static void* s_fighters[kMaxFighters];
 static unsigned s_fighterCount;
 static unsigned s_respawn[kMaxFighters];
 static unsigned s_stocksLost[kMaxFighters];
+static unsigned s_stocksRemaining[kMaxFighters];
+static int s_human[kMaxFighters];
+static int s_matchOver;
+static unsigned s_winner;
 static M360MatchStage s_stage;
 static CamTransform s_cam;
 static int s_loaded;
 static int s_active;
 static int s_paused;
 static unsigned s_frame;
+static unsigned s_gameMode = 2;
+static unsigned s_campaignRound;
 static float s_scale = 1.0f;
 static float s_tilt, s_pan, s_camX20, s_camX24, s_zoomRate, s_maxDepth;
 static float s_trackRatio, s_fixedZoom, s_trackSmooth;
@@ -483,6 +493,7 @@ void M360_MatchEnter(void)
     unsigned i;
     if (!M360_MatchLoad())
         return;
+    M360_FighterResetMatch();
     memset(s_points, 0, sizeof(s_points));
     s_modelCount = 0;
     CreateLights();
@@ -497,18 +508,29 @@ void M360_MatchEnter(void)
     M360_MatchTrace("match.enter.step", 3);
     s_fighterCount = 0;
     for (i = 0; i < kMaxFighters; ++i) {
+        const int campaign = s_gameMode == kGameModeClassic ||
+                             s_gameMode == kGameModeAdventure;
+        const int port = i == 0 ? 0 :
+            (campaign ? -1 : (M360_MatchControllerConnected(1) ? 1 : -1));
         s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
-                                          i ? -1.0f : 1.0f, i ? -1 : 0);
+                                          i ? -1.0f : 1.0f, port);
+        s_human[i] = port >= 0;
         s_respawn[i] = 0;
         s_stocksLost[i] = 0;
+        s_stocksRemaining[i] = kStartingStocks;
         if (s_fighters[i])
             s_fighterCount = i + 1;
     }
+    s_matchOver = 0;
+    s_winner = 0;
     s_paused = 0;
     s_frame = 0;
     s_active = 1;
     CamUpdate(1);
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
+    M360_MatchTrace("match.p2.human", s_human[1]);
+    M360_MatchTrace("match.mode", s_gameMode);
+    M360_MatchTrace("match.campaign.round", s_campaignRound + 1);
     M360_MatchTrace("match.enter.blast_left", (unsigned) (int) s_stage.blastLeft);
     M360_MatchTrace("match.enter.blast_bottom", (unsigned) (int) s_stage.blastBottom);
     M360_MatchTrace("match.enter.spawn_y", (unsigned) (int) s_stage.spawnY[0]);
@@ -527,6 +549,16 @@ int M360_MatchFrame(void)
     const unsigned held = M360_MatchPadHeld();
     if (!s_active)
         return M360_MATCH_TO_MENU;
+    if (s_matchOver) {
+        if (buttons & 0x200u) {
+            M360_MatchTrace("match.result.return_menu", s_winner);
+            return M360_MATCH_TO_MENU;
+        }
+        if ((buttons & 0x100u) && s_winner == 0 &&
+            (s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure))
+            return M360_MATCH_NEXT_ROUND;
+        return M360_MATCH_CONTINUE;
+    }
     if (buttons & 0x1000u) {
         s_paused = !s_paused;
         M360_MatchTrace("match.pause", s_paused);
@@ -552,15 +584,27 @@ int M360_MatchFrame(void)
         if (!s_fighters[i])
             continue;
         if (s_respawn[i]) {
-            if (--s_respawn[i] == 0)
+            if (--s_respawn[i] == 0 && s_stocksRemaining[i])
                 M360_FighterRespawn(s_fighters[i], s_stage.spawnX[i], s_stage.spawnY[i]);
             continue;
         }
         M360_FighterGetState(s_fighters[i], &x, &y, &facing, &motion, &damage);
         if (OutsideBlastZone(x, y)) {
             ++s_stocksLost[i];
-            s_respawn[i] = kRespawnFrames;
+            if (s_stocksRemaining[i])
+                --s_stocksRemaining[i];
+            s_respawn[i] = s_stocksRemaining[i] ? kRespawnFrames : 0;
             M360_MatchTrace("match.blast_zone.fighter", i);
+            M360_MatchTrace("match.stocks.remaining", s_stocksRemaining[i]);
+            if (!s_stocksRemaining[i]) {
+                s_matchOver = 1;
+                s_winner = 1u - i;
+                M360_MatchTrace("match.result.winner", s_winner);
+                if (s_winner == 0 &&
+                    (s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure) &&
+                    s_campaignRound + 1 >= kCampaignRounds)
+                    M360_MatchTrace("match.campaign.complete", s_gameMode);
+            }
         }
     }
     CamUpdate(0);
@@ -590,6 +634,12 @@ void M360_MatchLeave(void)
     s_active = 0;
 }
 
+void M360_MatchSetMode(unsigned gameMode, unsigned round)
+{
+    s_gameMode = gameMode;
+    s_campaignRound = round;
+}
+
 void M360_MatchGetStatus(M360MatchStatus* status)
 {
     unsigned i;
@@ -599,6 +649,17 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->frame = s_frame;
     status->fighters = s_fighterCount;
     status->hits = M360_FighterHitCount();
+    status->matchOver = (unsigned) s_matchOver;
+    status->winner = s_winner;
+    status->gameMode = s_gameMode;
+    status->campaignRound = s_campaignRound;
+    status->campaignRounds = (s_gameMode == kGameModeClassic ||
+                              s_gameMode == kGameModeAdventure)
+                                 ? kCampaignRounds : 0;
+    status->inputButtons = M360_MatchPadHeld();
+    status->inputTriggered = M360_MatchPadTriggered();
+    status->inputX = M360_MatchPadX();
+    status->inputY = M360_MatchPadY();
     for (i = 0; i < s_fighterCount && i < 2; ++i) {
         float facing;
         if (!s_fighters[i])
@@ -606,6 +667,8 @@ void M360_MatchGetStatus(M360MatchStatus* status)
         M360_FighterGetState(s_fighters[i], &status->posX[i], &status->posY[i], &facing,
                              &status->motion[i], &status->damage[i]);
         status->stocksLost[i] = s_stocksLost[i];
+        status->stocksRemaining[i] = s_stocksRemaining[i];
+        status->human[i] = (unsigned) s_human[i];
     }
 }
 

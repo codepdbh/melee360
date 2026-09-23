@@ -22,6 +22,8 @@ struct MeleeFlow {
     unsigned openingPlays;
     unsigned menuSelection;
     unsigned menuKind;
+    unsigned gameMode;
+    unsigned campaignRound;
     bool movieVisible;
     bool titleVisible;
     bool movieReady;

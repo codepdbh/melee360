@@ -47,6 +47,21 @@ static int test_hand_frame(void)
            out[2], out[12], out[13], h1, h2);
     check(ok, "hand-computed ADPCM frame");
 
+    h1 = 100;
+    h2 = -40;
+    check(m360_dsp_decode_range(frame, sizeof(frame), 2, 15, frame[0],
+                                coefs, &h1, &h2, out, 14) == 14 &&
+              memcmp(out, expected, sizeof(expected)) == 0,
+          "SSM nibble 2 starts after header; end address is inclusive");
+    h1 = 100;
+    h2 = -40;
+    check(m360_dsp_decode_range(frame, sizeof(frame), 2, 2, frame[0],
+                                coefs, &h1, &h2, out, 14) == 1 && out[0] == 74,
+          "single-nibble voice retains its last sample");
+    check(m360_dsp_decode_range(frame, sizeof(frame), 2, 16, frame[0],
+                                coefs, &h1, &h2, out, 14) == 0,
+          "SSM address outside sample data is rejected");
+
     h1 = 0;
     h2 = 0;
     m360_dsp_decode_frame(loud, coefs, &h1, &h2, out, 14);

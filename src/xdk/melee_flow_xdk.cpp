@@ -13,6 +13,10 @@ const unsigned kOpeningRateTable[] = { 1250, 2, 394, 1, 65536, 2 };
 const unsigned kBgmMenu01 = 0x34;
 const unsigned kBgmMenu3 = 0x36;
 const unsigned kBgmOpening = 0x3E;
+const unsigned kGameModeVs = 2;
+const unsigned kGameModeClassic = 3;
+const unsigned kGameModeAdventure = 4;
+const unsigned kCampaignRounds = 5;
 const unsigned kTitleLogoTick = 0x140A;
 const unsigned kOpeningMenuTick = 0x157C;
 const unsigned kTitleTimeout = 600;
@@ -106,7 +110,11 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         s_playingBgm = -1;
         flow->movieVisible = false;
         flow->titleVisible = false;
+        M360_MatchSetMode(flow->gameMode, flow->campaignRound);
         M360_MatchEnter();
+        const bool playing = M360_AudioPlay("audio/vl_battle.hps", audio);
+        M360_Trace("audio.match.background", playing);
+        M360_Trace("audio.match.file_found", audio->fileFound);
     } else {
         flow->menuSelection = 0;
         flow->menuKind = 0;
@@ -189,7 +197,14 @@ void UpdateMenu(MeleeFlow* flow, unsigned __int64 buttons, MeleeAudioStatus* aud
     if (result == M360_MENU_TO_TITLE) {
         M360_Trace("menu.exit.title", flow->sceneTick);
         EnterState(flow, kFlowTitle, audio);
-    } else if (result == M360_MENU_TO_MATCH) {
+    } else if (result == M360_MENU_TO_MATCH ||
+               result == M360_MENU_TO_CLASSIC ||
+               result == M360_MENU_TO_ADVENTURE) {
+        flow->gameMode = result == M360_MENU_TO_CLASSIC ? kGameModeClassic :
+                         result == M360_MENU_TO_ADVENTURE ? kGameModeAdventure :
+                         kGameModeVs;
+        flow->campaignRound = 0;
+        M360_Trace("mode.selected", flow->gameMode);
         EnterState(flow, kFlowMatch, audio);
     } else if (result == M360_MENU_RESTART) {
         M360_Trace("menu.exit.restart", flow->sceneTick);
@@ -200,8 +215,23 @@ void UpdateMenu(MeleeFlow* flow, unsigned __int64 buttons, MeleeAudioStatus* aud
 void UpdateMatch(MeleeFlow* flow, MeleeAudioStatus* audio)
 {
     ++flow->sceneTick;
-    if (M360_MatchFrame() == M360_MATCH_TO_MENU)
+    const int result = M360_MatchFrame();
+    if (result == M360_MATCH_TO_MENU) {
+        flow->gameMode = kGameModeVs;
+        flow->campaignRound = 0;
         EnterState(flow, kFlowMainMenu, audio);
+    } else if (result == M360_MATCH_NEXT_ROUND) {
+        ++flow->campaignRound;
+        if (flow->campaignRound >= kCampaignRounds) {
+            M360_MatchTrace("mode.complete", flow->gameMode);
+            flow->gameMode = kGameModeVs;
+            flow->campaignRound = 0;
+            EnterState(flow, kFlowMainMenu, audio);
+        } else {
+            M360_MatchLeave();
+            EnterState(flow, kFlowMatch, audio);
+        }
+    }
 }
 
 } // namespace
@@ -213,6 +243,8 @@ void M360_FlowStart(MeleeFlow* flow, MeleeAudioStatus* audio)
     s_audio = audio;
     QueryPerformanceFrequency(&flow->frequency);
     flow->rulesBgm = kBgmMenu01;
+    flow->gameMode = kGameModeVs;
+    flow->campaignRound = 0;
     flow->state = kFlowMainMenu;
 #ifdef M360_BOOT_TO_MATCH
     EnterState(flow, kFlowMatch, audio);
