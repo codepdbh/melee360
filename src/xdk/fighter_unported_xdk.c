@@ -80,6 +80,7 @@
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/rumble.h>
 #pragma warning(pop)
+#pragma warning(disable : 4100)
 
 #include "match_xdk.h"
 
@@ -223,7 +224,6 @@ SILENT_VOID(ftCo_800C0200, (Fighter* fp, int a))
 SILENT_VOID(ftCo_800C0358, (Fighter* fp, Fighter* b, s32 c))
 SILENT_VOID(ftCo_800C8B60, (Fighter* fp, u8 a, u8 b))
 SILENT_VOID(ftCo_800DEE84, (Fighter_GObj* gobj, u32 a, f32 b, f32 c))
-SILENT_VOID(ftColl_800768A0, (Fighter* fp, HitCapsule* dst))
 SILENT_VOID(ftColl_8007AEE0, (Fighter_GObj* gobj))
 SILENT_VOID(ftColl_8007B0C0, (Fighter_GObj* gobj, HurtCapsuleState state))
 SILENT_VOID(ftColl_8007B128, (Fighter_GObj* gobj, int bone_id, HurtCapsuleState state))
@@ -347,6 +347,13 @@ void ftPartSetRotZ(Fighter* fp, int part_idx, f32 rotate_z)
 {
     if (fp->parts && fp->parts[part_idx].joint)
         HSD_JObjSetRotationZ(fp->parts[part_idx].joint, rotate_z);
+}
+
+void ftColl_800768A0(Fighter* fp, HitCapsule* dst)
+{
+    (void) fp;
+    dst->x44 = 0;
+    dst->x45 = 0;
 }
 
 void ftColl_8007ABD0(HitCapsule* hit, u32 damage, Fighter_GObj* gobj)

@@ -13,6 +13,7 @@
 #include <melee/ft/ftparts.h>
 #include <melee/ft/types.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Fall.h>
+#include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/lb/lbanim.h>
 #include <melee/mp/mplib.h>
 #include <sysdolphin/baselib/aobj.h>
@@ -1118,10 +1119,96 @@ void M360_FighterCameraBox(void* handle, float* x, float* y, float* left,
     *down = box->xC.y * s;
 }
 
-void M360_FighterResolveHits(void* attacker, void* target)
+float ftColl_80079AB0(Fighter* fp, HitCapsule* hit, u32 unk_count, float arg3,
+                      float attack, float defense, float weight);
+void ftColl_8007AD18(Fighter* fp, HitCapsule* hit);
+void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
+
+static float SegmentDistance(const Vec3* p, const Vec3* a, const Vec3* b)
 {
-    (void) attacker;
-    (void) target;
+    Vec3 ab, ap;
+    float t, len;
+    ab.x = b->x - a->x; ab.y = b->y - a->y; ab.z = b->z - a->z;
+    ap.x = p->x - a->x; ap.y = p->y - a->y; ap.z = p->z - a->z;
+    len = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+    t = len > 0.0f ? (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / len : 0.0f;
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    ap.x -= ab.x * t; ap.y -= ab.y * t; ap.z -= ab.z * t;
+    return sqrtf(ap.x * ap.x + ap.y * ap.y + ap.z * ap.z);
+}
+
+static int HurtOverlap(M360Fighter* target, const HitCapsule* hit)
+{
+    Fighter* tfp = &target->fighter;
+    ftData_x30* hurt = tfp->ft_data->x30;
+    const float scale = ModelScale(tfp);
+    int i;
+    for (i = 0; hurt && i < hurt->count; ++i) {
+        ftHurtboxInit* init = &hurt->inits[i];
+        Vec3 a, b;
+        if ((unsigned) init->bone_idx >= target->jointCount)
+            continue;
+        a.x = init->a_offset.x; a.y = init->a_offset.y; a.z = init->a_offset.z;
+        b.x = init->b_offset.x; b.y = init->b_offset.y; b.z = init->b_offset.z;
+        lb_8000B1CC(target->joints[init->bone_idx], &a, &a);
+        lb_8000B1CC(target->joints[init->bone_idx], &b, &b);
+        if (SegmentDistance(&hit->x4C, &a, &b) <= hit->scale + init->scale * scale)
+            return 1;
+    }
+    return 0;
+}
+
+static void ApplyHit(M360Fighter* attacker, M360Fighter* target, HitCapsule* hit)
+{
+    Fighter* afp = &attacker->fighter;
+    Fighter* tfp = &target->fighter;
+    float kb, angle, speed;
+    tfp->dmg.x1838_percentTemp = hit->damage;
+    kb = ftColl_80079AB0(tfp, hit, hit->unk_count, 1.0f, 1.0f, 1.0f, tfp->co_attrs.weight);
+    tfp->dmg.x1830_percent += hit->damage;
+    if (tfp->dmg.x1830_percent > 999.0f)
+        tfp->dmg.x1830_percent = 999.0f;
+    tfp->dmg.x1838_percentTemp = 0.0f;
+    tfp->dmg.kb_applied = kb;
+    angle = hit->kb_angle == 361 ? (tfp->ground_or_air == GA_Air ? 45.0f : 0.0f)
+                                 : (float) hit->kb_angle;
+    speed = kb * p_ftCommonData->x100;
+    tfp->facing_dir = afp->cur_pos.x < tfp->cur_pos.x ? -1.0f : 1.0f;
+    tfp->x8c_kb_vel.x = speed * cosf(angle * 0.017453292f) * afp->facing_dir;
+    tfp->x8c_kb_vel.y = speed * sinf(angle * 0.017453292f);
+    tfp->self_vel.x = tfp->self_vel.y = 0.0f;
+    tfp->gr_vel = 0.0f;
+    if (tfp->x8c_kb_vel.y > 0.0f) {
+        ftCommon_8007D5D4(tfp);
+        ftCo_Fall_Enter(target->gobj);
+    }
+    hit->x44 = 1;
+    ++s_hitCount;
+    M360_MatchTrace("fighter.hit.damage", (unsigned) hit->damage);
+    M360_MatchTrace("fighter.hit.knockback_x100", (unsigned) (kb * 100.0f));
+    M360_MatchTrace("fighter.hit.target_percent", (unsigned) tfp->dmg.x1830_percent);
+}
+
+void M360_FighterResolveHits(void* attackerHandle, void* targetHandle)
+{
+    M360Fighter* pair[2];
+    int k;
+    unsigned i;
+    pair[0] = Owner((HSD_GObj*) attackerHandle);
+    pair[1] = Owner((HSD_GObj*) targetHandle);
+    for (k = 0; k < 2; ++k) {
+        M360Fighter* a = pair[k];
+        M360Fighter* t = pair[1 - k];
+        for (i = 0; i < ARRAY_SIZE(a->fighter.x914); ++i) {
+            HitCapsule* hit = &a->fighter.x914[i];
+            if (hit->state == HitCapsule_Disabled)
+                continue;
+            ftColl_8007AD18(&a->fighter, hit);
+            if (!hit->x44 && HurtOverlap(t, hit))
+                ApplyHit(a, t, hit);
+        }
+    }
 }
 
 unsigned M360_FighterHitCount(void)

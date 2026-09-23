@@ -37,6 +37,18 @@ function New-Slice([string]$Relative, [string]$FirstSignature, [string[]]$Signat
     return @{ Path = $path; Dir = (Split-Path (Join-Path $src $Relative)) }
 }
 
+function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$StartSignature, [string]$EndSignature, [string]$Name) {
+    $text = Get-Content -Raw (Join-Path $src $Relative)
+    $end = $text.IndexOf($FirstSignature)
+    $start = $text.IndexOf($StartSignature)
+    if ($end -lt 0 -or $start -lt 0) { throw "Missing original range in $Relative" }
+    $last = Get-CFunction $text $EndSignature
+    $stop = $text.IndexOf($last) + $last.Length
+    $path = Join-Path $out "$Name.c"
+    Set-Content -Encoding ASCII $path ($text.Substring(0, $end) + $text.Substring($start, $stop - $start) + "`r`n")
+    return @{ Path = $path; Dir = (Split-Path (Join-Path $src $Relative)) }
+}
+
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
 $motionIds = @(14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,42,43,44,45,46)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
@@ -84,6 +96,7 @@ $units = @(
     @{ Path = $motionTable; Dir = (Join-Path $src 'melee/ft') }
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C(', 'void ft_80084DB0(') 'ft_081B_slice'
+$units += New-RangeSlice 'melee/ft/ftcoll.c' '#ifdef MUST_MATCH' 'static inline s32 ftColl_GetDamageCount(' 'float ftColl_80079AB0(' 'ftcoll_knockback_slice'
 $units += New-Slice 'melee/ft/ftswing.c' 'void ftCo_FallAerial_Coll(' @('void ftCo_FallAerial_Coll(') 'ftswing_slice'
 $units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_FallSpecial.c' 'void ftCo_800968C8(' @('bool ftCo_80096CC8(') 'ftCo_FallSpecial_slice'
 
