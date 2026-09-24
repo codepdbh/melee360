@@ -23,6 +23,8 @@
 #include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/pl/player.h>
 #include <melee/ft/kinds/ftCommon/types.h>
+#include <melee/ft/ftcliffcommon.h>
+#include <melee/cm/types.h>
 #include <melee/ft/kinds/ftMario/ftmario.h>
 #include <melee/ft/kinds/ftMario/ftmariospecialhi.h>
 #include <melee/ft/kinds/ftMario/ftmariospeciallw.h>
@@ -117,6 +119,7 @@ typedef struct M360Fighter {
     int traceMotion;
     int dead;
     u32 datAttrs[0x140]; /* fighter_dat_attrs_alloc_data storage */
+    CmSubject cameraSubject;
 } M360Fighter;
 
 
@@ -887,12 +890,81 @@ static void AirCeilings(Fighter* fp)
     }
 }
 
+/* Native counterpart of mpColl_80044164/800443C4: looks for a ledge-flagged
+ * floor end inside the fighter's ledge-snap box (ftData x44) while falling. */
+static int FindLedge(Fighter* fp, int left, int* ledge)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    const ftData_x44_t* snap = DP(ftData_x44_t, fp->ft_data->x44);
+    const float scale = fp->x34_scale.y;
+    const float snapX = snap->ledge_snap_x * scale;
+    const float snapY = snap->ledge_snap_y * scale;
+    const float half = 0.5f * snap->ledge_snap_height * scale;
+    const Vec3* prev = &fp->prev_pos;
+    const Vec3* cur = &fp->cur_pos;
+    const float bottom = (cur->y < prev->y ? cur->y : prev->y) + snapY - half;
+    const float top = (cur->y < prev->y ? prev->y : cur->y) + snapY + half;
+    float lo, hi;
+    unsigned i;
+    if (left) {
+        lo = prev->x < cur->x ? prev->x : cur->x;
+        hi = snapX + (prev->x < cur->x ? cur->x : prev->x);
+    } else {
+        lo = (prev->x < cur->x ? prev->x : cur->x) - snapX;
+        hi = prev->x < cur->x ? cur->x : prev->x;
+    }
+    for (i = 0; i < st->lineCount; ++i) {
+        const M360StageLine* l = &st->lines[i];
+        float ex, ey;
+        if (!(l->kind & M360_LINE_FLOOR) || !(l->flags & LINE_FLAG_LEDGE) || (int) i == fp->coll_data.floor_skip)
+            continue;
+        if (left == (l->x0 < l->x1)) {
+            ex = l->x0; ey = l->y0;
+        } else {
+            ex = l->x1; ey = l->y1;
+        }
+        if (ex < lo || ex > hi || ey < bottom || ey > top)
+            continue;
+        if ((left && cur->x >= ex) || (!left && cur->x <= ex) || cur->y >= ey)
+            continue;
+        *ledge = (int) i;
+        return 1;
+    }
+    return 0;
+}
+
+static int TryCliff(HSD_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    int ledge;
+    fp->coll_data.env_flags &= ~Collide_LedgeGrabMask;
+    if (fp->x2064_ledgeCooldown || fp->x2224_b2 || fp->cur_pos.y >= fp->prev_pos.y ||
+        !fp->ft_data || !fp->ft_data->x44)
+        return 0;
+    if (fp->facing_dir >= 0.0f && FindLedge(fp, 1, &ledge)) {
+        fp->coll_data.env_flags |= Collide_LeftLedgeGrab;
+        fp->coll_data.ledge_id_left = ledge;
+    } else if (fp->facing_dir <= 0.0f && FindLedge(fp, 0, &ledge)) {
+        fp->coll_data.env_flags |= Collide_RightLedgeGrab;
+        fp->coll_data.ledge_id_right = ledge;
+    } else {
+        return 0;
+    }
+    if (ftCliffCommon_80081298(gobj)) {
+        M360_MatchTrace("fighter.cliff.catch", (unsigned) ledge);
+        return 1;
+    }
+    return 0;
+}
+
 void ft_800831CC(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjEvent cb)
 {
     AirWalls(GET_FIGHTER(gobj));
     AirCeilings(GET_FIGHTER(gobj));
     if (AirStep(gobj, arg1))
         cb(gobj);
+    else
+        TryCliff(gobj);
 }
 
 void ft_800835B0(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjEvent cb)
@@ -901,6 +973,8 @@ void ft_800835B0(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjE
     AirCeilings(GET_FIGHTER(gobj));
     if (AirStep(gobj, arg1))
         cb(gobj);
+    else
+        TryCliff(gobj);
 }
 
 bool ft_80081DD4(Fighter_GObj* gobj)
@@ -924,6 +998,8 @@ void ft_8008370C(Fighter_GObj* gobj, HSD_GObjEvent cb)
 {
     if (ft_80081DD4(gobj))
         cb(gobj);
+    else
+        TryCliff(gobj);
 }
 
 void ft_80083318(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjEvent cb)
@@ -967,6 +1043,8 @@ void ft_80082F28(Fighter_GObj* gobj)
             return;
         }
         ftCo_Landing_Enter_Basic(gobj);
+    } else {
+        TryCliff(gobj);
     }
 }
 
@@ -1023,11 +1101,40 @@ void ft_80083910(Fighter_GObj* gobj, HSD_GObjEvent cb)
 {
     if (AirCollide(gobj))
         cb(gobj);
+    else
+        TryCliff(gobj);
 }
 
 void ft_80083B68(Fighter_GObj* gobj)
 {
     AirCollide(gobj);
+}
+
+bool ft_800821DC(Fighter_GObj* gobj)
+{
+    return AirCollide(gobj) != 0;
+}
+
+void mpLib_80053ECC_Floor(int line_id, Vec* vec)
+{
+    const M360StageLine* l;
+    if (!mpLib_80054ED8(line_id))
+        return;
+    l = &M360_MatchStageData()->lines[line_id];
+    vec->x = l->x0 < l->x1 ? l->x0 : l->x1;
+    vec->y = l->x0 < l->x1 ? l->y0 : l->y1;
+    vec->z = 0.0f;
+}
+
+void mpLib_80053DA4_Floor(int line_id, Vec3* vec)
+{
+    const M360StageLine* l;
+    if (!mpLib_80054ED8(line_id))
+        return;
+    l = &M360_MatchStageData()->lines[line_id];
+    vec->x = l->x0 < l->x1 ? l->x1 : l->x0;
+    vec->y = l->x0 < l->x1 ? l->y1 : l->y0;
+    vec->z = 0.0f;
 }
 
 void ft_80083C00(Fighter_GObj* gobj, HSD_GObjEvent cb)
@@ -1442,6 +1549,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->anim_id = -1;
     fp->gobj = gobj;
     fp->dat_attrs_backup = f->datAttrs;
+    fp->x890_cameraBox = &f->cameraSubject;
     ftMr_Init_OnLoad(gobj);
     fp->x21FC_flag.byte = 1;
     fp->smash_attrs.x2135 = -1;
