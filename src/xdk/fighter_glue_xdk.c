@@ -461,9 +461,16 @@ static const M360KindDesc s_kinds[] = {
       { "PlyPopo5K_Share_matanim_joint", "PlyPopo5KGr_Share_matanim_joint", "PlyPopo5KOr_Share_matanim_joint", "PlyPopo5KRe_Share_matanim_joint", NULL, NULL },
       ftPp_Init_MotionStateTable, sizeof(ftPp_Init_MotionStateTable) / sizeof(MotionState), ftPp_Init_OnLoad, ftPp_Init_OnDeath,
       { ftPp_SpecialN_Enter, ftPp_SpecialS_Enter, ftPp_SpecialHi_Enter, ftPp_SpecialLw_Enter, ftPp_SpecialAirN_Enter, ftPp_SpecialAirS_Enter, ftPp_SpecialAirHi_Enter, ftPp_SpecialAirLw_Enter } },
+    /* Hidden entries (not selectable): Ice Climbers partner. */
+    { Ft_Kind_Nana, "NANA", "PlNn.dat", "ftDataNana", "PlNnAJ.dat",
+      { "PlNnNr.dat", "PlNnYe.dat", "PlNnAq.dat", "PlNnWh.dat", NULL, NULL },
+      { "PlyNana5K_Share_joint", "PlyNana5KYe_Share_joint", "PlyNana5KAq_Share_joint", "PlyNana5KWh_Share_joint", NULL, NULL },
+      { "PlyNana5K_Share_matanim_joint", "PlyNana5KYe_Share_matanim_joint", "PlyNana5KAq_Share_matanim_joint", "PlyNana5KWh_Share_matanim_joint", NULL, NULL },
+      ftNn_Init_MotionStateTable, sizeof(ftNn_Init_MotionStateTable) / sizeof(MotionState), ftNn_Init_OnLoad, ftNn_Init_OnDeath,
+      { ftPp_SpecialN_Enter, NULL, NULL, ftPp_SpecialLw_Enter, ftPp_SpecialAirN_Enter, NULL, NULL, ftPp_SpecialAirLw_Enter } },
 };
 
-enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]) };
+enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]), kSelectableKinds = kKindCount - 1 };
 
 static M360LoadedKind s_loaded[kKindCount];
 ftData* gFtDataList[Ft_Kind_Max];
@@ -475,6 +482,7 @@ static M360Fighter s_fighters[kMaxFighters * 2];
 /* pl/player.c entity table: [slot][transformed[0]] is the active fighter. */
 static HSD_GObj* s_entities[kMaxFighters][2];
 static u8 s_transformed[kMaxFighters][2];
+static int s_nanaCpu[kMaxFighters];
 static StaleMoveTable s_staleTables[6];
 static unsigned s_hitCount;
 static unsigned s_cpuLevel = 3;
@@ -601,7 +609,7 @@ static int LoadCostume(M360LoadedKind* k, const M360KindDesc* desc, unsigned cos
 
 unsigned M360_FighterKindCount(void)
 {
-    return kKindCount;
+    return kSelectableKinds;
 }
 
 const char* M360_FighterKindName(unsigned index)
@@ -613,7 +621,7 @@ void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume)
 {
     if (slot < 0 || slot >= kMaxFighters)
         return;
-    s_selectKind[slot] = kindIndex < kKindCount ? kindIndex : 0;
+    s_selectKind[slot] = kindIndex < kSelectableKinds ? kindIndex : 0;
     s_selectCostume[slot] = costume;
 }
 
@@ -2673,6 +2681,8 @@ static int PartnerIndex(FighterKind kind)
         partner = Ft_Kind_Seak;
     else if (kind == Ft_Kind_Seak)
         partner = Ft_Kind_Zelda;
+    else if (kind == Ft_Kind_Popo)
+        partner = Ft_Kind_Nana;
     else
         return -1;
     for (i = 0; i < kKindCount; ++i)
@@ -2693,6 +2703,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
         s_selectKind[slot] = 0;
     }
     s_entities[slot][0] = s_entities[slot][1] = NULL;
+    s_nanaCpu[slot] = 0;
     s_transformed[slot][0] = 0;
     s_transformed[slot][1] = 1;
     gobj = CreateFighter(slot, 0, s_selectKind[slot], s_selectCostume[slot], x, y, facing, port);
@@ -2707,7 +2718,13 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
                                 x, y, facing, port);
     if (partner) {
         s_entities[slot][1] = partner;
-        ftCo_800BFD04(partner);
+        /* Nana stays awake and follows Popo through the CPU code (cpu.kind 6,
+         * ftCo_800A101C); a transformation partner sleeps. */
+        if (GET_FIGHTER(partner)->kind == Ft_Kind_Nana) {
+            s_nanaCpu[slot] = 1;
+        } else {
+            ftCo_800BFD04(partner);
+        }
         M360_MatchTrace("fighter.spawn.partner", (unsigned) partnerIndex);
     }
     return gobj;
@@ -2751,6 +2768,34 @@ void M360_FighterSetDead(void* handle)
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
     M360_MatchTrace("fighter.dead.player", fp->player_id);
+    /* Nana goes down with Popo and comes back with his next stock. */
+    if (fp->kind == Ft_Kind_Popo) {
+        HSD_GObj* nana = M360_FighterFollower(fp->player_id);
+        if (nana)
+            M360_FighterSleep(nana);
+    }
+}
+
+/* Awake Ice Climbers partner of a slot, or NULL. */
+void* M360_FighterFollower(int slot)
+{
+    HSD_GObj* nana;
+    if (slot < 0 || slot >= kMaxFighters || !s_nanaCpu[slot])
+        return NULL;
+    nana = s_entities[slot][1];
+    return nana && !GET_FIGHTER(nana)->x221F_b3 ? nana : NULL;
+}
+
+/* ftcolanim.c ftCo_800BFD9C without the game-rule callback. */
+void M360_FighterSleep(void* handle)
+{
+    HSD_GObj* gobj = handle;
+    Fighter* fp = GET_FIGHTER(gobj);
+    ftColl_8007AFF8(gobj);
+    fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
+    fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
+    ftCo_800BFD04(gobj);
+    M360_MatchTrace("fighter.sleep.player", fp->player_id);
 }
 
 void M360_FighterRespawn(void* handle, float x, float y)
@@ -2825,6 +2870,18 @@ void M360_FighterRebirth(void* handle)
     fp->x1968_jumpsUsed = 1;
     ftCo_800D4FF4(gobj);
     M360_MatchTrace("fighter.rebirth.player", fp->player_id);
+    if (fp->kind == Ft_Kind_Popo && slot < kMaxFighters && s_nanaCpu[slot] &&
+        s_entities[slot][1]) {
+        HSD_GObj* nana = s_entities[slot][1];
+        Fighter* np = GET_FIGHTER(nana);
+        Owner(nana)->dead = 0;
+        np->x221F_b3 = false;
+        np->facing_dir = fp->facing_dir;
+        np->dmg.x1830_percent = 0.0f;
+        Fighter_ResetInputData_80068854(nana);
+        np->x1968_jumpsUsed = 1;
+        ftCo_800D4FF4(nana);
+    }
 }
 
 s32 Player_80032F30(s32 slot)
@@ -2882,7 +2939,9 @@ f32 Player_GetFacingDirection(s32 slot)
 
 Gm_PKind Player_8003248C(s32 slot, bool arg1)
 {
-    (void) arg1;
+    /* Nana (the sub fighter) is always CPU driven. */
+    if (arg1 && slot >= 0 && slot < kMaxFighters && s_nanaCpu[slot])
+        return Gm_PKind_Cpu;
     return (Gm_PKind) s_playerCpu[slot < 6 && slot >= 0 ? slot : 0];
 }
 
