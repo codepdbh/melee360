@@ -20,7 +20,7 @@ for n in sorted(os.listdir(os.path.join(root, 'src/xdk'))):
 pat = re.compile(r'^(?!static\b)[A-Za-z_][\w \*]*?[\s\*](\w+)\s*\([^;]*$')
 # CRT names the XEX links through /MT.
 names = set(['lb_8000B1CC', 'HSD_GObj_804D7814', 'malloc', 'free', 'calloc', 'realloc', 'memcpy', 'memset',
-             'memmove', 'strlen', 'strcmp', 'sqrt', 'sin', 'cos', 'atan2', 'fabs', 'pow'])
+             'memmove', 'sprintf', 'strlen', 'strcmp', 'sqrt', 'sin', 'cos', 'atan2', 'fabs', 'pow'])
 for f in files:
     for line in open(f, encoding='latin-1'):
         m = pat.match(line)

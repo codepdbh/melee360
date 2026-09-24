@@ -597,6 +597,7 @@ static int BuildStage(unsigned index)
             HSD_JObjSetFlagsAll(root, JOBJ_HIDDEN);
     }
     LoadBounds();
+    M360_FighterBuildIslands();
     CreateCamera();
     s_builtStage = index;
     s_stageIndex = index;

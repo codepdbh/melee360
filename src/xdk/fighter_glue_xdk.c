@@ -178,6 +178,8 @@
 #include <melee/lb/lbarchive.h>
 #include <melee/pl/plstale.h>
 #include <melee/mp/mplib.h>
+#include <melee/mp/mpisland.h>
+#include <melee/mp/types.h>
 #include <sysdolphin/baselib/aobj.h>
 #include <sysdolphin/baselib/controller.h>
 #include <sysdolphin/baselib/dobj.h>
@@ -465,7 +467,7 @@ static unsigned s_selectCostume[kMaxFighters] = { 0, 3 };
 static M360Fighter s_fighters[kMaxFighters];
 static StaleMoveTable s_staleTables[6];
 static unsigned s_hitCount;
-static unsigned s_cpuLevel = 1;
+static unsigned s_cpuLevel = 3;
 static MotionState s_commonStates[ftCo_MS_Count];
 static Vec3 s_playerPos[6];
 static Vec3 s_rebirthOffset[6];
@@ -1615,6 +1617,191 @@ bool mpCheckMultiple(float x0, float y0, float x1, float y1, Vec3* pos_out, int*
                            joint_id_only, x0, y0, x1, y1);
 }
 
+/* ---- Stage islands and line-kind raycasts for the original CPU AI ---- */
+
+enum { kMaxIslands = 64 };
+static mp_UnkStruct0 s_islands[kMaxIslands];
+static int s_islandOfLine[128];
+struct mpIsland_80458E88_t mpIsland_80458E88;
+
+static int LineEndsJoin(const M360StageLine* a, const M360StageLine* b)
+{
+    const float dx = a->x1 - b->x0, dy = a->y1 - b->y0;
+    return dx * dx + dy * dy < 4.0f;
+}
+
+/* mpIsland_8005A728 over the native lines: chains of connected floor lines,
+ * left to right, with their end points. Ceiling/wall lists stay empty. */
+void M360_FighterBuildIslands(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    mp_UnkStruct0* prev = NULL;
+    unsigned used = 0, i, j;
+    memset(&mpIsland_80458E88, 0, sizeof(mpIsland_80458E88));
+    memset(s_islands, 0, sizeof(s_islands));
+    for (i = 0; i < 128; ++i)
+        s_islandOfLine[i] = -1;
+    for (i = 0; i < st->lineCount && used < kMaxIslands; ++i) {
+        mp_UnkStruct0* isl;
+        unsigned first = i, last = i;
+        int grew;
+        if (!(st->lines[i].kind & M360_LINE_FLOOR) || s_islandOfLine[i] >= 0)
+            continue;
+        isl = &s_islands[used];
+        s_islandOfLine[i] = (int) used;
+        do {
+            grew = 0;
+            for (j = 0; j < st->lineCount; ++j) {
+                if (!(st->lines[j].kind & M360_LINE_FLOOR) || s_islandOfLine[j] >= 0)
+                    continue;
+                if (LineEndsJoin(&st->lines[last], &st->lines[j])) {
+                    last = j;
+                } else if (LineEndsJoin(&st->lines[j], &st->lines[first])) {
+                    first = j;
+                } else {
+                    continue;
+                }
+                s_islandOfLine[j] = (int) used;
+                grew = 1;
+            }
+        } while (grew);
+        isl->x24 = (s16) first;
+        isl->x26 = (s16) last;
+        isl->x8.x = st->lines[first].x0;
+        isl->x8.y = st->lines[first].y0;
+        isl->x14.x = st->lines[last].x1;
+        isl->x14.y = st->lines[last].y1;
+        isl->x28 = 0;
+        if (prev)
+            prev->next = isl;
+        else
+            mpIsland_80458E88.next = isl;
+        prev = isl;
+        ++used;
+    }
+    mpIsland_80458E88.x8 = prev;
+    M360_MatchTrace("stage.islands", used);
+}
+
+mp_UnkStruct0* mpIsland_8005AB54(int line_idx)
+{
+    if (line_idx < 0 || line_idx >= 128 || s_islandOfLine[line_idx] < 0)
+        return NULL;
+    return &s_islands[s_islandOfLine[line_idx]];
+}
+
+bool mpIsland_8005AC8C(mp_UnkStruct0* island)
+{
+    (void) island;
+    return false;
+}
+
+void mpIsland_8005ACE8(mp_UnkStruct0* island, Vec3* left, Vec3* right)
+{
+    if (left)
+        *left = island->x8;
+    if (right)
+        *right = island->x14;
+}
+
+/* Segment test against lines of one kind (mpCheckFloor & co). */
+static bool RaycastKind(unsigned kindMask, float ax, float ay, float bx, float by, Vec3* pos_out,
+                        int* line_id_out, u32* flags_out, Vec3* normal_out, int line_skip,
+                        bool (*filter)(Fighter_GObj*, int), Fighter_GObj* gobj)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    const float dx = bx - ax, dy = by - ay;
+    float bestT = 2.0f;
+    int best = -1;
+    unsigned i;
+    for (i = 0; i < st->lineCount; ++i) {
+        const M360StageLine* l = &st->lines[i];
+        const float ex = l->x1 - l->x0, ey = l->y1 - l->y0;
+        const float den = dx * ey - dy * ex;
+        float t, u;
+        if (!(l->kind & kindMask) || (int) i == line_skip)
+            continue;
+        if (den > -1e-6f && den < 1e-6f)
+            continue;
+        t = ((l->x0 - ax) * ey - (l->y0 - ay) * ex) / den;
+        u = ((l->x0 - ax) * dy - (l->y0 - ay) * dx) / den;
+        if (t < 0.0f || t > 1.0f || u < 0.0f || u > 1.0f || t >= bestT)
+            continue;
+        if (filter && gobj && !filter(gobj, (int) i))
+            continue;
+        bestT = t;
+        best = (int) i;
+    }
+    if (best < 0)
+        return false;
+    if (pos_out) {
+        pos_out->x = ax + dx * bestT;
+        pos_out->y = ay + dy * bestT;
+        pos_out->z = 0.0f;
+    }
+    if (line_id_out)
+        *line_id_out = best;
+    if (flags_out)
+        *flags_out = st->lines[best].flags;
+    if (normal_out)
+        mpLineGetNormal(best, normal_out);
+    return true;
+}
+
+bool mpCheckFloor(float ax, float ay, float bx, float by, float y_offset, Vec3* vec_out,
+                  int* line_id_out, u32* flags_out, Vec3* normal_out, int line_id_skip,
+                  int joint_id_skip, int joint_id_only, bool (*filter)(Fighter_GObj*, int),
+                  Fighter_GObj* gobj)
+{
+    bool hit;
+    (void) joint_id_skip; (void) joint_id_only;
+    hit = RaycastKind(M360_LINE_FLOOR, ax, ay + y_offset, bx, by + y_offset, vec_out, line_id_out,
+                      flags_out, normal_out, line_id_skip, filter, gobj);
+    if (hit && vec_out)
+        vec_out->y -= y_offset;
+    return hit;
+}
+
+bool mpCheckCeiling(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
+                    u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
+{
+    (void) joint_id_skip; (void) joint_id_only;
+    return RaycastKind(M360_LINE_CEILING, ax, ay, bx, by, vec_out, line_id_out, flags_out,
+                       normal_out, -1, NULL, NULL);
+}
+
+bool mpCheckLeftWall(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
+                     u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
+{
+    (void) joint_id_skip; (void) joint_id_only;
+    return RaycastKind(M360_LINE_LEFT_WALL, ax, ay, bx, by, vec_out, line_id_out, flags_out,
+                       normal_out, -1, NULL, NULL);
+}
+
+bool mpCheckRightWall(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
+                      u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
+{
+    (void) joint_id_skip; (void) joint_id_only;
+    return RaycastKind(M360_LINE_RIGHT_WALL, ax, ay, bx, by, vec_out, line_id_out, flags_out,
+                       normal_out, -1, NULL, NULL);
+}
+
+bool mpCheckAll(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* normal_out,
+                int joint_id_skip, int joint_id_only, float x0, float y0, float x1, float y1)
+{
+    return mpCheckAllRemap(pos_out, line_id_out, flags_out, normal_out, joint_id_skip,
+                           joint_id_only, x0, y0, x1, y1);
+}
+
+mp_UnkStruct0* mpIsland_8005AC14(Vec3* pos, float dist)
+{
+    int line;
+    if (mpCheckFloor(pos->x, pos->y, pos->x, pos->y + dist, 0.0f, NULL, &line, NULL, NULL, -1, -1,
+                     -1, NULL, NULL))
+        return mpIsland_8005AB54(line);
+    return NULL;
+}
+
 /* mpColl_80044164/800443C4: CollData-level left/right ledge queries. */
 bool mpColl_80044164(CollData* cd, int* p_ledge_id)
 {
@@ -2249,66 +2436,6 @@ static void ProcHit(HSD_GObj* gobj)
     }
 }
 
-void ftCo_800B3900(Fighter_GObj* gobj)
-{
-    Fighter* fp = GET_FIGHTER(gobj);
-    Fighter* opponent = NULL;
-    unsigned i;
-    fp->cpu.lstick.x = fp->cpu.lstick.y = 0;
-    fp->cpu.cstick.x = fp->cpu.cstick.y = 0;
-    fp->cpu.buttons = 0;
-    ++fp->cpu.x7C;
-    for (i = 0; i < kMaxFighters; ++i)
-        if (s_fighters[i].gobj && &s_fighters[i].fighter != fp)
-            opponent = &s_fighters[i].fighter;
-    if (!opponent || s_cpuLevel == 0)
-        return;
-    {
-        const float dx = opponent->cur_pos.x - fp->cur_pos.x;
-        const float dy = opponent->cur_pos.y - fp->cur_pos.y;
-        const unsigned t = fp->cpu.x7C;
-        const float edge = 68.0f;
-        if (fp->motion_id >= ftCo_MS_DamageHi1 && fp->motion_id <= ftCo_MS_DamageFlyRoll)
-            return;
-        if (fp->ground_or_air == GA_Air && fabsf(fp->cur_pos.x) > edge - 8.0f) {
-            fp->cpu.lstick.x = fp->cur_pos.x > 0.0f ? -127 : 127;
-            if (fp->self_vel.y < 0.0f && fp->x1968_jumpsUsed < fp->co_attrs.max_jumps && (t & 7) == 0)
-                fp->cpu.buttons |= HSD_PAD_X;
-            else if (fp->self_vel.y < 0.0f && fp->x1968_jumpsUsed >= fp->co_attrs.max_jumps &&
-                     fp->cur_pos.y < 0.0f && fp->motion_id < ftCo_MS_Count) {
-                /* Out of jumps below the stage: recover with up special. */
-                fp->cpu.lstick.y = 127;
-                fp->cpu.buttons |= HSD_PAD_B;
-            }
-            return;
-        }
-        if (fp->ground_or_air == GA_Ground && fabsf(dx) < 26.0f && fabsf(dy) < 20.0f &&
-            opponent->motion_id >= ftCo_MS_Attack11 && opponent->motion_id <= ftCo_MS_AttackAirLw &&
-            ((t >> 3) & 1)) {
-            fp->cpu.buttons |= HSD_PAD_R;
-            return;
-        }
-        if (fp->ground_or_air == GA_Ground && fabsf(dx) < 14.0f && fabsf(dy) < 10.0f && (t % 97u) == 0) {
-            fp->cpu.buttons |= HSD_PAD_Z;
-            return;
-        }
-        if (fabsf(dx) < 18.0f && fabsf(dy) < 16.0f && (t % 151u) == 0) {
-            fp->cpu.lstick.y = -127;
-            fp->cpu.buttons |= HSD_PAD_B;
-            return;
-        }
-        if (fabsf(dx) > 12.0f || (fabsf(dy) > 20.0f && fabsf(dx) > 4.0f))
-            fp->cpu.lstick.x = dx > 0.0f ? 90 : -90;
-        if (dy < -20.0f && fp->ground_or_air == GA_Ground &&
-            mpColl_IsOnPlatform(&fp->coll_data) && (t & 31) < 3)
-            fp->cpu.lstick.y = -127;
-        if (dy > 20.0f && fabsf(dx) < 40.0f && (t & 15) < 3 &&
-            (fp->ground_or_air == GA_Ground || fp->self_vel.y < 0.0f))
-            fp->cpu.buttons |= HSD_PAD_X;
-        if (fabsf(dx) < 16.0f && fabsf(dy) < 20.0f && (t % 45u) < 2)
-            fp->cpu.buttons |= HSD_PAD_A;
-    }
-}
 
 static void ProcFinish(HSD_GObj* gobj)
 {
@@ -2411,6 +2538,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->x890_cameraBox = &f->cameraSubject;
     if (desc->onLoad)
         desc->onLoad(gobj);
+    ftCo_800A101C(fp, 4, (int) s_cpuLevel, 0);
     fp->x21FC_flag.byte = 1;
     fp->smash_attrs.x2135 = -1;
     fp->coll_data.floor.index = -1;
@@ -2494,6 +2622,8 @@ void Fighter_UnkProcessDeath_80068354(Fighter_GObj* gobj)
     ftColl_8007AFF8(gobj);
     ftColl_8007B0C0(gobj, HurtCapsule_Enabled);
     OnDeath(gobj);
+    /* Player cpu_kind 4 is the VS CPU (gm_1601.c). */
+    ftCo_800A101C(fp, 4, (int) s_cpuLevel, 0);
 }
 
 /* fn_8016719C: rebirth above the stage's first rebirth point, offset 16
