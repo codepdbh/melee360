@@ -18,7 +18,9 @@ for n in sorted(os.listdir(os.path.join(root, 'src/xdk'))):
     if n.endswith(('.c', '.cpp')) and n not in skip:
         files.append(os.path.join(root, 'src/xdk', n))
 pat = re.compile(r'^(?!static\b)[A-Za-z_][\w \*]*?[\s\*](\w+)\s*\([^;]*$')
-names = set(['lb_8000B1CC'])
+# CRT names the XEX links through /MT.
+names = set(['lb_8000B1CC', 'malloc', 'free', 'calloc', 'realloc', 'memcpy', 'memset',
+             'memmove', 'strlen', 'strcmp', 'sqrt', 'sin', 'cos', 'atan2', 'fabs', 'pow'])
 for f in files:
     for line in open(f, encoding='latin-1'):
         m = pat.match(line)

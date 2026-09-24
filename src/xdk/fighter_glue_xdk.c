@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 
 #pragma warning(push, 3)
@@ -445,7 +446,9 @@ static FigaTree* LoadTree(M360LoadedKind* k, int anim)
     entry = &k->data->xC[anim];
     if (!entry->x8 || (unsigned) entry->x4 + (unsigned) entry->x8 > k->animImageSize)
         return NULL;
-    copy = HSD_MemAlloc(entry->x8);
+    /* Animation archives stay resident for the session; keep them out of
+     * the fixed HSD heap so several rosters can load. */
+    copy = malloc(entry->x8);
     if (!copy)
         return NULL;
     memcpy(copy, k->animImage + entry->x4, entry->x8);
