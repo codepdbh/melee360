@@ -11,6 +11,19 @@
 #endif
 #ifndef M_TAU
 #define M_TAU 6.283185307179586
+#ifndef FORCE_PAD_STACK_8
+#define FORCE_PAD_STACK(bytes) ((void) 0)
+#define FORCE_PAD_STACK_4 ((void) 0)
+#define FORCE_PAD_STACK_8 ((void) 0)
+#define FORCE_PAD_STACK_16 ((void) 0)
+#define FORCE_PAD_STACK_32 ((void) 0)
+#endif
+#ifndef M_PI_F
+#define M_PI_F 3.14159265358979323846F
+#define M_TAU_F 6.283185307179586F
+#define M_PI_2_F (M_PI_F / 2.0F)
+#define M_PI_3_F (M_PI_F / 3.0F)
+#endif
 #endif
 #ifndef SDATA
 #define SDATA

@@ -65,16 +65,19 @@ static void ResumeMenu(const char* leaf)
     }
 }
 
+HSD_Archive* M360_ArchiveLoadSymbolsV(const char* filename, void* symbols, va_list ap);
+
 HSD_Archive* lbArchive_LoadSymbols(const char* filename, void* symbols, ...)
 {
     va_list ap;
     void** slot = symbols;
     unsigned missing = 0;
-    if (strcmp(filename, "MnMaAll") != 0) {
-        M360_MenuTrace("menu.archive.unported", 0);
-        return NULL;
-    }
     va_start(ap, symbols);
+    if (strcmp(filename, "MnMaAll") != 0) {
+        HSD_Archive* archive = M360_ArchiveLoadSymbolsV(filename, symbols, ap);
+        va_end(ap);
+        return archive;
+    }
     while (slot) {
         const char* name = va_arg(ap, const char*);
         *slot = M360_MenuSymbol(name);

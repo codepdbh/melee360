@@ -512,8 +512,8 @@ void M360_MatchEnter(void)
     for (i = 0; i < kMaxFighters; ++i) {
         const int campaign = s_gameMode == kGameModeClassic ||
                              s_gameMode == kGameModeAdventure;
-        const int port = i == 0 ? 0 :
-            (campaign ? -1 : (M360_MatchControllerConnected(1) ? 1 : -1));
+        const int port = i == 0 ? 0 : -1;
+        (void) campaign;
         s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
                                           i ? -1.0f : 1.0f, port);
         s_human[i] = port >= 0;
@@ -580,6 +580,12 @@ int M360_MatchFrame(void)
                 M360_MatchTrace(i ? "snap.p2.y" : "snap.p1.y", (unsigned) (int) st.posY[i]);
                 M360_MatchTrace(i ? "snap.p2.damage" : "snap.p1.damage", st.damage[i]);
                 M360_MatchTrace(i ? "snap.p2.stocks" : "snap.p1.stocks", st.stocksRemaining[i]);
+                if (s_fighters[i]) {
+                    float fx, fy, facing;
+                    unsigned fm, fd;
+                    M360_FighterGetState(s_fighters[i], &fx, &fy, &facing, &fm, &fd);
+                    M360_MatchTrace(i ? "snap.p2.facing_neg" : "snap.p1.facing_neg", facing < 0.0f);
+                }
             }
         }
         return M360_MATCH_CONTINUE;
@@ -597,9 +603,14 @@ int M360_MatchFrame(void)
         HSD_JObjAnimAll(s_models[i]);
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
+    if (s_fighterCount > 1 && !s_human[1] && s_gameMode != kGameModeClassic &&
+        s_gameMode != kGameModeAdventure && M360_MatchControllerConnected(1) &&
+        (M360_MatchPadTriggeredPort(1) & 0x1F00u)) {
+        s_human[1] = 1;
+        M360_FighterSetPort(s_fighters[1], 1);
+        M360_MatchTrace("match.p2.join", s_frame);
+    }
     HSD_GObj_RunProcs();
-    if (s_fighterCount > 1 && s_fighters[0] && s_fighters[1] && !s_respawn[0] && !s_respawn[1])
-        M360_FighterResolveHits(s_fighters[0], s_fighters[1]);
     for (i = 0; i < s_fighterCount; ++i) {
         float x, y, facing;
         unsigned motion, damage;
@@ -616,6 +627,7 @@ int M360_MatchFrame(void)
             if (s_stocksRemaining[i])
                 --s_stocksRemaining[i];
             s_respawn[i] = s_stocksRemaining[i] ? kRespawnFrames : 0;
+            M360_FighterSetDead(s_fighters[i]);
             M360_MatchTrace("match.blast_zone.fighter", i);
             M360_MatchTrace("match.stocks.remaining", s_stocksRemaining[i]);
             if (!s_stocksRemaining[i]) {

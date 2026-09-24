@@ -10,6 +10,16 @@ $overlay = Join-Path $root 'build-x360/gameplay-probe/include'
 $probe = Join-Path $root 'build-x360/gameplay-probe'
 $out = Join-Path $Build 'match'
 New-Item -ItemType Directory -Force $out | Out-Null
+$matchOverlay = Join-Path $out 'include'
+New-Item -ItemType Directory -Force (Join-Path $matchOverlay 'pc') | Out-Null
+$disc = (Get-Content -Raw (Join-Path $src 'pc/disc.h')).Replace('#define DP(T, slot) (slot)', '#define DP(T, slot) ((T*) (uintptr_t) (slot))')
+Set-Content -Encoding ASCII (Join-Path $matchOverlay 'pc/disc.h') $disc
+New-Item -ItemType Directory -Force (Join-Path $matchOverlay 'melee/lb') | Out-Null
+$lbTypes = Get-Content -Raw (Join-Path $src 'melee/lb/types.h')
+$skipPattern = '(?s)(struct DISC_STRUCT spawn_hitbox_skip \{\s*u8 _0\[0xF\];)(.*?)(\};)'
+if ($lbTypes -notmatch $skipPattern) { throw 'spawn_hitbox_skip layout not found' }
+$lbTypes = [regex]::Replace($lbTypes, $skipPattern, { param($m) $m.Groups[1].Value + $m.Groups[2].Value.Replace('u32 xF_', 'u8 xF_') + $m.Groups[3].Value })
+Set-Content -Encoding ASCII (Join-Path $matchOverlay 'melee/lb/types.h') $lbTypes
 
 function Get-CFunction([string]$Text, [string]$Signature) {
     $start = $Text.IndexOf($Signature)
@@ -56,24 +66,18 @@ function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$Sta
 }
 
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
-$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,244)
+$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,247,248,249,250,244)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
 $tableStart = $motionText.IndexOf('MotionState ftData_MotionStateList[ftCo_MS_Count] = {')
 $headers = $motionText.Substring(0, $tableStart)
 $entries = [regex]::Matches($motionText.Substring($tableStart), '(?s)\n    \{\s*\n\s*// ftCo_MS_(\w+) = (\d+)\s*\n(.*?)\n    \},')
-$table = $headers + "`r`nvoid M360_Damage_Anim(HSD_GObj*);`r`nvoid M360_Damage_IASA(HSD_GObj*);`r`nvoid M360_Damage_Phys(HSD_GObj*);`r`nvoid M360_Damage_Coll(HSD_GObj*);`r`ntypedef struct M360MotionEntry { int msid; MotionState state; } M360MotionEntry;`r`n"
+$table = $headers + "`r`ntypedef struct M360MotionEntry { int msid; MotionState state; } M360MotionEntry;`r`n"
 $table += "const M360MotionEntry M360_MotionTable[] = {`r`n"
 $found = 0
 foreach ($entry in $entries) {
     $id = [int]$entry.Groups[2].Value
     if ($motionIds -notcontains $id) { continue }
     $body = $entry.Groups[3].Value
-    if ($id -ge 75 -and $id -le 91) {
-        $body = $body -replace 'ftCo_DamageFlyRoll_Anim|ftCo_DamageFly_Anim|ftCo_Damage_Anim', 'M360_Damage_Anim'
-        $body = $body -replace 'ftCo_DamageFlyRoll_IASA|ftCo_DamageFly_IASA|ftCo_Damage_IASA', 'M360_Damage_IASA'
-        $body = $body -replace 'ftCo_DamageFlyRoll_Phys|ftCo_DamageFly_Phys|ftCo_Damage_Phys', 'M360_Damage_Phys'
-        $body = $body -replace 'ftCo_DamageFlyRoll_Coll|ftCo_DamageFly_Coll|ftCo_Damage_Coll', 'M360_Damage_Coll'
-    }
     $table += "    { $id, {`r`n        // ftCo_MS_$($entry.Groups[1].Value)`r`n$body`r`n    } },`r`n"
     ++$found
 }
@@ -82,12 +86,31 @@ $table += "};`r`nconst unsigned M360_MotionTableCount = $found;`r`n"
 $motionTable = Join-Path $out 'motion_table.c'
 Set-Content -Encoding ASCII $motionTable $table
 
-$damageSource = Get-Content -Raw (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Damage.c')
-$damageAngleSlice = (Get-CPrologue $damageSource 'float ftCo_Damage_CalcAngle(') +
-    (Get-CFunction $damageSource 'float ftCo_Damage_CalcAngle(') + "`r`n" +
-    (Get-CFunction $damageSource 'void ftCo_Damage_CalcVel(') + "`r`n"
-$damageAnglePath = Join-Path $out 'ftCo_DamageAngle_slice.c'
-Set-Content -Encoding ASCII $damageAnglePath $damageAngleSlice
+$fighterSource = Get-Content -Raw (Join-Path $src 'melee/ft/fighter.c')
+$fighterConsts = [regex]::Match($fighterSource, '(?s)const Vec3 Fighter_803B7488 = [^;]*;\s*const Vec3 vec3_803B7494 = [^;]*;').Value
+$rangeStart = $fighterSource.IndexOf('void Fighter_8006A1BC(')
+$rangeLast = Get-CFunction $fighterSource 'void Fighter_ProcessHit_8006D1EC('
+$rangeStop = $fighterSource.IndexOf($rangeLast) + $rangeLast.Length
+$globalsStart = $fighterSource.IndexOf('HSD_ObjAllocData fighter_alloc_data;')
+$globalsEnd = $fighterSource.IndexOf('ftCommonData* p_ftCommonData;') + 'ftCommonData* p_ftCommonData;'.Length
+$fighterSpawn = $fighterSource.Substring($globalsStart, $globalsEnd - $globalsStart) + "`r`n" +
+    (Get-CFunction $fighterSource 'void Fighter_LoadCommonData(')
+$fighterSlice = (Get-CPrologue $fighterSource 'const Vec3 Fighter_803B7488') + $fighterConsts + "`r`n" + $fighterSpawn + "`r`n" +
+    (Get-CFunction $fighterSource 'void Fighter_UnkInitReset_80067C98(') + "`r`n" +
+    (Get-CFunction $fighterSource 'void Fighter_ResetInputData_80068854(') + "`r`n" +
+    (Get-CFunction $fighterSource 'static void Fighter_UnkInitLoad_80068914_Inner1(') + "`r`n" +
+    (Get-CFunction $fighterSource 'u32 Fighter_NewSpawn_80068E40(') + "`r`n" +
+    (Get-CFunction $fighterSource 'void Fighter_ChangeMotionState(') + "`r`n" +
+    $fighterSource.Substring($rangeStart, $rangeStop - $rangeStart) + "`r`n"
+$fighterSlicePath = Join-Path $out 'fighter_frame_slice.c'
+Set-Content -Encoding ASCII $fighterSlicePath $fighterSlice
+
+$collSource = Get-Content -Raw (Join-Path $src 'melee/lb/lbcollision.c')
+$collStart = $collSource.IndexOf('/* 006E58 */ static bool')
+$collLast = Get-CFunction $collSource 'void lbColl_80008A5C('
+$collStop = $collSource.IndexOf($collLast) + $collLast.Length
+$collSlicePath = Join-Path $out 'lbcollision_slice.c'
+Set-Content -Encoding ASCII $collSlicePath ($collSource.Substring(0, $collStop) + "`r`n" + (Get-CFunction $collSource 'void lbColl_80008D30(') + "`r`n" + (Get-CFunction $collSource 'bool lbColl_8000ACFC(') + "`r`n")
 
 $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Wait.c') },
@@ -103,7 +126,37 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Fall.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_FallAerial.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Landing.c') },
-    @{ Path = $damageAnglePath; Dir = (Join-Path $src 'melee/ft/kinds/ftCommon') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Damage.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DamageFall.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftcoll.c') },
+    @{ Path = $collSlicePath; Dir = (Join-Path $src 'melee/lb') },
+    @{ Path = (Join-Path $src 'melee/lb/lbvector.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_07C1.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_07C6.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0819.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0892.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0C88.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0C8C.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0DF0.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftcolanim.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftdevice.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0C35.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0D67.c') },
+    @{ Path = (Join-Path $src 'melee/pl/plstale.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownAttack.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownBound.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownDamage.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownSpot.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownStand.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Down.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_FlyReflect.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_PassiveCeil.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_PassiveStand.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_PassiveWall.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Passive.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_StopCeil.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_StopWall.c') },
+    @{ Path = $fighterSlicePath; Dir = (Join-Path $src 'melee/ft') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Attack1.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackS3.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackHi3.c') },
@@ -134,13 +187,14 @@ $units = @(
     @{ Path = $motionTable; Dir = (Join-Path $src 'melee/ft') }
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C(', 'void ft_80084DB0(') 'ft_081B_slice'
-$units += New-RangeSlice 'melee/ft/ftcoll.c' '#ifdef MUST_MATCH' 'static inline s32 ftColl_GetDamageCount(' 'float ftColl_80079AB0(' 'ftcoll_knockback_slice'
+$units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_0A01.c' '/// @todo .sdata2 order hack' @('static inline float convertStickAxis(', 'float ftCo_GetCpuLStickX(', 'float ftCo_GetCpuLStickY(', 'float ftCo_GetCpuLTrigger(', 'float ftCo_GetCpuRTrigger(', 'HSD_Pad ftCo_GetCpuButtons(', 'float ftCo_GetCpuCStickX(', 'float ftCo_GetCpuCStickY(', 'bool ftCo_IsCpuControlled(') 'ftCo_0A01_cpu_input_slice'
+$units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
 $units += New-Slice 'melee/ft/ftswing.c' 'void ftCo_FallAerial_Coll(' @('void ftCo_FallAerial_Coll(') 'ftswing_slice'
 $units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_FallSpecial.c' 'void ftCo_800968C8(' @('bool ftCo_80096CC8(') 'ftCo_FallSpecial_slice'
 
 $objects = @()
 $base = @('/nologo','/c','/TC','/O2','/MT','/GS-','/D_XBOX','/DXBOX','/DNDEBUG',
-    "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
+    "/I$matchOverlay", "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
     "/I$src", "/I$(Join-Path $src 'sdk_include')",
     "/FI$(Join-Path $root 'src/xdk/gameplay_probe_compat.h')",
     "/FI$overlay/melee/ft/forward.h", "/FI$overlay/melee/ft/kinds/ftCommon/forward.h",
@@ -153,7 +207,7 @@ foreach ($unit in $units) {
     $objects += $object
 }
 $nativeBase = @('/nologo','/c','/TC','/O2','/MT','/GS-','/W4','/D_XBOX','/DXBOX','/DNDEBUG',
-    "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
+    "/I$matchOverlay", "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
     "/I$src", "/I$(Join-Path $src 'sdk_include')",
     "/FI$(Join-Path $root 'src/xdk/fighter_glue_compat.h')")
 foreach ($native in @('fighter_glue_xdk.c', 'fighter_unported_xdk.c')) {

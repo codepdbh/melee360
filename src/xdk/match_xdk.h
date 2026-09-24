@@ -76,6 +76,8 @@ void M360_MatchGetStatus(M360MatchStatus* status);
 const M360MatchStage* M360_MatchStageData(void);
 float M360_MatchFixedZoom(void);
 unsigned M360_MatchPadTriggered(void);
+unsigned M360_MatchPadTriggeredPort(unsigned port);
+void M360_FighterSetPort(void* gobj, int port);
 unsigned M360_MatchPadHeld(void);
 float M360_MatchPadX(void);
 float M360_MatchPadY(void);
@@ -87,11 +89,12 @@ int M360_FighterLoad(void);
 void M360_FighterResetMatch(void);
 void* M360_FighterSpawn(int slot, float x, float y, float facing, int port);
 void M360_FighterRespawn(void* gobj, float x, float y);
+void M360_FighterSetDead(void* gobj);
 void M360_FighterGetState(void* gobj, float* x, float* y, float* facing,
                           unsigned* motion, unsigned* damage);
 void M360_FighterCameraBox(void* gobj, float* x, float* y, float* left,
                            float* right, float* up, float* down);
-void M360_FighterResolveHits(void* attacker, void* target);
+void M360_FighterSetCpuLevel(unsigned level);
 unsigned M360_FighterHitCount(void);
 
 #ifdef __cplusplus

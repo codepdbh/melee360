@@ -1,6 +1,24 @@
 #pragma warning(push, 3)
 #pragma warning(disable : 4244)
+#include <dolphin/mtx.h>
+#include <melee/cm/camera.h>
 #include <melee/ef/efasync.h>
+#include <melee/ef/efsync.h>
+#include <melee/db/db.h>
+#include <melee/ft/ftdata.h>
+#include <melee/gr/stage.h>
+#include <melee/gm/gm_unsplit.h>
+#include <melee/if/ifmagnify.h>
+#include <melee/it/it_2725.h>
+#include <melee/it/it_279C.h>
+#include <melee/it/it_3F14.h>
+#include <melee/it/itcoll.h>
+#include <melee/lb/lb_0146.h>
+#include <melee/lb/lbrefract.h>
+#include <melee/mp/mplib.h>
+#include <melee/pl/pl_040D.h>
+#include <melee/pl/pltrick.h>
+#include <melee/sfx/crowdsfx.h>
 #include <melee/ef/eflib.h>
 #include <melee/ft/kinds/ftCommon/ftCo_0C60.h>
 #include <melee/ft/fighter.h>
@@ -88,8 +106,6 @@
 
 void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
 
-struct Fighter_804D6518_t* Fighter_804D6518;
-struct Fighter_ShakeTable_t* Fighter_GrabMashShake;
 Fighter_ItemEvent ftData_OnItemDrop[Ft_Kind_Max];
 HSD_GObjEvent ftData_OnItemDropExt[Ft_Kind_Max];
 HSD_GObjEvent ftData_OnItemInvisible[Ft_Kind_Max];
@@ -145,7 +161,6 @@ UNPORTED_BOOL(ftCo_800DE9D8, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_Attack_800CCF58, (Fighter_GObj* gobj, enum_t arg))
 UNPORTED_VOID(ftCo_Attack_800CDD14, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_Catch_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_DownSpot_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_HammerLanding_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_ItemScrew_Enter, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_SpecialAir_CheckInput, (Fighter_GObj* gobj))
@@ -163,12 +178,8 @@ UNPORTED_BOOL(ftpickupitem_80094790, (HSD_GObj* gobj))
 UNPORTED_VOID(ftpickupitem_80094818, (HSD_GObj* gobj, bool arg))
 UNPORTED_BOOL(ft_800D2D0C, (Fighter_GObj* gobj))
 UNPORTED_VOID(ft_800D2E7C, (Fighter_GObj* gobj, Vec3* v))
-UNPORTED_VOID(ftCo_80090780, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8540, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
-UNPORTED_VOID(ftCo_800C8A64, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_800C88D4, (Fighter_GObj* gobj, int a, bool b))
-UNPORTED_VOID(Fighter_UnkInitReset_80067C98, (Fighter* fp))
 UNPORTED_VOID(ftLib_SetScale, (HSD_GObj* gobj, float scale))
 UNPORTED_VOID(ft_80081C88, (Fighter_GObj* gobj, float scl_y))
 UNPORTED_VOID(ft_800849EC, (Fighter* a, Fighter* b))
@@ -177,7 +188,6 @@ UNPORTED_BOOL(ft_80084C38, (Fighter_GObj* gobj, int* a, int* b, int* c))
 UNPORTED_VOID(ftAnim_ApplyPartAnim, (Fighter_GObj* gobj, s32 a, s32 b, float c))
 UNPORTED_VOID(ftAnim_800704F0, (Fighter_GObj* gobj, int tobj_idx, float frame))
 UNPORTED_BOOL(ftLib_80086FD4, (HSD_GObj* a, HSD_GObj* b))
-UNPORTED_VOID(ftCo_800BFD04, (Fighter_GObj* gobj))
 UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
 SILENT_VOID(efLib_DestroyAll, (HSD_GObj* gobj))
@@ -195,22 +205,10 @@ SILENT_VOID(ft_80088884, (Fighter* fp))
 SILENT_VOID(ft_800888E0, (Fighter* fp))
 SILENT_VOID(ft_8008893C, (Fighter* fp))
 SILENT_VOID(ft_800889F4, (Fighter* fp, FtSFXArr* sfx))
-SILENT_VOID(ft_800892A0, (Fighter_GObj* gobj))
-SILENT_VOID(ft_80089824, (Fighter_GObj* gobj))
 SILENT_VOID(ft_8008A1B8, (Fighter_GObj* gobj, u32 flags))
 SILENT_VOID(ftCamera_80076064, (Fighter* fp))
 SILENT_VOID(ftCo_8009E7B4, (Fighter* fp, u8 (*blend)[2]))
 SILENT_VOID(ftCo_8009F834, (Fighter_GObj* gobj, int a, Fighter_Part b, int c, int d, Vec3* e, Vec3* f, float g))
-SILENT_VOID(ftCo_800C0200, (Fighter* fp, int a))
-SILENT_VOID(ftCo_800C0358, (Fighter* fp, Fighter* b, s32 c))
-SILENT_VOID(ftCo_800C8B60, (Fighter* fp, u8 a, u8 b))
-SILENT_VOID(ftCo_800DEE84, (Fighter_GObj* gobj, u32 a, f32 b, f32 c))
-SILENT_VOID(ftColl_8007AEE0, (Fighter_GObj* gobj))
-SILENT_VOID(ftColl_8007B0C0, (Fighter_GObj* gobj, HurtCapsuleState state))
-SILENT_VOID(ftColl_8007B128, (Fighter_GObj* gobj, int bone_id, HurtCapsuleState state))
-SILENT_VOID(ftColl_8007B62C, (Fighter_GObj* gobj, enum_t a))
-SILENT_VOID(ftColl_8007B760, (Fighter_GObj* gobj, int a))
-SILENT_VOID(ftColl_8007B7FC, (Fighter* fp, int a))
 SILENT_VOID(HSD_PadRumbleRemoveId, (u8 a, int b))
 SILENT_VOID(lb_80014574, (u8 a, int b, int c, int d))
 SILENT_VOID(lb_800145C0, (u8 slot))
@@ -275,24 +273,11 @@ bool ftCo_8009E714(Fighter_GObj* gobj, Fighter_Part part, int a, float x, float 
     (void) gobj; (void) part; (void) a; (void) x; (void) y; (void) b; (void) c; (void) d;
     return false;
 }
-bool ftCo_800BFFD0(Fighter* fp, enum_t a, bool b) { (void) fp; (void) a; (void) b; return false; }
 bool ftCo_800C5240(Fighter_GObj* gobj) { (void) gobj; return false; }
 int mpLineGetNext(int line_id) { (void) line_id; return -1; }
 int mpLineGetPrev(int line_id) { (void) line_id; return -1; }
 
-Vec2* ftCo_80090690(Fighter* fp, Vec2* shift)
-{
-    (void) fp;
-    shift->x = shift->y = 0.0f;
-    return shift;
-}
 
-Vec2* ftCo_800DEEE8(Fighter* fp, Vec2* shift)
-{
-    (void) fp;
-    shift->x = shift->y = 0.0f;
-    return shift;
-}
 
 FighterKind ftLib_GetKind(HSD_GObj* gobj)
 {
@@ -309,74 +294,10 @@ struct ftData_80085FD4_ret* ftData_80085FD4(Fighter* fp, FtMotionId msid)
     return (struct ftData_80085FD4_ret*) &fp->x24[msid];
 }
 
-void Fighter_TakeDamage_8006CC7C(Fighter* fp, float damage_amount)
-{
-    fp->dmg.x1830_percent += damage_amount;
-    if (fp->dmg.x1830_percent > 999.0f)
-        fp->dmg.x1830_percent = 999.0f;
-}
-
 void ftPartSetRotZ(Fighter* fp, int part_idx, f32 rotate_z)
 {
     if (fp->parts && fp->parts[part_idx].joint)
         HSD_JObjSetRotationZ(fp->parts[part_idx].joint, rotate_z);
-}
-
-void ftColl_800768A0(Fighter* fp, HitCapsule* dst)
-{
-    (void) fp;
-    dst->x44 = 0;
-    dst->x45 = 0;
-}
-
-void ftColl_8007ABD0(HitCapsule* hit, u32 damage, Fighter_GObj* gobj)
-{
-    (void) gobj;
-    hit->unk_count = damage;
-    hit->damage = (float) damage;
-}
-
-void ftColl_8007AC9C(HitCapsule* hit, int angle, Fighter_GObj* gobj)
-{
-    (void) gobj;
-    hit->kb_angle = angle;
-}
-
-void ftColl_8007AD18(Fighter* fp, HitCapsule* hit)
-{
-    Vec3 offset;
-    (void) fp;
-    switch (hit->state) {
-    case HitCapsule_Enabled:
-        offset = hit->b_offset;
-        lb_8000B1CC(hit->jobj, &offset, &hit->x4C);
-        hit->x58 = hit->x4C;
-        hit->state = HitCapsule_Unk2;
-        break;
-    case HitCapsule_Unk2:
-        hit->state = HitCapsule_Unk3;
-    case HitCapsule_Unk3:
-        hit->x58 = hit->x4C;
-        offset = hit->b_offset;
-        lb_8000B1CC(hit->jobj, &offset, &hit->x4C);
-        break;
-    default:
-        break;
-    }
-}
-
-void ftColl_8007AFC8(Fighter_GObj* gobj, int hit_idx)
-{
-    GET_FIGHTER(gobj)->x914[hit_idx].state = HitCapsule_Disabled;
-}
-
-void ftColl_8007AFF8(Fighter_GObj* gobj)
-{
-    Fighter* fp = GET_FIGHTER(gobj);
-    unsigned i;
-    for (i = 0; i < ARRAY_SIZE(fp->x914); ++i)
-        fp->x914[i].state = HitCapsule_Disabled;
-    fp->x2219_b3 = false;
 }
 
 HSD_GObjEvent ftData_SpecialN[Ft_Kind_Max];
@@ -409,3 +330,232 @@ void efAsync_Spawn(HSD_GObj* gobj, void* queue_head, u32 spawn_kind, u32 gfx_id,
 {
     (void) gobj; (void) queue_head; (void) spawn_kind; (void) gfx_id; (void) jobj;
 }
+
+DbLKind DbLevel;
+ItemCommonData* it_804D6D28;
+HSD_GObjEvent ftData_UnkMotionStates3[Ft_Kind_Max];
+HSD_GObjEvent ftData_UnkMotionStates4[Ft_Kind_Max];
+HSD_GObjEvent ftData_OnAbsorb[Ft_Kind_Max];
+
+void ftPartSetRotX(Fighter* fp, int part_idx, f32 rotate_x)
+{
+    if (fp->parts && fp->parts[part_idx].joint)
+        HSD_JObjSetRotationX(fp->parts[part_idx].joint, rotate_x);
+}
+
+void ftPartSetRotY(Fighter* fp, int part_idx, f32 rotate_y)
+{
+    if (fp->parts && fp->parts[part_idx].joint)
+        HSD_JObjSetRotationY(fp->parts[part_idx].joint, rotate_y);
+}
+
+void ftParts_JObjSetRotation(HSD_JObj* jobj, Quaternion* rotation)
+{
+    if (jobj)
+        HSD_JObjSetRotation(jobj, rotation);
+}
+
+bool ftLib_80086960(HSD_GObj* gobj)
+{
+    return gobj && gobj->classifier == HSD_GOBJ_CLASS_FIGHTER;
+}
+
+f32 gm_8016B248(void)
+{
+    return 1.0f;
+}
+
+float sqrtf_accurate(float x)
+{
+    return sqrtf(x);
+}
+
+void PSMTXTranspose(Mtx src, Mtx xPose)
+{
+    Mtx tmp;
+    int i, j;
+    for (i = 0; i < 3; ++i)
+        for (j = 0; j < 3; ++j)
+            tmp[i][j] = src[j][i];
+    for (i = 0; i < 3; ++i) {
+        for (j = 0; j < 3; ++j)
+            xPose[i][j] = tmp[i][j];
+        xPose[i][3] = 0.0f;
+    }
+}
+
+float Stage_GetCamBoundsBottomOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->camBottom + st->camY;
+}
+
+float Stage_CalcUnkCamY(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return 0.5f * ((st->blastBottom + st->camY) + (st->camBottom + st->camY));
+}
+
+float Stage_CalcUnkCamYBounds(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return 0.25f * (st->blastBottom + st->camY) + 0.75f * (st->camBottom + st->camY);
+}
+
+void Stage_UnkSetVec3TCam_Offset(Vec3* out)
+{
+    out->x = out->y = out->z = 0.0f;
+}
+
+bool ftAnim_80070FD0(Fighter* fp)
+{
+    (void) fp;
+    return false;
+}
+
+float Camera_80031144(void)
+{
+    return 0.0f;
+}
+
+void GXProject(f32 x, f32 y, f32 z, Mtx mtx, f32* pm, f32* vp, f32* sx, f32* sy, f32* sz)
+{
+    (void) x; (void) y; (void) z; (void) mtx; (void) pm; (void) vp;
+    *sx = *sy = *sz = 0.0f;
+}
+
+void ftKb_SpecialN_800F1F1C(Fighter_GObj* a0, Vec3* a1) { (void) a0; (void) a1; Report("fighter.unported.ftKb_SpecialN_800F1F1C");  }
+void Camera_RequestQuake(CmQuakeKind a0, Vec* a1) { (void) a0; (void) a1; Report("fighter.unported.Camera_RequestQuake");  }
+void pl_80037C60(Fighter_GObj* a0, volatile s32 a1) { (void) a0; (void) a1; Report("fighter.unported.pl_80037C60");  }
+s32 it_8026B588(void) {  Report("fighter.unported.it_8026B588"); return (s32) 0; }
+bool gm_8016B1C4(void) {  Report("fighter.unported.gm_8016B1C4"); return (bool) 0; }
+void ft_800C80A4(Fighter* a0) { (void) a0; Report("fighter.unported.ft_800C80A4");  }
+void ftCo_800D4F24(Fighter_GObj* a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800D4F24");  }
+bool ftCo_800C7CA0(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C7CA0"); return (bool) 0; }
+void* efSync_Spawn(s32 a0, HSD_GObj* a1, ...) { (void) a0; (void) a1; Report("fighter.unported.efSync_Spawn"); return NULL; }
+void un_8032233C(u32 a0, u32 a1) { (void) a0; (void) a1; Report("fighter.unported.un_8032233C");  }
+float un_803222EC(float a0, float a1) { (void) a0; (void) a1; Report("fighter.unported.un_803222EC"); return 0.0f; }
+bool un_80322258(float a0) { (void) a0; Report("fighter.unported.un_80322258"); return (bool) 0; }
+void pl_80041B08(int a0, UNK_T a1, u16 a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.pl_80041B08");  }
+void pl_80041280(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_80041280");  }
+void pl_800411C4(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_800411C4");  }
+void pl_80040B8C(int a0, int a1, int a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.pl_80040B8C");  }
+void pl_80040330(int a0, int a1, float a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.pl_80040330");  }
+void pl_80040270(int a0, int a1, float a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.pl_80040270");  }
+void pl_800401F0(int a0, int a1, float a2, float a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.pl_800401F0");  }
+void pl_8003FE1C(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_8003FE1C");  }
+void pl_8003EC9C(int a0, int a1, float a2, float a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.pl_8003EC9C");  }
+void pl_8003EB30(float a0, int a1, int a2, int a3, int a4, int a5) { (void) a0; (void) a1; (void) a2; (void) a3; (void) a4; (void) a5; Report("fighter.unported.pl_8003EB30");  }
+void pl_8003E17C(int a0, int a1, Item_GObj* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.pl_8003E17C");  }
+void pl_8003E150(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_8003E150");  }
+void pl_8003E058(int a0, int a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.pl_8003E058");  }
+bool pl_8003D60C(int a0) { (void) a0; Report("fighter.unported.pl_8003D60C"); return (bool) 0; }
+void pl_80038144(HSD_GObj* a0, HSD_GObj* a1, s32 a2, ft_800898B4_t* a3, u16 a4, s32 a5, s32 a6) { (void) a0; (void) a1; (void) a2; (void) a3; (void) a4; (void) a5; (void) a6; Report("fighter.unported.pl_80038144");  }
+void pl_80037ECC(HSD_GObj* a0) { (void) a0; Report("fighter.unported.pl_80037ECC");  }
+u16 plAttack_80037B08(void) {  Report("fighter.unported.plAttack_80037B08"); return (u16) 0; }
+bool mpGetSpeed(int a0, Vec3* a1, Vec3* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.mpGetSpeed"); return (bool) 0; }
+bool lb_80014638(struct lb_80014638_arg0_t* a0, struct lb_80014638_arg1_t* a1) { (void) a0; (void) a1; Report("fighter.unported.lb_80014638"); return (bool) 0; }
+bool lb_800144C8(ColorOverlay* a0, struct Fighter_804D653C_t* a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lb_800144C8"); return (bool) 0; }
+void lb_80014498(ColorOverlay* a0) { (void) a0; Report("fighter.unported.lb_80014498");  }
+bool lb_80014258(Fighter_GObj* a0, void* a1, FtCmd2 a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.lb_80014258"); return (bool) 0; }
+void lbRefract_80022BB8(void) {  Report("fighter.unported.lbRefract_80022BB8");  }
+void lbRefract_800225D4(void) {  Report("fighter.unported.lbRefract_800225D4");  }
+void lbRefSetUnuse(void) {  Report("fighter.unported.lbRefSetUnuse");  }
+int lbAudioAx_80024184(int a0, int a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lbAudioAx_80024184"); return (int) 0; }
+int lbAudioAx_80023870(int a0, int a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lbAudioAx_80023870"); return (int) 0; }
+s32 it_802E5EF4(Item_GObj* a0) { (void) a0; Report("fighter.unported.it_802E5EF4"); return (s32) 0; }
+void it_8027B4A4(Fighter_GObj* a0, Item_GObj* a1) { (void) a0; (void) a1; Report("fighter.unported.it_8027B4A4");  }
+s32 it_80272818(Item* a0) { (void) a0; Report("fighter.unported.it_80272818"); return (s32) 0; }
+void it_8026FC00(Item* a0, HitCapsule* a1, s32 a2, Fighter* a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.it_8026FC00");  }
+void it_8026FAC4(Item* a0, HitCapsule* a1, s32 a2, void* a3, bool a4) { (void) a0; (void) a1; (void) a2; (void) a3; (void) a4; Report("fighter.unported.it_8026FAC4");  }
+bool it_8026BC68(Item_GObj* a0) { (void) a0; Report("fighter.unported.it_8026BC68"); return (bool) 0; }
+bool it_8026B6C8(Item_GObj* a0) { (void) a0; Report("fighter.unported.it_8026B6C8"); return (bool) 0; }
+bool it_8026B2D8(Item_GObj* a0) { (void) a0; Report("fighter.unported.it_8026B2D8"); return (bool) 0; }
+float it_8026B1D4(Item_GObj* a0, HitCapsule* a1) { (void) a0; (void) a1; Report("fighter.unported.it_8026B1D4"); return 0.0f; }
+bool itIsHeavy(Item_GObj* a0) { (void) a0; Report("fighter.unported.itIsHeavy"); return (bool) 0; }
+HSD_GObj* itGetOwner(Item_GObj* a0) { (void) a0; Report("fighter.unported.itGetOwner"); return NULL; }
+s32 itGetAttackId(Item_GObj* a0) { (void) a0; Report("fighter.unported.itGetAttackId"); return (s32) 0; }
+bool ifMagnify_802FC998(s32 a0) { (void) a0; Report("fighter.unported.ifMagnify_802FC998"); return (bool) 0; }
+s32 ifMagnify_802FB6E8(s32 a0) { (void) a0; Report("fighter.unported.ifMagnify_802FB6E8"); return (s32) 0; }
+bool gm_IsCurrently1PMode_inline(void) {  Report("fighter.unported.gm_IsCurrently1PMode_inline"); return (bool) 0; }
+bool gm_GetDbPauseFlag(int a0) { (void) a0; Report("fighter.unported.gm_GetDbPauseFlag"); return (bool) 0; }
+u32 gm_801A4BB8(void) {  Report("fighter.unported.gm_801A4BB8"); return (u32) 0; }
+bool gm_8016B168(void) {  Report("fighter.unported.gm_8016B168"); return (bool) 0; }
+bool gm_8016B0D4(void) {  Report("fighter.unported.gm_8016B0D4"); return (bool) 0; }
+bool gm_8016B014(void) {  Report("fighter.unported.gm_8016B014"); return (bool) 0; }
+void gm_80167470(s32 a0, s32 a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167470");  }
+void gm_80167320(int a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167320");  }
+void ft_800C85B8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ft_800C85B8");  }
+void ft_800C8170(Fighter* a0) { (void) a0; Report("fighter.unported.ft_800C8170");  }
+void ft_80089B08(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ft_80089B08");  }
+void ft_80088080(Fighter* a0) { (void) a0; Report("fighter.unported.ft_80088080");  }
+void ftSb_Init_8014FBA4(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftSb_Init_8014FBA4");  }
+void ftPartsPObjSetDefaultClass(void) {  Report("fighter.unported.ftPartsPObjSetDefaultClass");  }
+void ftPartsPObjClearDefaultClass(void) {  Report("fighter.unported.ftPartsPObjClearDefaultClass");  }
+void ftMh_MS_343_80151484(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftMh_MS_343_80151484");  }
+void ftMh_MS_341_8014FE58(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftMh_MS_341_8014FE58");  }
+void ftKb_SpecialN_800F5C34(Fighter* a0) { (void) a0; Report("fighter.unported.ftKb_SpecialN_800F5C34");  }
+void ftKb_SpecialN_800F5BA4(Fighter* a0) { (void) a0; Report("fighter.unported.ftKb_SpecialN_800F5BA4");  }
+void ftKb_SpecialN_800F1D24(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftKb_SpecialN_800F1D24");  }
+bool ftFx_AppealS_CheckIfUsed(Fighter* a0) { (void) a0; Report("fighter.unported.ftFx_AppealS_CheckIfUsed"); return (bool) 0; }
+void ftDk_MS_349_800E06D8(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftDk_MS_349_800E06D8");  }
+bool ftCo_SpecialS_HasInput(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_SpecialS_HasInput"); return (bool) 0; }
+void ftCo_HammerWait_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerWait_IASA");  }
+void ftCo_HammerFall_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerFall_IASA");  }
+void ftCo_DamageIce_Init(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_Init");  }
+void ftCo_DamageIce_HitWhileFrozen(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_HitWhileFrozen");  }
+void ftCo_CaptureCut_Enter(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_CaptureCut_Enter");  }
+void ftCo_800DE854(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DE854");  }
+void ftCo_800DE2F0(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DE2F0");  }
+void ftCo_800DCFD4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DCFD4");  }
+void ftCo_800DCE34(Fighter_GObj* a0, Fighter_GObj* a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800DCE34");  }
+void ftCo_800DC3A4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DC3A4");  }
+void ftCo_800DC284(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DC284");  }
+void ftCo_800DA698(Fighter_GObj* a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800DA698");  }
+bool ftCo_800D3158(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800D3158"); return (bool) 0; }
+bool ftCo_800D2FA4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800D2FA4"); return (bool) 0; }
+void ftCo_800CF4DC(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800CF4DC");  }
+bool ftCo_800C74F4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C74F4"); return (bool) 0; }
+void ftCo_800C703C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C703C");  }
+bool ftCo_800C5DDC(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C5DDC"); return (bool) 0; }
+bool ftCo_800C5CD4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C5CD4"); return (bool) 0; }
+void ftCo_800C555C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C555C");  }
+void ftCo_800C554C(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800C554C");  }
+bool ftCo_800C53E4(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800C53E4"); return (bool) 0; }
+void ftCo_800C511C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C511C");  }
+bool ftCo_800C44CC(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C44CC"); return (bool) 0; }
+bool ftCo_800C3538(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C3538"); return (bool) 0; }
+void ftCo_800C318C(Fighter_GObj* a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800C318C");  }
+void ftCo_800C2FD8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C2FD8");  }
+bool ftCo_800C0CB8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C0CB8"); return (bool) 0; }
+void ftCo_800C0B20(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C0B20");  }
+void ftCo_800C0A98(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C0A98");  }
+bool ftCo_800C0A28(Fighter_GObj* a0, UNK_T a1, ftCommon_BuryType a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftCo_800C0A28"); return (bool) 0; }
+void ftCo_800C08A0(Fighter_GObj* a0, Fighter_GObj* a1, DynamicsDesc* a2, ftCommon_BuryType a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.ftCo_800C08A0");  }
+void ftCo_800C0874(Fighter_GObj* a0, UNK_T a1, ftCommon_BuryType a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftCo_800C0874");  }
+void ftCo_800A0DA4(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800A0DA4");  }
+void ftCo_80099D9C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80099D9C");  }
+void ftCo_80098C9C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80098C9C");  }
+void ftCo_80098B20(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80098B20");  }
+void ftCo_8009750C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_8009750C");  }
+void ftCo_800968C8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800968C8");  }
+void ftCo_80095744(Fighter_GObj* a0, bool* a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_80095744");  }
+void ftCo_80094138(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_80094138");  }
+void ftCo_80090984(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80090984");  }
+void ftCh_Init_80156014(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_Init_80156014");  }
+void ftCh_GrabUnk1_8015ADD0(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_GrabUnk1_8015ADD0");  }
+void ftAnim_80070F28(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070F28");  }
+void ftAnim_80070E74(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070E74");  }
+void ftAnim_80070654(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070654");  }
+void efAsync_QueueFlush(HSD_GObj* a0, void* a1) { (void) a0; (void) a1; Report("fighter.unported.efAsync_QueueFlush");  }
+void Player_SetTotalCoins(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.Player_SetTotalCoins");  }
+void Player_SetCoins(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.Player_SetCoins");  }
+int Player_GetTotalCoins(int a0) { (void) a0; Report("fighter.unported.Player_GetTotalCoins"); return (int) 0; }
+s32 Player_GetRemainingHPByIndex(s32 a0, s32 a1) { (void) a0; (void) a1; Report("fighter.unported.Player_GetRemainingHPByIndex"); return (s32) 0; }
+bool Player_GetMoreFlagsBit3(s32 a0) { (void) a0; Report("fighter.unported.Player_GetMoreFlagsBit3"); return (bool) 0; }
+bool Player_GetMoreFlagsBit0(s32 a0) { (void) a0; Report("fighter.unported.Player_GetMoreFlagsBit0"); return (bool) 0; }
+int Player_GetCoins(int a0) { (void) a0; Report("fighter.unported.Player_GetCoins"); return (int) 0; }
+int Fighter_SuperMushroomEnd(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_SuperMushroomEnd"); return (int) 0; }
+bool Fighter_SuperMushroomApply(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_SuperMushroomApply"); return (bool) 0; }
+bool Fighter_PoisonMushroomEnd(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_PoisonMushroomEnd"); return (bool) 0; }
+bool Fighter_PoisonMushroomApply(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_PoisonMushroomApply"); return (bool) 0; }
