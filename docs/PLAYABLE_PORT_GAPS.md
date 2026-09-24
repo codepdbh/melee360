@@ -124,7 +124,15 @@ The select phase also picks the stage (D-pad up/down) and stocks (RB). Six
 stages load from the map GObj ids their original OnInit creates; moving
 platforms, Randall and hazards are not simulated and collision uses the
 authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
-complete the roster; Zelda/Sheik transformation and Nana are missing.
+complete the roster; Nana is missing.
+
+Zelda and Sheik spawn together like the original Player code: the partner is
+created as the slot's sub entity and put to sleep (`ftCo_800BFD04`), and
+`Player_GetEntityAtIndex`/`Player_SwapTransformedStates` keep a per-slot
+entity table so the original down special (`ftCommon_8007EFC8`) swaps them,
+handing over position, damage, collision (`mpCopyCollData`) and held items.
+The match scene follows the slot's active entity each frame. The transform
+flash camera hook (`ftCamera_80076064`) is still a stub.
 
 The right stick (up/down) switches the rule between stock and a timed match
 (2, 3, 4, 5 or 8 minutes). Timed matches give unlimited lives, credit a KO to

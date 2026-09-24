@@ -116,6 +116,7 @@ void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume);
 unsigned M360_FighterKindIndex(void* gobj);
 void M360_FighterResetMatch(void);
 void* M360_FighterSpawn(int slot, float x, float y, float facing, int port);
+void* M360_FighterActive(int slot);
 void M360_FighterRespawn(void* gobj, float x, float y);
 void M360_FighterRebirth(void* gobj);
 void M360_FighterSetDead(void* gobj);
