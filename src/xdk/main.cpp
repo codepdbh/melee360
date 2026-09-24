@@ -522,7 +522,18 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     }
     g_dynamic.count = 0;
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    {
+        char line[64];
+        _snprintf(line, sizeof(line), "STAGE: %s", M360_MatchStageName(match.stageIndex));
+        line[sizeof(line) - 1] = '\0';
+        AddText(g_dynamic, 300, 190, line, 2);
+        _snprintf(line, sizeof(line), "STOCKS: %u", match.stocks);
+        line[sizeof(line) - 1] = '\0';
+        AddText(g_dynamic, 820, 190, line, 2);
+    }
     AddText(g_dynamic, 300, 530, "LEFT/RIGHT: FIGHTER   X/Y: COLOR   A: CONFIRM   B: BACK", 2);
+    if (!match.campaignRounds)
+        AddText(g_dynamic, 300, 610, "DPAD UP/DOWN: STAGE   RB: STOCKS", 2);
     if (!match.selectHuman[1] && !match.campaignRounds)
         AddText(g_dynamic, 300, 570, "P1 PICKS THE CPU AFTER CONFIRMING. P2: PRESS A BUTTON TO JOIN", 2);
     RenderBatch(renderer, g_dynamic);

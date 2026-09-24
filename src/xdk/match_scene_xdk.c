@@ -84,6 +84,41 @@ typedef struct CamBounds {
     int subjects;
 } CamBounds;
 
+/* Stages whose original ground code only creates and animates map GObjs;
+ * the ids follow each stage's OnInit (grbattle.c, grlast.c, groldpupupu.c,
+ * grstory.c, grizumi.c, groldyoshi.c). Moving platforms and hazards are not
+ * simulated: collision uses the lines as authored. */
+typedef struct M360StageDesc {
+    const char* name;
+    const char* file;
+    int gobjs[9];
+    int hidden;
+} M360StageDesc;
+
+static const M360StageDesc s_stages[] = {
+    { "BATTLEFIELD", "GrNBa.dat", { 0, 3, 1, 6, -1 }, 3 },
+    { "FINAL DESTINATION", "GrNLa.dat", { 0, 1, 2, 3, -1 }, -1 },
+    { "DREAM LAND", "GrOp.dat", { 0, 3, 7, 5, 4, 6, 1, 8, -1 }, -1 },
+    { "YOSHIS STORY", "GrSt.dat", { 0, 1, 3, 2, -1 }, -1 },
+    { "FOUNTAIN OF DREAMS", "GrIz.dat", { 0, 1, 3, -1 }, -1 },
+    { "YOSHIS ISLAND 64", "GrOy.dat", { 0, 1, 4, 5, 2, 3, -1 }, -1 },
+};
+
+enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
+
+typedef struct M360StageArchive {
+    void* archive;
+    UnkStageDat* mapHead;
+    MapCollData* coll;
+    GroundParam* param;
+    DiscU32* plit;
+    int state;
+} M360StageArchive;
+
+static M360StageArchive s_stageArchives[kStageCount];
+static unsigned s_stageIndex;
+static unsigned s_builtStage = ~0u;
+static unsigned s_stocks = 4;
 static void* s_archive;
 static UnkStageDat* s_mapHead;
 static MapCollData* s_coll;
@@ -470,25 +505,34 @@ static void CreateLights(void)
     HSD_LObjReqAnimAll(s_lobj, 0.0f);
 }
 
-int M360_MatchLoad(void)
+/* Archives relocate in place, so each stage file is opened once. */
+static int LoadStageArchive(unsigned index)
 {
-    unsigned size = 0;
-    unsigned char* image;
-    if (s_loaded)
-        return 1;
-    image = M360_ReadDiscFile("GrNBa.dat", &size);
-    M360_MatchTrace("match.stage.bytes", size);
-    if (!image)
+    M360StageArchive* a = &s_stageArchives[index];
+    if (!a->state) {
+        unsigned size = 0;
+        unsigned char* image = M360_ReadDiscFile(s_stages[index].file, &size);
+        M360_MatchTrace("match.stage.bytes", size);
+        a->state = -1;
+        if (image && (a->archive = M360_ArchiveOpen(image, size)) != NULL) {
+            a->mapHead = M360_ArchiveFind(a->archive, "map_head");
+            a->coll = M360_ArchiveFind(a->archive, "coll_data");
+            a->param = M360_ArchiveFind(a->archive, "grGroundParam");
+            a->plit = M360_ArchiveFind(a->archive, "map_plit");
+            if (a->mapHead && a->coll && a->param && a->plit)
+                a->state = 1;
+        }
+        M360_MatchTrace("match.stage.index", index);
+        M360_MatchTrace("match.stage.map_gobjs", a->mapHead ? (unsigned) a->mapHead->unkC : 0);
+        M360_MatchTrace("match.stage.coll_lines", a->coll ? (unsigned) a->coll->line_count : 0);
+    }
+    if (a->state < 0)
         return 0;
-    s_archive = M360_ArchiveOpen(image, size);
-    s_mapHead = M360_ArchiveFind(s_archive, "map_head");
-    s_coll = M360_ArchiveFind(s_archive, "coll_data");
-    s_param = M360_ArchiveFind(s_archive, "grGroundParam");
-    s_plit = M360_ArchiveFind(s_archive, "map_plit");
-    M360_MatchTrace("match.stage.map_gobjs", s_mapHead ? (unsigned) s_mapHead->unkC : 0);
-    M360_MatchTrace("match.stage.coll_lines", s_coll ? (unsigned) s_coll->line_count : 0);
-    if (!s_mapHead || !s_coll || !s_param || !s_plit)
-        return 0;
+    s_archive = a->archive;
+    s_mapHead = a->mapHead;
+    s_coll = a->coll;
+    s_param = a->param;
+    s_plit = a->plit;
     s_scale = s_param->y;
     s_tilt = s_param->x8;
     s_pan = (float) s_param->x14;
@@ -500,9 +544,73 @@ int M360_MatchLoad(void)
     s_trackRatio = s_param->x20;
     s_fixedZoom = s_param->x24;
     LoadCollision();
+    return 1;
+}
+
+int M360_MatchLoad(void)
+{
+    if (s_loaded)
+        return 1;
+    if (!LoadStageArchive(0))
+        return 0;
     M360_MatchTrace("match.fighter.loaded", M360_FighterLoad());
     s_loaded = 1;
     return 1;
+}
+
+static void FreeAllGObjs(void)
+{
+    int link;
+    for (link = 0; link < 64; ++link) {
+        HSD_GObj* gobj = HSD_GObjPLinkHead[link];
+        while (gobj) {
+            HSD_GObj* next = gobj->next;
+            HSD_GObjFree(gobj);
+            gobj = next;
+        }
+    }
+    s_modelCount = 0;
+    s_lobj = NULL;
+    s_cameraGObj = NULL;
+}
+
+/* Builds the selected stage's lights, map GObjs, bounds and camera. */
+static int BuildStage(unsigned index)
+{
+    const M360StageDesc* desc;
+    unsigned i;
+    if (index >= kStageCount || !LoadStageArchive(index)) {
+        if (index == 0 || !LoadStageArchive(0))
+            return 0;
+        index = 0;
+    }
+    desc = &s_stages[index];
+    if (s_builtStage != ~0u)
+        FreeAllGObjs();
+    memset(s_points, 0, sizeof(s_points));
+    s_modelCount = 0;
+    CreateLights();
+    for (i = 0; i < 9 && desc->gobjs[i] >= 0; ++i) {
+        HSD_JObj* root = CreateMapGObj(desc->gobjs[i]);
+        if (root && desc->gobjs[i] == desc->hidden)
+            HSD_JObjSetFlagsAll(root, JOBJ_HIDDEN);
+    }
+    LoadBounds();
+    CreateCamera();
+    s_builtStage = index;
+    s_stageIndex = index;
+    CamUpdate(1);
+    return 1;
+}
+
+unsigned M360_MatchStageCount(void)
+{
+    return kStageCount;
+}
+
+const char* M360_MatchStageName(unsigned index)
+{
+    return index < kStageCount ? s_stages[index].name : "";
 }
 
 float M360_MatchFixedZoom(void)
@@ -516,17 +624,10 @@ void M360_MatchEnter(void)
     if (!M360_MatchLoad())
         return;
     M360_FighterResetMatch();
-    memset(s_points, 0, sizeof(s_points));
-    s_modelCount = 0;
-    CreateLights();
+    s_builtStage = ~0u;
     M360_MatchTrace("match.enter.step", 1);
-    CreateMapGObj(0);
-    HSD_JObjSetFlagsAll(CreateMapGObj(3), JOBJ_HIDDEN);
-    CreateMapGObj(1);
-    CreateMapGObj(6);
-    M360_MatchTrace("match.enter.step", 2);
-    LoadBounds();
-    CreateCamera();
+    if (!BuildStage(s_stageIndex))
+        return;
     M360_MatchTrace("match.enter.step", 3);
     s_fighterCount = 0;
     memset(s_fighters, 0, sizeof(s_fighters));
@@ -583,7 +684,7 @@ static void StartFight(void)
         s_human[i] = port >= 0;
         s_respawn[i] = 0;
         s_stocksLost[i] = 0;
-        s_stocksRemaining[i] = kStartingStocks;
+        s_stocksRemaining[i] = IsCampaign() ? kStartingStocks : s_stocks;
         if (s_fighters[i])
             s_fighterCount = i + 1;
         M360_MatchTrace(i ? "match.select.p2.kind" : "match.select.p1.kind", s_selKind[i]);
@@ -621,6 +722,15 @@ static int SelectInput(unsigned port, unsigned slot)
         s_selCostume[slot] = (s_selCostume[slot] + 1) % kMaxCostumes;
     if (trig & 0x800u)
         s_selCostume[slot] = (s_selCostume[slot] + kMaxCostumes - 1) % kMaxCostumes;
+    if (port == 0 && !IsCampaign() && (trig & 0xCu)) {
+        const unsigned next = (s_stageIndex + ((trig & 0x8u) ? kStageCount - 1 : 1)) % kStageCount;
+        if (BuildStage(next))
+            M360_MatchTrace("match.select.stage", s_stageIndex);
+    }
+    if (port == 0 && !IsCampaign() && (trig & 0x10u)) {
+        s_stocks = s_stocks >= 9 ? 1 : s_stocks + 1;
+        M360_MatchTrace("match.select.stocks", s_stocks);
+    }
     if (trig & 0x100u) {
         s_selReady[slot] = 1;
         M360_MatchTrace("match.select.ready", slot);
@@ -771,15 +881,8 @@ void M360_MatchRender(void)
 
 void M360_MatchLeave(void)
 {
-    int link;
-    for (link = 0; link < 64; ++link) {
-        HSD_GObj* gobj = HSD_GObjPLinkHead[link];
-        while (gobj) {
-            HSD_GObj* next = gobj->next;
-            HSD_GObjFree(gobj);
-            gobj = next;
-        }
-    }
+    FreeAllGObjs();
+    s_builtStage = ~0u;
     memset(s_fighters, 0, sizeof(s_fighters));
     s_fighterCount = 0;
     s_modelCount = 0;
@@ -813,6 +916,8 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->inputX = M360_MatchPadX();
     status->inputY = M360_MatchPadY();
     status->selecting = s_active && s_phase == kPhaseSelect;
+    status->stageIndex = s_stageIndex;
+    status->stocks = IsCampaign() ? kStartingStocks : s_stocks;
     for (i = 0; i < kMaxFighters; ++i) {
         status->selectKind[i] = s_selKind[i];
         status->selectCostume[i] = s_selCostume[i];
