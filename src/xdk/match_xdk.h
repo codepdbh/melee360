@@ -70,6 +70,10 @@ typedef struct M360MatchStatus {
     unsigned cpuLevel;
     unsigned slotCount;
     unsigned itemFreq;
+    unsigned timeMinutes;
+    unsigned timeLeft;
+    int score[4];
+    unsigned draw;
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
@@ -98,6 +102,7 @@ unsigned M360_MatchPadHeld(void);
 float M360_MatchPadX(void);
 float M360_MatchPadY(void);
 float M360_MatchPadStickXPort(unsigned port);
+float M360_MatchPadSubStickYPort(unsigned port);
 int M360_MatchControllerConnected(unsigned port);
 int M360_MatchGroundBelow(float x, float y, float depth, float* groundY,
                           unsigned* line);
@@ -120,6 +125,7 @@ void M360_FighterCameraBox(void* gobj, float* x, float* y, float* left,
                            float* right, float* up, float* down);
 void M360_FighterSetCpuLevel(unsigned level);
 unsigned M360_FighterHitCount(void);
+int M360_FighterLastAttacker(void* gobj);
 
 #ifdef __cplusplus
 }
