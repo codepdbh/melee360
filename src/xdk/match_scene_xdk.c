@@ -454,16 +454,73 @@ static void CamFollow(const CamBounds* b)
     s_cam.position.z += (s_cam.targetPosition.z - s_cam.position.z) * scale;
 }
 
+/* Camera_RequestQuake (camera.c): the original shakes through a stage quake
+ * GObj animation; this port offsets the camera by a decaying jitter sized by
+ * the quake kind (1 loop, 2 small, 3 medium, 4 large). The signature uses int
+ * for CmQuakeKind and void* for the epicenter, which the fighter and effect
+ * code pass unchanged. */
+static int s_quakeFrames[5];
+static unsigned s_quakeSeed = 0x1234567u;
+
+void Camera_RequestQuake(int kind, void* pos)
+{
+    (void) pos;
+    if (kind < 1 || kind >= 5)
+        return;
+    s_quakeFrames[kind] = kind == 1 ? 10 : 22;
+}
+
+void Camera_StopQuake(int kind)
+{
+    if (kind >= 0 && kind < 5)
+        s_quakeFrames[kind] = 0;
+}
+
+static float QuakeAmplitude(void)
+{
+    static const float kAmp[5] = { 0.0f, 1.0f, 1.2f, 2.2f, 3.6f };
+    float amp = 0.0f;
+    int i;
+    for (i = 1; i < 5; ++i)
+        if (s_quakeFrames[i]) {
+            const float a = kAmp[i] * (i == 1 ? 1.0f : s_quakeFrames[i] / 22.0f);
+            if (a > amp)
+                amp = a;
+        }
+    return amp;
+}
+
+static float QuakeJitter(void)
+{
+    s_quakeSeed = s_quakeSeed * 1664525u + 1013904223u;
+    return (float) ((s_quakeSeed >> 8) & 0xFFFF) / 32767.5f - 1.0f;
+}
+
 static void CamApply(void)
 {
+    const float amp = QuakeAmplitude();
+    Vec3 interest = s_cam.interest;
+    Vec3 eye = s_cam.position;
+    if (amp > 0.0f) {
+        const float dx = amp * QuakeJitter();
+        const float dy = amp * QuakeJitter();
+        interest.x += dx;
+        interest.y += dy;
+        eye.x += dx;
+        eye.y += dy;
+    }
     HSD_CObjSetFov(s_cobj, s_cam.fov);
-    HSD_CObjSetInterest(s_cobj, &s_cam.interest);
-    HSD_CObjSetEyePosition(s_cobj, &s_cam.position);
+    HSD_CObjSetInterest(s_cobj, &interest);
+    HSD_CObjSetEyePosition(s_cobj, &eye);
 }
 
 static void CamUpdate(int snap)
 {
     CamBounds bounds;
+    int i;
+    for (i = 0; i < 5; ++i)
+        if (s_quakeFrames[i])
+            --s_quakeFrames[i];
     CamComputeBounds(&bounds);
     s_cam.targetFov = kCam.x40;
     s_cam.fov += (s_cam.targetFov - s_cam.fov) * kCam.x44;
