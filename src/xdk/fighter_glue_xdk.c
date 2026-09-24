@@ -23,6 +23,7 @@
 #include <melee/ft/kinds/ftCommon/ftCo_0A01.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/pl/player.h>
+#include <melee/it/item.h>
 #include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/ft/ftcliffcommon.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Ottotto.h>
@@ -589,6 +590,11 @@ int M360_FighterLoad(void)
     Fighter_LoadCommonData();
     if (!p_ftCommonData)
         return 0;
+    /* gmvs.c match setup: load ItCo and initialize the item allocators before
+     * fighters register their articles. */
+    Item_80266FA8();
+    Item_80266FCC();
+    M360_MatchTrace("item.common.loaded", 1);
     BuildMotionTables();
     M360_MatchTrace("fighter.kb.xF4_x1000", (unsigned) (p_ftCommonData->xF4 * 1000.0f));
     M360_MatchTrace("fighter.kb.xF8_x1000", (unsigned) (p_ftCommonData->xF8 * 1000.0f));
@@ -603,6 +609,10 @@ int M360_FighterLoad(void)
 
 void M360_FighterResetMatch(void)
 {
+    static int s_itemsReady;
+    if (s_itemsReady)
+        Item_80266FCC();
+    s_itemsReady = 1;
     s_hitCount = 0;
     memset(s_fighters, 0, sizeof(s_fighters));
 }
@@ -945,23 +955,7 @@ FigaTree* ftData_80085E50(Fighter* fp, enum_t msid)
     return NULL;
 }
 
-static HSD_JObj* FindAnimatedJObj(HSD_JObj* jobj)
-{
-    for (; jobj; jobj = jobj->next) {
-        HSD_JObj* child;
-        if (jobj->aobj)
-            return jobj;
-        if (!(jobj->flags & JOBJ_INSTANCE) && (child = FindAnimatedJObj(jobj->child)) != NULL)
-            return child;
-    }
-    return NULL;
-}
 
-float lbGetJObjEndFrame(HSD_JObj* jobj)
-{
-    jobj = FindAnimatedJObj(jobj);
-    return jobj ? jobj->aobj->end_frame : 0.0f;
-}
 
 void ftData_80085CD8(Fighter* fp, Fighter* src, enum_t msid)
 {
@@ -1405,6 +1399,186 @@ static int DetectLedge(Fighter* fp, int dir, int* ledge)
         return 1;
     }
     return 0;
+}
+
+/* ---- Item-system entry points over the native stage and runtime ---- */
+
+void (HSD_JObjSetMtxDirty)(HSD_JObj* jobj)
+{
+    HSD_JObjSetMtxDirtyInline(jobj);
+}
+
+f32 Stage_GetBlastZoneLeftOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->blastLeft + st->camX;
+}
+
+f32 Stage_GetBlastZoneRightOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->blastRight + st->camX;
+}
+
+f32 Stage_GetBlastZoneTopOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->blastTop + st->camY;
+}
+
+f32 Stage_GetBlastZoneBottomOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->blastBottom + st->camY;
+}
+
+float Ground_801C0498(void)
+{
+    return M360_MatchStageScale();
+}
+
+void Camera_GetTransformInterest(Vec* out)
+{
+    float interest[3], eye[3];
+    M360_MatchCameraVectors(interest, eye);
+    out->x = interest[0];
+    out->y = interest[1];
+    out->z = interest[2];
+}
+
+void Camera_GetTransformPosition(Vec* out)
+{
+    float interest[3], eye[3];
+    M360_MatchCameraVectors(interest, eye);
+    out->x = eye[0];
+    out->y = eye[1];
+    out->z = eye[2];
+}
+
+/* lbAudioAx_800237A8: one-shot SFX; the id translation is the identity. */
+int lbAudioAx_800237A8(enum_t sfx_id, int sfx_vol, int sfx_pan)
+{
+    if (sfx_id != 0x83D60 && sfx_id != 0x83D61)
+        M360_AudioSfx((unsigned) sfx_id, (unsigned) sfx_vol, (unsigned) sfx_pan);
+    return 0;
+}
+
+int lbAudioAx_800233EC(int sfx_id)
+{
+    return sfx_id;
+}
+
+int lbAudioAx_800236B8(int handle)
+{
+    (void) handle;
+    return 0;
+}
+
+bool lbArchive_80017040(HSD_Archive** dst, const char* filename, void* symbols, ...)
+{
+    HSD_Archive* archive;
+    va_list args;
+    va_start(args, symbols);
+    archive = M360_ArchiveLoadSymbolsV(filename, symbols, args);
+    va_end(args);
+    if (dst)
+        *dst = archive;
+    return false;
+}
+
+void mpCollSetFacingDir(CollData* coll, int dir)
+{
+    coll->facing_dir = dir;
+}
+
+/* Battlefield-style stages have no moving collision joints. */
+static bool NoSurfaceSpeed(Vec3* speed)
+{
+    speed->x = speed->y = speed->z = 0.0f;
+    return false;
+}
+
+bool mpCollGetSpeedFloor(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
+bool mpCollGetSpeedCeiling(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
+bool mpCollGetSpeedLeftWall(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
+bool mpCollGetSpeedRightWall(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
+
+void mpColl_SetECBSource_Fixed(CollData* cd, HSD_GObj* gobj, float up, float down, float front,
+                               float back)
+{
+    cd->x0_gobj = gobj;
+    cd->ecb_source.kind = ECBSource_Fixed;
+    cd->ecb_source.up = up;
+    cd->ecb_source.down = down;
+    cd->ecb_source.front = front;
+    cd->ecb_source.back = back;
+    cd->ecb_source.angle = 0.0f;
+}
+
+void mpColl_800436E4(CollData* coll, float angle)
+{
+    coll->ecb_source.angle = angle;
+}
+
+void mpColl_80043558(CollData* coll, int line_id)
+{
+    (void) coll; (void) line_id;
+}
+
+/* Ground collision variants used by items (inline2/3/4 in mpcoll.c): snap to
+ * a floor within reach of the current position, otherwise fall. */
+static bool CollGround(CollData* coll)
+{
+    float y;
+    int line;
+    coll->env_flags &= ~Collide_FloorMask;
+    if (!FloorAt(coll->cur_pos.x, coll->cur_pos.y + 4.0f, coll->cur_pos.y - 4.0f, 1, &y, &line))
+        return false;
+    coll->cur_pos.y = y;
+    SetFloorColl(coll, line);
+    coll->env_flags |= Collide_FloorHug;
+    return true;
+}
+
+bool mpColl_80048844(CollData* coll) { return CollGround(coll); }
+bool mpColl_8004B108(CollData* coll) { return CollGround(coll); }
+bool mpColl_8004B2DC(CollData* coll) { return CollGround(coll); }
+bool mpColl_8004C750(CollData* coll) { return CollGround(coll); }
+
+/* mpColl_8004D024: is there floor directly under this point? */
+bool mpColl_8004D024(Vec3* pos)
+{
+    float y;
+    int line;
+    return FloorAt(pos->x, pos->y + 1.0f, pos->y - 3.0f, 1, &y, &line) != 0;
+}
+
+Vec3* mpLineGetNormal(int line_id, Vec3* normal_out)
+{
+    const M360StageLine* l;
+    float nx, ny, len;
+    normal_out->x = normal_out->z = 0.0f;
+    normal_out->y = 1.0f;
+    if (!mpLib_80054ED8(line_id))
+        return normal_out;
+    l = &M360_MatchStageData()->lines[line_id];
+    nx = -(l->y1 - l->y0);
+    ny = l->x1 - l->x0;
+    len = sqrtf(nx * nx + ny * ny);
+    if (len > 0.0f) {
+        normal_out->x = nx / len;
+        normal_out->y = ny / len;
+    }
+    return normal_out;
+}
+
+bool mpCheckMultiple(float x0, float y0, float x1, float y1, Vec3* pos_out, int* line_id_out,
+                     u32* flags_out, Vec3* normal_out, u32 checks, int joint_id_skip,
+                     int joint_id_only)
+{
+    (void) checks;
+    return mpCheckAllRemap(pos_out, line_id_out, flags_out, normal_out, joint_id_skip,
+                           joint_id_only, x0, y0, x1, y1);
 }
 
 /* mpColl_80044164/800443C4: CollData-level left/right ledge queries. */
@@ -2315,11 +2489,6 @@ void Player_GetSpawnPlatformPos(s32 slot, Vec3* out)
     out->x += s_rebirthOffset[slot < 6 && slot >= 0 ? slot : 0].x;
 }
 
-bool ftLib_800873CC(HSD_GObj* gobj)
-{
-    const FtMotionId msid = GET_FIGHTER(gobj)->motion_id;
-    return msid >= ftCo_MS_Rebirth && msid <= ftCo_MS_RebirthWait;
-}
 
 void ftCamera_80076018(UnkFloat6_Camera* in, UnkFloat6_Camera* out, float mul)
 {
