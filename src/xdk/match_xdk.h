@@ -29,6 +29,7 @@ typedef struct M360StageLine {
     float x0, y0, x1, y1;
     unsigned kind;
     unsigned flags;
+    unsigned short v0, v1;
 } M360StageLine;
 
 typedef struct M360MatchStage {
