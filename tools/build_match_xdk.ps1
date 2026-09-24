@@ -208,7 +208,15 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Thrown.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0D8E.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0D95.c') },
-    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0DC2.c') }
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0DC2.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_SpecialS.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_SpecialAir.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftMario/ftmario.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftMario/ftmariospecialn.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftMario/ftmariospecials.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftMario/ftmariospecialhi.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftMario/ftmariospeciallw.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftMario/ftmariostrings.c') }
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C(', 'void ft_80084DB0(') 'ft_081B_slice'
 $units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_0A01.c' '/// @todo .sdata2 order hack' @('static inline float convertStickAxis(', 'float ftCo_GetCpuLStickX(', 'float ftCo_GetCpuLStickY(', 'float ftCo_GetCpuLTrigger(', 'float ftCo_GetCpuRTrigger(', 'HSD_Pad ftCo_GetCpuButtons(', 'float ftCo_GetCpuCStickX(', 'float ftCo_GetCpuCStickY(', 'bool ftCo_IsCpuControlled(') 'ftCo_0A01_cpu_input_slice'
