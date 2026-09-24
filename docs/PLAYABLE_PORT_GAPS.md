@@ -122,9 +122,14 @@ native lines. Stage-specific AI hooks (hazards, teams) are stubs.
 
 The select phase also picks the stage (D-pad up/down) and stocks (RB). Nine
 stages (the first six plus Hyrule Temple, Kongo Jungle 64 and Jungle Japes;
-stage collision holds up to 512 lines) load from the map GObj ids their original OnInit creates; moving
-platforms, Randall and hazards are not simulated and collision uses the
-authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
+stage collision holds up to 512 lines) load from the map GObj ids their original OnInit creates. Collision groups
+bound to map joints (the map GObj's `unk20` GrJoint list and the compiled-in
+tables of Final Destination, Fountain of Dreams and Kongo Jungle 64) follow
+their joint's world matrix every frame, as `mpLib_80055E9C` does, so
+animation-driven platforms such as Randall move their lines. Platforms moved
+by stage code (the Fountain of Dreams platforms) stay put, fighters are not
+carried sideways by moving floors, hidden joints keep their last lines and
+hazards are not simulated. Kirby (copy-ability hats are stubs) and Popo (without Nana)
 complete the roster. Popo now spawns with Nana as the slot's sub entity (a
 hidden roster entry); she is always CPU driven (`Player_8003248C` reports the
 sub fighter as CPU) and the original AI follows Popo with `cpu.kind` 6. Nana
