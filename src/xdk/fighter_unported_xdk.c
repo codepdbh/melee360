@@ -149,11 +149,9 @@ UNPORTED_BOOL(ftCo_800C5A50, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C5D34, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800CEE70, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800D730C, (Fighter_GObj* gobj, bool arg))
-UNPORTED_BOOL(ftCo_800D8A38, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800DE9D8, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_Attack_800CCF58, (Fighter_GObj* gobj, enum_t arg))
 UNPORTED_VOID(ftCo_Attack_800CDD14, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_Catch_CheckInput, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_HammerLanding_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_ItemScrew_Enter, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_SpecialAir_CheckInput, (Fighter_GObj* gobj))
@@ -298,7 +296,6 @@ HSD_GObjEvent ftData_SpecialHi[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialLw[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialAirHi[Ft_Kind_Max];
 
-UNPORTED_BOOL(ftCo_800D8AE0, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800CDDA0, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftGw_AttackLw3_Enter, (HSD_GObj* gobj))
 UNPORTED_VOID(ftGw_AttackS4_Enter, (HSD_GObj* gobj))
@@ -497,14 +494,6 @@ void ftCo_HammerWait_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unporte
 void ftCo_HammerFall_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerFall_IASA");  }
 void ftCo_DamageIce_Init(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_Init");  }
 void ftCo_DamageIce_HitWhileFrozen(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_HitWhileFrozen");  }
-void ftCo_CaptureCut_Enter(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_CaptureCut_Enter");  }
-void ftCo_800DE854(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DE854");  }
-void ftCo_800DE2F0(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DE2F0");  }
-void ftCo_800DCFD4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DCFD4");  }
-void ftCo_800DCE34(Fighter_GObj* a0, Fighter_GObj* a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800DCE34");  }
-void ftCo_800DC3A4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DC3A4");  }
-void ftCo_800DC284(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800DC284");  }
-void ftCo_800DA698(Fighter_GObj* a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800DA698");  }
 bool ftCo_800D3158(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800D3158"); return (bool) 0; }
 bool ftCo_800D2FA4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800D2FA4"); return (bool) 0; }
 void ftCo_800CF4DC(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800CF4DC");  }
@@ -570,4 +559,52 @@ SILENT_VOID(pl_8003E0E8, (int slot, int sub))
 SILENT_VOID(pl_8003E114, (int slot, int sub, float health))
 u32 Player_GetUnk45(s32 slot) { (void) slot; return 0; }
 int un_80322598(int spawn_id, float y) { (void) spawn_id; (void) y; return 0; }
-UNPORTED_BOOL(ftCo_800D8B9C, (Fighter_GObj* gobj))
+
+/* Grab/throw dependencies outside the Mario-vs-Mario match: item grabs,
+ * tether/hookshot items, cargo throws, Kirby/Yoshi/Samus/Mewtwo/Fox hooks. */
+UNPORTED_BOOL(ftCo_800951D0, (Fighter_GObj* gobj))
+UNPORTED_BOOL(ftCo_80095254, (Fighter_GObj* gobj))
+UNPORTED_BOOL(ftCo_800952DC, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftpickupitem_80094694, (Fighter_GObj* gobj, FtMotionId msid, bool arg))
+UNPORTED_VOID(ftpickupitem_800948A8, (Fighter_GObj* gobj, Item_GObj* item))
+UNPORTED_VOID(ftCo_8009B56C, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftSs_Init_CreateThrowGrappleBeam, (HSD_GObj* gobj, s32 motion_state, float anim_speed))
+UNPORTED_VOID(Fighter_UpdateModelScale, (Fighter_GObj* gobj))
+UNPORTED_VOID(it_802A7840, (HSD_GObj* gobj))
+UNPORTED_VOID(it_802A7AAC, (HSD_GObj* gobj))
+UNPORTED_VOID(it_802BAA94, (Item_GObj* gobj))
+UNPORTED_VOID(it_802BAC3C, (Fighter_GObj* gobj))
+SILENT_VOID(ftMt_SpecialN_Shoot, (HSD_GObj* gobj))
+SILENT_VOID(ftFx_Throw_Anim, (HSD_GObj* gobj))
+SILENT_VOID(ftCamera_800762F4, (HSD_GObj* gobj))
+SILENT_VOID(pl_80040614, (int slot, bool sub, float damage))
+float ftYs_Init_8012BAC0(Fighter* fp) { (void) fp; Report("fighter.unported.ftYs_Init_8012BAC0"); return 1.0f; }
+/* Standing rank (gm_8016C5C0) and handicap: tied players at the default
+ * VS handicap of 9 (gm_1601.c). */
+s32 Player_80033BB8(int slot) { (void) slot; return 0; }
+int Player_GetHandicap(int slot) { (void) slot; return 9; }
+/* Link hookshot, Samus grapple and boomerang items used by the tether-grab
+ * branches of ftCo_0D8E/ftCo_0D95; unreachable for Mario. */
+UNPORTED_BOOL(ftLk_Init_BoomerangExists, (HSD_GObj* gobj))
+UNPORTED_VOID(it_802A2B10, (Item_GObj* gobj))
+UNPORTED_VOID(it_802A77DC, (Item_GObj* gobj))
+UNPORTED_VOID(it_802A78B8, (HSD_GObj* gobj, Vec3* pos))
+UNPORTED_VOID(it_802A7AF0, (HSD_GObj* gobj))
+UNPORTED_VOID(it_802A7B34, (HSD_GObj* gobj))
+UNPORTED_VOID(it_802B7B84, (Item_GObj* gobj))
+UNPORTED_VOID(it_802BAA58, (Item_GObj* gobj))
+UNPORTED_VOID(it_802BAAE4, (Item_GObj* gobj, Vec3* vel))
+UNPORTED_VOID(it_802BAC80, (Fighter_GObj* gobj))
+UNPORTED_VOID(it_802BACC4, (Fighter_GObj* gobj))
+Item_GObj* it_802A2BA4(Fighter_GObj* gobj, Vec3* pos, f32 facing, s32 arg)
+{
+    (void) gobj; (void) pos; (void) facing; (void) arg;
+    Report("fighter.unported.it_802A2BA4");
+    return NULL;
+}
+Item_GObj* it_802B7C18(Fighter_GObj* gobj, Vec3* pos, float facing)
+{
+    (void) gobj; (void) pos; (void) facing;
+    Report("fighter.unported.it_802B7C18");
+    return NULL;
+}
