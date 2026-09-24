@@ -496,8 +496,6 @@ enum_t Camera_80031060(void) {  Report("fighter.unported.Camera_80031060"); retu
 bool Camera_80031154(Vec3* a0) { (void) a0; Report("fighter.unported.Camera_80031154"); return (bool) 0; }
 void Camera_StopQuake(CmQuakeKind a0) { (void) a0; Report("fighter.unported.Camera_StopQuake"); }
 u32 Ground_801C1D84(void) {  Report("fighter.unported.Ground_801C1D84"); return (u32) 0; }
-s32* Ground_801C2AD8(void) {  Report("fighter.unported.Ground_801C2AD8"); return (s32*) 0; }
-float Ground_801C2AE8(StKind a0) { (void) a0; Report("fighter.unported.Ground_801C2AE8"); return 0.0f; }
 void Ground_801C4338(void) {  Report("fighter.unported.Ground_801C4338"); }
 bool Ground_801C4DA0(Vec3* a0, f32* a1) { (void) a0; (void) a1; Report("fighter.unported.Ground_801C4DA0"); return (bool) 0; }
 s32 Ground_801C5840(void) {  Report("fighter.unported.Ground_801C5840"); return (s32) 0; }
@@ -535,11 +533,6 @@ void ftData_80085820(FighterKind a0, int costume_id) { (void) a0; (void) costume
 void ftData_80085A14(FighterKind a0) { (void) a0; Report("fighter.unported.ftData_80085A14"); }
 bool gm_80164ABC(void) {  Report("fighter.unported.gm_80164ABC"); return (bool) 0; }
 bool gm_80165084(void) {  Report("fighter.unported.gm_80165084"); return (bool) 0; }
-s32 gm_8016AE80(void) {  Report("fighter.unported.gm_8016AE80"); return (s32) 0; }
-f32 gm_8016AE94(void) {  Report("fighter.unported.gm_8016AE94"); return 0.0f; }
-u64 gm_8016AEA4(void) {  Report("fighter.unported.gm_8016AEA4"); return (u64) 0; }
-s32 gm_8016AEB8(void) {  Report("fighter.unported.gm_8016AEB8"); return (s32) 0; }
-bool gm_8016B238(void) {  Report("fighter.unported.gm_8016B238"); return (bool) 0; }
 s32 gm_8016C6C0(Item_GObj* a0) { (void) a0; Report("fighter.unported.gm_8016C6C0"); return (s32) 0; }
 bool gm_80172BC4(void) {  Report("fighter.unported.gm_80172BC4"); return (bool) 0; }
 bool gm_80172C04(void) {  Report("fighter.unported.gm_80172C04"); return (bool) 0; }
@@ -606,7 +599,6 @@ bool lbLang_IsSettingUS(void) { return true; }
 bool lbLang_IsSettingJP(void) { return false; }
 StKind Stage_80225194(void) { return (StKind) 0; }
 GrKind Stage_8022519C(StKind stkind) { (void) stkind; return (GrKind) 0; }
-bool Stage_80224FDC(Vec3* out) { (void) out; return false; }
 
 /* Dynamics, part-animation, stat and ground hooks of the item states. */
 bool Ground_801C4DD0(void) {  Report("fighter.unported.Ground_801C4DD0"); return (bool) 0; }

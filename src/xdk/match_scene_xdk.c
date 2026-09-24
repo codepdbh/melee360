@@ -38,6 +38,8 @@ void HSD_GObj_LObjCallback(HSD_GObj* gobj, int unused);
 void HSD_GObj_80390ED0(HSD_GObj* gobj, u32 mask);
 void HSD_GObj_80390FC0(void);
 void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
+void it_8026D018(void);
+s32 HSD_Randi(s32 max);
 void HSD_GObj_RunProcs(void);
 int M360_InputScriptHolding(void);
 
@@ -120,6 +122,10 @@ static unsigned s_stageIndex;
 static unsigned s_builtStage = ~0u;
 static unsigned s_stocks = 4;
 static unsigned s_cpuLevel = 3;
+/* Item switch: -1 off, 0-4 very low to very high (gm item_freq). */
+static int s_itemFreq = -1;
+static s32 s_itemCounts[35];
+static float s_itemScale;
 static void* s_archive;
 static UnkStageDat* s_mapHead;
 static MapCollData* s_coll;
@@ -577,6 +583,74 @@ static void FreeAllGObjs(void)
     s_cameraGObj = NULL;
 }
 
+/* Ground_801C28CC/801C2AE8 over the stage's first StageParam row: per-kind
+ * random item weights and the spawn frequency scale. */
+static void LoadItemTable(void)
+{
+    StageParam* row;
+    int j;
+    memset(s_itemCounts, 0, sizeof(s_itemCounts));
+    s_itemScale = 0.0f;
+    if (!s_param || s_param->stage_param_count <= 0)
+        return;
+    row = (StageParam*) (uintptr_t) s_param->stage_params;
+    if (!row)
+        return;
+    for (j = 0; j < 35; ++j)
+        s_itemCounts[j] = s_param->x6A[j] * row->x1A[j];
+    s_itemScale = (0.01f * s_param->x68) * (0.01f * row->x18);
+}
+
+s32* Ground_801C2AD8(void)
+{
+    return s_itemCounts;
+}
+
+float Ground_801C2AE8(StKind stkind)
+{
+    (void) stkind;
+    return s_itemScale;
+}
+
+/* Stage_80224FDC: a random item spawn point (ground points 0x7F-0x93). */
+bool Stage_80224FDC(Vec3* out)
+{
+    int tries;
+    for (tries = 0; tries < 21; ++tries)
+        if (PointPosition(0x7F + HSD_Randi(21), out))
+            return true;
+    for (tries = 0x7F; tries < 0x94; ++tries)
+        if (PointPosition(tries, out))
+            return true;
+    return false;
+}
+
+s32 gm_8016AE80(void)
+{
+    return s_active && !IsCampaign() ? s_itemFreq : -1;
+}
+
+f32 gm_8016AE94(void)
+{
+    return 1.0f;
+}
+
+u64 gm_8016AEA4(void)
+{
+    /* Every standard item (below It_Kind_L_Gun_Ray). */
+    return ((u64) 1 << 35) - 1;
+}
+
+s32 gm_8016AEB8(void)
+{
+    return 0;
+}
+
+bool gm_8016B238(void)
+{
+    return false;
+}
+
 /* Builds the selected stage's lights, map GObjs, bounds and camera. */
 static int BuildStage(unsigned index)
 {
@@ -599,6 +673,7 @@ static int BuildStage(unsigned index)
             HSD_JObjSetFlagsAll(root, JOBJ_HIDDEN);
     }
     LoadBounds();
+    LoadItemTable();
     M360_FighterBuildIslands();
     CreateCamera();
     s_builtStage = index;
@@ -722,6 +797,8 @@ static void StartFight(void)
     }
     s_phase = kPhaseFight;
     s_frame = 0;
+    /* gmvs.c: start the random item spawner once the fighters exist. */
+    it_8026D018();
     CamUpdate(1);
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
     M360_MatchTrace("match.p2.human", s_human[1]);
@@ -766,6 +843,10 @@ static int SelectInput(unsigned port, unsigned slot)
     if (port == 0 && !IsCampaign() && (trig & 0x10u)) {
         s_stocks = s_stocks >= 9 ? 1 : s_stocks + 1;
         M360_MatchTrace("match.select.stocks", s_stocks);
+    }
+    if (port == 0 && !IsCampaign() && (trig & 0x1000u)) {
+        s_itemFreq = s_itemFreq >= 4 ? -1 : s_itemFreq + 1;
+        M360_MatchTrace("match.select.items", (unsigned) (s_itemFreq + 1));
     }
     if (port == 0 && !IsCampaign() && (trig & 0x20u)) {
         s_slotCount = s_slotCount >= kMaxFighters ? 2 : s_slotCount + 1;
@@ -994,6 +1075,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->stageIndex = s_stageIndex;
     status->stocks = IsCampaign() ? kStartingStocks : s_stocks;
     status->cpuLevel = s_cpuLevel;
+    status->itemFreq = (unsigned) (s_itemFreq + 1);
     for (i = 0; i < kMaxFighters; ++i) {
         status->selectKind[i] = s_selKind[i];
         status->selectCostume[i] = s_selCostume[i];
