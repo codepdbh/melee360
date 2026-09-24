@@ -3,6 +3,11 @@
 #include "hsdjobj_xdk_compat.h"
 #include <float.h>
 #include <math.h>
+/* GCC attributes in PC-port headers (pc/pc.h format checks); the XDK C
+ * front end has no __attribute__. */
+#if defined(_MSC_VER) && !defined(__attribute__)
+#define __attribute__(x)
+#endif
 /* Metrowerks fabs intrinsics; undeclared on XDK they would implicitly return int. */
 #define __fabs(x) fabs(x)
 #define __fabsf(x) fabsf(x)
