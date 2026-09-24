@@ -41,6 +41,21 @@
 #include <melee/ft/kinds/ftLuigi/ftluigispecialhi.h>
 #include <melee/ft/kinds/ftLuigi/ftluigispeciallw.h>
 #include <melee/ft/kinds/ftDrMario/ftdrmario.h>
+#include <melee/ft/kinds/ftKirby/ftKb_Init.static.h>
+#include <melee/ft/kinds/ftKirby/ftkirby.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyattackdash.h>
+#include <melee/ft/kinds/ftKirby/ftkirbycaptureyoshi.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialdonkey.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialgamewatch.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialhi.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialiceclimber.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialmars.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialmewtwo.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialpeach.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialpikachu.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialpurin.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyspecialzelda.h>
+#include <melee/ft/kinds/ftKirby/ftkirbyyoshiegg.h>
 #include <melee/ft/kinds/ftPurin/ftpurin.h>
 #include <melee/ft/kinds/ftPurin/ftpurinspecialhi.h>
 #include <melee/ft/kinds/ftPurin/ftpurinspeciallw.h>
@@ -420,6 +435,12 @@ static const M360KindDesc s_kinds[] = {
       { NULL, NULL, NULL, NULL, NULL, NULL },
       ftGw_Init_MotionStateTable, sizeof(ftGw_Init_MotionStateTable) / sizeof(MotionState), ftGw_Init_OnLoad, ftGw_Init_OnDeath,
       { ftGw_SpecialN_Enter, ftGw_SpecialS_Enter, ftGw_SpecialHi_Enter, ftGw_SpecialLw_Enter, ftGw_SpecialAirN_Enter, ftGw_SpecialAirS_Enter, ftGw_SpecialAirHi_Enter, ftGw_SpecialAirLw_Enter } },
+    { Ft_Kind_Kirby, "KIRBY", "PlKb.dat", "ftDataKirby", "PlKbAJ.dat",
+      { "PlKbNr.dat", "PlKbYe.dat", "PlKbBu.dat", "PlKbRe.dat", "PlKbGr.dat", "PlKbWh.dat" },
+      { "PlyKirby5K_Share_joint", "PlyKirby5KYe_Share_joint", "PlyKirby5KBu_Share_joint", "PlyKirby5KRe_Share_joint", "PlyKirby5KGr_Share_joint", "PlyKirby5KWh_Share_joint" },
+      { "PlyKirby5K_Share_matanim_joint", "PlyKirby5KYe_Share_matanim_joint", "PlyKirby5KBu_Share_matanim_joint", "PlyKirby5KRe_Share_matanim_joint", "PlyKirby5KGr_Share_matanim_joint", "PlyKirby5KWh_Share_matanim_joint" },
+      ftKb_Init_MotionStateTable, sizeof(ftKb_Init_MotionStateTable) / sizeof(MotionState), ftKb_Init_OnLoad, ftKb_Init_OnDeath,
+      { ftKb_SpecialN_Enter, ftKb_SpecialS_Enter, ftKb_SpecialHi_Enter, ftKb_SpecialLw_Enter, ftKb_SpecialAirN_Enter, ftKb_SpecialAirS_Enter, ftKb_SpecialAirHi_Enter, ftKb_SpecialAirLw_Enter } },
 };
 
 enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]) };
@@ -1806,6 +1827,11 @@ bool ft_80082978(HSD_GObj* gobj, ftCollisionBox* arg1)
 {
     (void) arg1;
     return GroundStep(gobj, 1) != 0;
+}
+
+bool ft_80082578(Fighter_GObj* gobj)
+{
+    return AirCollide(gobj) != 0;
 }
 
 bool ft_80082638(Fighter_GObj* gobj, ftCollisionBox* box)
