@@ -535,8 +535,6 @@ void ftData_8008572C(FighterKind a0) { (void) a0; Report("fighter.unported.ftDat
 void ftData_800857E0(FighterKind a0) { (void) a0; Report("fighter.unported.ftData_800857E0"); }
 void ftData_80085820(FighterKind a0, int costume_id) { (void) a0; (void) costume_id; Report("fighter.unported.ftData_80085820"); }
 void ftData_80085A14(FighterKind a0) { (void) a0; Report("fighter.unported.ftData_80085A14"); }
-void ftPp_Init_8011F16C(HSD_GObj* gobj, Item_GObj* item_gobj) { (void) gobj; (void) item_gobj; Report("fighter.unported.ftPp_Init_8011F16C"); }
-void ftPp_SpecialS_8012114C(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ftPp_SpecialS_8012114C"); }
 bool gm_80164ABC(void) {  Report("fighter.unported.gm_80164ABC"); return (bool) 0; }
 bool gm_80165084(void) {  Report("fighter.unported.gm_80165084"); return (bool) 0; }
 s32 gm_8016AE80(void) {  Report("fighter.unported.gm_8016AE80"); return (s32) 0; }
