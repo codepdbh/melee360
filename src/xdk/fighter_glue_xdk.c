@@ -24,6 +24,7 @@
 #include <melee/pl/player.h>
 #include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/ft/ftcliffcommon.h>
+#include <melee/ft/kinds/ftCommon/ftCo_Ottotto.h>
 #include <melee/cm/types.h>
 #include <melee/ft/kinds/ftMario/ftmario.h>
 #include <melee/ft/kinds/ftMario/ftmariospecialhi.h>
@@ -46,6 +47,7 @@
 #include <sysdolphin/baselib/gobjuserdata.h>
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/memory.h>
+#include <sysdolphin/baselib/mtx.h>
 #pragma warning(pop)
 
 #include "match_xdk.h"
@@ -720,10 +722,42 @@ GroundOrAir ft_80082708(Fighter_GObj* gobj)
     return (GroundOrAir) GroundStep(gobj, 0);
 }
 
+/* mpColl_8004A678_Floor: a fighter drifting off a floor end without a hard
+ * tilt (|stick x| < 0.75) toward it stops on the edge and flags Collide_Edge,
+ * which the callers turn into Ottotto (teeter). */
+static int GroundStepEdge(HSD_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    const int line = fp->coll_data.floor.index;
+    const float stick = fp->input.lstick[0].x;
+    Vec3 left, right;
+    fp->coll_data.env_flags &= ~Collide_Edge;
+    if (GroundStep(gobj, 0))
+        return 1;
+    if (!mpLib_80054ED8(line))
+        return 0;
+    mpFloorGetLeft(line, &left);
+    mpFloorGetRight(line, &right);
+    if (fp->cur_pos.x <= left.x && fp->facing_dir < 0.0f && stick > -0.75f) {
+        fp->cur_pos.x = left.x;
+        fp->cur_pos.y = left.y;
+    } else if (fp->cur_pos.x >= right.x && fp->facing_dir > 0.0f && stick < 0.75f) {
+        fp->cur_pos.x = right.x;
+        fp->cur_pos.y = right.y;
+    } else {
+        return 0;
+    }
+    fp->coll_data.env_flags |= Collide_Edge;
+    fp->gr_vel = 0.0f;
+    fp->self_vel.x = 0.0f;
+    return 0;
+}
+
 void ft_800843FC(Fighter_GObj* gobj)
 {
-    if (!GroundStep(gobj, 0))
-        ftCo_Fall_Enter(gobj);
+    if (GroundStepEdge(gobj) || ftCo_8009A3C8(gobj))
+        return;
+    ftCo_Fall_Enter(gobj);
 }
 
 void ft_800848DC(Fighter_GObj* gobj, HSD_GObjEvent cb)
@@ -751,7 +785,7 @@ bool ft_800827A0(Fighter_GObj* gobj)
 
 void ft_80084280(Fighter_GObj* gobj)
 {
-    if (GroundStep(gobj, 0))
+    if (GroundStepEdge(gobj) || ftCo_8009A3C8(gobj))
         return;
     ftCo_Fall_Enter(gobj);
 }
@@ -1124,6 +1158,16 @@ void mpLib_80053ECC_Floor(int line_id, Vec* vec)
     vec->x = l->x0 < l->x1 ? l->x0 : l->x1;
     vec->y = l->x0 < l->x1 ? l->y0 : l->y1;
     vec->z = 0.0f;
+}
+
+void mpFloorGetLeft(int line_id, Vec3* vec)
+{
+    mpLib_80053ECC_Floor(line_id, vec);
+}
+
+void mpFloorGetRight(int line_id, Vec3* vec)
+{
+    mpLib_80053DA4_Floor(line_id, vec);
 }
 
 void mpLib_80053DA4_Floor(int line_id, Vec3* vec)
