@@ -30,6 +30,7 @@ typedef struct M360StageLine {
     unsigned kind;
     unsigned flags;
     unsigned short v0, v1;
+    float px0, py0, px1, py1; /* previous frame, for moving floors */
 } M360StageLine;
 
 typedef struct M360MatchStage {
@@ -113,6 +114,7 @@ int M360_MatchGroundBelow(float x, float y, float depth, float* groundY,
 
 int M360_FighterLoad(void);
 void M360_FighterBuildIslands(void);
+void M360_FighterFollowFloors(void);
 void M360_FighterEffectsInit(void);
 unsigned M360_FighterKindCount(void);
 const char* M360_FighterKindName(unsigned index);

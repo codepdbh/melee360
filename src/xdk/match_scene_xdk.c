@@ -343,6 +343,10 @@ static void UpdateMapColl(void)
     }
     for (i = 0; i < s_stage.lineCount; ++i) {
         M360StageLine* l = &s_stage.lines[i];
+        l->px0 = l->x0;
+        l->py0 = l->y0;
+        l->px1 = l->x1;
+        l->py1 = l->y1;
         l->x0 = s_vtxX[l->v0];
         l->y0 = s_vtxY[l->v0];
         l->x1 = s_vtxX[l->v1];
@@ -407,6 +411,10 @@ static void LoadCollision(void)
         out->flags = lines[i].lo_flags;
         out->v0 = lines[i].v0_idx;
         out->v1 = lines[i].v1_idx;
+        out->px0 = out->x0;
+        out->py0 = out->y0;
+        out->px1 = out->x1;
+        out->py1 = out->y1;
     }
     for (i = 0; i < s_coll->vert_count && i < kMaxCollVerts; ++i) {
         s_vtxX[i] = verts[i].x * s_scale;
@@ -1199,6 +1207,8 @@ int M360_MatchFrame(void)
     for (i = 0; i < s_modelCount; ++i)
         HSD_JObjAnimAll(s_models[i]);
     UpdateMapColl();
+    if (s_collBindCount)
+        M360_FighterFollowFloors();
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
     for (i = 1; i < s_fighterCount && !IsCampaign(); ++i) {
