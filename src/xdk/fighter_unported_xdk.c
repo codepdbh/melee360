@@ -305,7 +305,6 @@ void GXProject(f32 x, f32 y, f32 z, Mtx mtx, f32* pm, f32* vp, f32* sx, f32* sy,
     *sx = *sy = *sz = 0.0f;
 }
 
-void Camera_RequestQuake(CmQuakeKind a0, Vec* a1) { (void) a0; (void) a1; Report("fighter.unported.Camera_RequestQuake");  }
 void pl_80037C60(Fighter_GObj* a0, volatile s32 a1) { (void) a0; (void) a1; Report("fighter.unported.pl_80037C60");  }
 bool gm_8016B1C4(void) {  Report("fighter.unported.gm_8016B1C4"); return (bool) 0; }
 void ft_800C80A4(Fighter* a0) { (void) a0; Report("fighter.unported.ft_800C80A4");  }
@@ -476,7 +475,6 @@ bool Camera_80030CD8(CmSubject* a0, S32Vec2* a1) { (void) a0; (void) a1; Report(
 bool Camera_80030CFC(CmSubject* a0, float a1) { (void) a0; (void) a1; Report("fighter.unported.Camera_80030CFC"); return (bool) 0; }
 enum_t Camera_80031060(void) {  Report("fighter.unported.Camera_80031060"); return (enum_t) 0; }
 bool Camera_80031154(Vec3* a0) { (void) a0; Report("fighter.unported.Camera_80031154"); return (bool) 0; }
-void Camera_StopQuake(CmQuakeKind a0) { (void) a0; Report("fighter.unported.Camera_StopQuake"); }
 u32 Ground_801C1D84(void) {  Report("fighter.unported.Ground_801C1D84"); return (u32) 0; }
 void Ground_801C4338(void) {  Report("fighter.unported.Ground_801C4338"); }
 bool Ground_801C4DA0(Vec3* a0, f32* a1) { (void) a0; (void) a1; Report("fighter.unported.Ground_801C4DA0"); return (bool) 0; }
