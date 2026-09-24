@@ -66,7 +66,7 @@ function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$Sta
 }
 
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
-$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,247,248,249,250,244)
+$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,247,248,249,250)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
 $tableStart = $motionText.IndexOf('MotionState ftData_MotionStateList[ftCo_MS_Count] = {')
 $headers = $motionText.Substring(0, $tableStart)
@@ -143,6 +143,29 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0C35.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0D67.c') },
     @{ Path = (Join-Path $src 'melee/pl/plstale.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0D8E.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0D95.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0DC2.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CaptureCut.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CaptureJump.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CapturePulled.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CaptureWait.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Catch.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CatchAttack.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CatchCut.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CatchPull.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CatchWait.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Escape.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_EscapeAir.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Furafura.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Guard.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Rebound.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakDown.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakFall.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakFly.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakStand.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Throw.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Thrown.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownAttack.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownBound.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DownDamage.c') },

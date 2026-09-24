@@ -608,6 +608,31 @@ void ft_800843FC(Fighter_GObj* gobj)
         ftCo_Fall_Enter(gobj);
 }
 
+void ft_8008403C(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (!GroundStep(gobj, 0))
+        cb(gobj);
+}
+
+void ft_800841B8(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (!GroundStep(gobj, 1))
+        cb(gobj);
+}
+
+void ft_800845B4(Fighter_GObj* gobj)
+{
+    if (!GroundStep(gobj, 0))
+        ftCo_Fall_Enter(gobj);
+}
+
+void ft_800847D0(Fighter_GObj* gobj, ftCollisionBox* box)
+{
+    (void) box;
+    if (!GroundStep(gobj, 1))
+        ftCo_Fall_Enter(gobj);
+}
+
 void ft_800848DC(Fighter_GObj* gobj, HSD_GObjEvent cb)
 {
     if (!GroundStep(gobj, 0))
@@ -794,6 +819,28 @@ bool ft_80081F2C(Fighter_GObj* gobj)
 bool ft_80082084(Fighter_GObj* gobj)
 {
     return ft_80081DD4(gobj);
+}
+
+void ft_80083910(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (ft_80081DD4(gobj))
+        cb(gobj);
+}
+
+void ft_80083B68(Fighter_GObj* gobj)
+{
+    ft_80081DD4(gobj);
+}
+
+void ft_80083C00(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (ft_80081DD4(gobj))
+        cb(gobj);
+}
+
+void ft_80083CE4(Fighter_GObj* gobj, bool (*cb1)(Fighter_GObj*, int), HSD_GObjEvent cb2)
+{
+    ft_800831CC(gobj, cb1, cb2);
 }
 
 void ft_8008370C(Fighter_GObj* gobj, HSD_GObjEvent cb)
