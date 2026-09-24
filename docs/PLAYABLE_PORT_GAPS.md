@@ -126,6 +126,19 @@ platforms, Randall and hazards are not simulated and collision uses the
 authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
 complete the roster; Zelda/Sheik transformation and Nana are missing.
 
+### Effects (2026-09-24)
+
+The effect system links from the original sources (`melee/ef/*.c`, with
+`efasync.c` adapted for MSVC's pointer OR) together with the HSD particle
+generator/particle/appsrt code. Each fight runs `efLib_Init` and loads the
+common banks (0 and 0x1F), and each fighter loads its bank from
+`ftData_UnkBytePerCharacter` at spawn; the match camera draws links 7 and 8.
+`lbArchive_80017040` keeps a per-file cache and reports reloads as preloaded,
+like the original lbDvd cache, so banks are not relocated twice. JObj-based
+effects render through the HSD path; particle drawing (`psDispParticles`,
+GX immediate mode) is still a traced stub, so particle effects are
+simulated but not drawn.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`

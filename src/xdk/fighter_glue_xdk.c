@@ -24,6 +24,8 @@
 #include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/pl/player.h>
 #include <melee/it/item.h>
+#include <melee/ef/eflib.h>
+#include <melee/ef/efasync.h>
 #include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/ft/ftcliffcommon.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Ottotto.h>
@@ -192,6 +194,8 @@
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/memory.h>
 #include <sysdolphin/baselib/mtx.h>
+#include <sysdolphin/baselib/archive.h>
+#include <sysdolphin/baselib/mobj.h>
 #pragma warning(pop)
 
 #include "match_xdk.h"
@@ -641,6 +645,16 @@ int M360_FighterLoad(void)
     M360_MatchTrace("fighter.kb.x120_x1000", (unsigned) (p_ftCommonData->x120 * 1000.0f));
     M360_MatchTrace("fighter.kb.x154_x1000", (unsigned) (p_ftCommonData->x154 * 1000.0f));
     return LoadKind(0) != NULL && LoadCostume(&s_loaded[0], &s_kinds[0], 0) >= 0;
+}
+
+/* gmvs.c match setup for effects: the effect manager GObjs, common effect
+ * banks (EfCoData, index 0x1F), then each fighter's bank at spawn. */
+void M360_FighterEffectsInit(void)
+{
+    efLib_Init();
+    efAsync_LoadSync(0);
+    efAsync_LoadSync(0x1F);
+    M360_MatchTrace("effect.init", 1);
 }
 
 void M360_FighterResetMatch(void)
@@ -1510,16 +1524,49 @@ int lbAudioAx_800236B8(int handle)
     return 0;
 }
 
+/* lbArchive_80017040: load an archive and resolve (out, name) pairs. Like the
+ * original's lbDvd preload cache, a file loaded before is reused (it has
+ * already been relocated) and reported as preloaded. */
+typedef struct M360CachedArchive {
+    const char* name;
+    HSD_Archive* archive;
+} M360CachedArchive;
+
+static M360CachedArchive s_archiveCache[64];
+static unsigned s_archiveCacheCount;
+
 bool lbArchive_80017040(HSD_Archive** dst, const char* filename, void* symbols, ...)
 {
-    HSD_Archive* archive;
+    HSD_Archive* archive = NULL;
+    bool preloaded = false;
+    unsigned i;
     va_list args;
+    for (i = 0; i < s_archiveCacheCount; ++i)
+        if (strcmp(s_archiveCache[i].name, filename) == 0) {
+            archive = s_archiveCache[i].archive;
+            preloaded = true;
+            break;
+        }
     va_start(args, symbols);
-    archive = M360_ArchiveLoadSymbolsV(filename, symbols, args);
+    if (preloaded) {
+        void** out = symbols;
+        while (out) {
+            const char* name = va_arg(args, const char*);
+            *out = archive ? M360_ArchiveFind(archive, name) : NULL;
+            out = va_arg(args, void**);
+        }
+    } else {
+        archive = M360_ArchiveLoadSymbolsV(filename, symbols, args);
+        if (archive && s_archiveCacheCount < 64) {
+            s_archiveCache[s_archiveCacheCount].name = filename;
+            s_archiveCache[s_archiveCacheCount].archive = archive;
+            ++s_archiveCacheCount;
+        }
+    }
     va_end(args);
     if (dst)
         *dst = archive;
-    return false;
+    return preloaded;
 }
 
 void mpCollSetFacingDir(CollData* coll, int dir)
@@ -1800,6 +1847,19 @@ mp_UnkStruct0* mpIsland_8005AC14(Vec3* pos, float dist)
                      -1, NULL, NULL))
         return mpIsland_8005AB54(line);
     return NULL;
+}
+
+/* lbArchive_InitializeDAT: parse an archive image already in memory (effect
+ * banks) with the XEX's archive.c. */
+void lbArchive_InitializeDAT(HSD_Archive* archive, void* data, size_t length)
+{
+    memset(archive, 0, sizeof(*archive));
+    HSD_ArchiveParse(archive, (u8*) data, length);
+}
+
+HSD_TObj* HSD_MObjGetTObj(HSD_MObj* mobj)
+{
+    return mobj ? mobj->tobj : NULL;
 }
 
 /* mpColl_80044164/800443C4: CollData-level left/right ledge queries. */
@@ -2536,6 +2596,8 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->gobj = gobj;
     fp->dat_attrs_backup = f->datAttrs;
     fp->x890_cameraBox = &f->cameraSubject;
+    if ((s8) ftData_UnkBytePerCharacter[desc->kind] >= 0)
+        efAsync_LoadSync(ftData_UnkBytePerCharacter[desc->kind]);
     if (desc->onLoad)
         desc->onLoad(gobj);
     ftCo_800A101C(fp, 4, (int) s_cpuLevel, 0);
