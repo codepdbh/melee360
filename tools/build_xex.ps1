@@ -623,7 +623,8 @@ $meleeSrc = Join-Path $root 'upstream/melee-pc/src'
 $displaySource = Get-Content -Raw (Join-Path $baselibDir 'displayfunc.c')
 $matrixStart = $displaySource.IndexOf('Vec3 zOne = ')
 $displaySlice = (Get-CPrologue $displaySource 'void HSD_ZListInitAllocData') +
-    $displaySource.Substring($matrixStart, $displaySource.IndexOf('void HSD_JObjDispSub') - $matrixStart)
+    $displaySource.Substring($matrixStart, $displaySource.IndexOf('void HSD_JObjDispSub') - $matrixStart) +
+    (Get-CFunction $displaySource 'void HSD_JObjSetSPtclCallback(') + "`r`n"
 Set-Content -Encoding ASCII (Join-Path $build 'displayfunc_matrix_slice.c') $displaySlice
 $spDisplaySource = Get-Content -Raw (Join-Path $meleeSrc 'melee/lb/lbspdisplay.c')
 $spDisplaySlice = (Get-CPrologue $spDisplaySource 'HSD_LObj* lb_80011AC4(') +
