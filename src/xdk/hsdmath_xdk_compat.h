@@ -28,6 +28,14 @@
 #ifndef sqrtf__Ff
 #define sqrtf__Ff(x) sqrtf(x)
 #endif
+/* The rest of placeholder.h's non-Metrowerks spellings; without them the
+ * XDK C frontend calls these implicitly as int-returning functions. */
+#ifndef sqrtf_accurate
+#define sqrtf_accurate(x) sqrtf(x)
+#endif
+#ifndef __frsqrte
+#define __frsqrte(x) (1.0 / sqrt(x))
+#endif
 
 #ifndef SQ
 #define SQ(x) ((x) * (x))
