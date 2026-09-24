@@ -8,8 +8,12 @@ import os, subprocess, sys
 here = os.path.dirname(os.path.abspath(__file__))
 xedk = os.path.abspath(os.path.join(here, '..', '..'))
 args = ['clang', '--target=i686-pc-windows-msvc', '-nostdlibinc', '-fms-extensions',
-        '-fms-compatibility', '-std=gnu89', '-w', '-O0', '-c',
-        '-Wno-everything', '-fno-builtin'
+        '-fms-compatibility', '-std=gnu89', '-O0', '-c',
+        '-Wno-everything', '-fno-builtin',
+        # The XDK C frontend is strict C89: mixed declarations and non-constant
+        # static initializers are hard errors there.
+        '-Werror=declaration-after-statement', '-Werror=gnu-folding-constant',
+        '-Werror=implicit-function-declaration'
         ]
 lang_cpp = False
 out = None
@@ -29,7 +33,11 @@ for a in sys.argv[1:]:
         out = a[3:]
     # /c /TC /O2 /MT /GS- /W* /nologo and friends are ignored.
 if lang_cpp:
-    args = [x if x != '-std=gnu89' else '-std=gnu++14' for x in args] + ['-x', 'c++']
+    args = [x if x != '-std=gnu89' else '-std=gnu++14' for x in args
+            if not x.startswith('-Werror=')] + ['-x', 'c++']
+if not lang_cpp:
+    i = args.index('-c')
+    args[i:i] = ['-include', os.path.join(xedk, 'include', 'xbox', 'host_intrinsics.h')]
 for s in srcs:
     cmd = args + ([ '-o', out ] if out else []) + [s]
     r = subprocess.run(cmd)
