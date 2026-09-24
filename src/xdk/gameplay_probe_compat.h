@@ -29,6 +29,9 @@
 #define SDATA
 #endif
 #define F32_MAX FLT_MAX
+#ifndef ATTRIBUTE_ALIGN
+#define ATTRIBUTE_ALIGN(n)
+#endif
 #ifndef U32_TO_F32
 #define U32_TO_F32 4503599627370496.0
 #define S32_TO_F32 4503601774854144.0
