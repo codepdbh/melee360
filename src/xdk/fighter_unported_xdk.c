@@ -265,6 +265,18 @@ void PSMTXTranspose(Mtx src, Mtx xPose)
     }
 }
 
+float Stage_GetCamBoundsLeftOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->camLeft + st->camX;
+}
+
+float Stage_GetCamBoundsRightOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->camRight + st->camX;
+}
+
 float Stage_GetCamBoundsBottomOffset(void)
 {
     const M360MatchStage* st = M360_MatchStageData();
@@ -343,7 +355,7 @@ s32 ifMagnify_802FB6E8(s32 a0) { (void) a0; Report("fighter.unported.ifMagnify_8
 bool gm_IsCurrently1PMode_inline(void) {  Report("fighter.unported.gm_IsCurrently1PMode_inline"); return (bool) 0; }
 bool gm_GetDbPauseFlag(int a0) { (void) a0; Report("fighter.unported.gm_GetDbPauseFlag"); return (bool) 0; }
 u32 gm_801A4BB8(void) {  Report("fighter.unported.gm_801A4BB8"); return (u32) 0; }
-bool gm_8016B168(void) {  Report("fighter.unported.gm_8016B168"); return (bool) 0; }
+bool gm_8016B168(void) { return false; }
 bool gm_8016B0D4(void) {  Report("fighter.unported.gm_8016B0D4"); return (bool) 0; }
 bool gm_8016B014(void) {  Report("fighter.unported.gm_8016B014"); return (bool) 0; }
 void gm_80167470(s32 a0, s32 a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167470");  }
@@ -627,13 +639,37 @@ void lbDvd_800178E8(int a0, const char* name, int a2, int a3, int a4, int a5, in
 HSD_MObjInfo ftMObj;
 
 /* CPU AI hooks for stage hazards, teams, camera and debug drawing. */
-bool Camera_8003118C(Vec3* a0, float a1) { (void) a0; (void) a1; Report("fighter.unported.Camera_8003118C"); return (bool) 0; }
-void Ground_801C4368(float* slope, float* intercept) { (void) slope; (void) intercept; Report("fighter.unported.Ground_801C4368"); }
+/* Ground_801C4368 and Camera_80029124/8003118C (ground.c, camera.c). */
+void Ground_801C4368(float* slope, float* intercept)
+{
+    *slope = stage_info.x724;
+    *intercept = stage_info.x724 - stage_info.x728;
+}
+
+bool Camera_8003118C(Vec3* pos, float arg1)
+{
+    const s32 distance = (s32) arg1;
+    float slope, intercept, bottom;
+    Ground_801C4368(&slope, &intercept);
+    slope += 1.0f;
+    bottom = Stage_GetCamBoundsBottomOffset() > slope ? Stage_GetCamBoundsBottomOffset() : slope;
+    return !(pos->x < Stage_GetCamBoundsLeftOffset() - distance ||
+             pos->x > Stage_GetCamBoundsRightOffset() + distance ||
+             pos->y > Stage_GetCamBoundsTopOffset() + distance || pos->y < bottom - distance);
+}
+
+void M360_StageSetKind(int grkind)
+{
+    stage_info.grkind = (enum GrKind) grkind;
+    stage_info.x724 = -10000.0f;
+    stage_info.x728 = -10000.0f;
+}
 s32 Ground_801C5794(void) {  Report("fighter.unported.Ground_801C5794"); return (s32) 0; }
 void ftCo_800A0098(Fighter* fp) { (void) fp; Report("fighter.unported.ftCo_800A0098"); }
 bool ft_80087A18(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ft_80087A18"); return (bool) 0; }
 int ft_80087A80(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ft_80087A80"); return (int) 0; }
-bool gm_8016B14C(void) {  Report("fighter.unported.gm_8016B14C"); return (bool) 0; }
+/* gmvs.c rule queries: the port has no team battles. */
+bool gm_8016B14C(void) { return true; }
 int gm_8016C75C(HSD_GObj* a0) { (void) a0; Report("fighter.unported.gm_8016C75C"); return (int) 0; }
 bool grBigBlue_801EF844(enum_t a0) { (void) a0; Report("fighter.unported.grBigBlue_801EF844"); return (bool) 0; }
 bool grCastle_801CDF54(Vec3* a0) { (void) a0; Report("fighter.unported.grCastle_801CDF54"); return (bool) 0; }

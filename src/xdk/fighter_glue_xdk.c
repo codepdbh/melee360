@@ -3170,6 +3170,31 @@ float M360_MatchPadSubStickYPort(unsigned port)
     return port < 4 ? HSD_PadGameStatus[port].nml_subStickY : 0.0f;
 }
 
+void M360_FighterHangInfo(void* handle, unsigned* out)
+{
+    Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    out[0] = (unsigned) fp->player_id << 16 | (unsigned) fp->motion_id;
+    out[1] = (unsigned) (uintptr_t) fp->input_cb;
+    out[2] = (unsigned) (uintptr_t) fp->anim_cb;
+}
+
+void M360_FighterTraceCpu(void* handle)
+{
+    Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    struct CpuFighter* c = &fp->cpu;
+    M360_MatchTrace("cpu.kind", (unsigned) c->kind);
+    M360_MatchTrace("cpu.level", (unsigned) c->level);
+    M360_MatchTrace("cpu.x18", (unsigned) c->x18);
+    M360_MatchTrace("cpu.target", c->x44 ? (unsigned) c->x44->player_id : 99u);
+    M360_MatchTrace("cpu.item", c->x4C != NULL);
+    M360_MatchTrace("cpu.dist", (unsigned) (int) c->x5C);
+    M360_MatchTrace("cpu.lstick_x", (unsigned) (int) c->lstick.x);
+    M360_MatchTrace("cpu.buttons", (unsigned) c->buttons);
+    M360_MatchTrace("cpu.x54_x", (unsigned) (int) c->x54.x);
+    M360_MatchTrace("cpu.x54_y", (unsigned) (int) c->x54.y);
+    M360_MatchTrace("cpu.flags", (unsigned) (((u8*) c)[0xF8] << 24 | ((u8*) c)[0xF9] << 16 | ((u8*) c)[0xFA] << 8 | ((u8*) c)[0xFB]));
+}
+
 /* Slot of the last fighter that hit this one (ftColl_8007861C), -1 if none. */
 int M360_FighterLastAttacker(void* handle)
 {
