@@ -1478,6 +1478,17 @@ void ft_PlaySFX(Fighter* fp, enum_t sfx_id, u8 sfx_vol, u8 sfx_pan)
     M360_AudioSfx((unsigned) sfx_id, sfx_vol, sfx_pan);
 }
 
+/* lbAudioAx_80023870: fighter voice/SFX tracks. Key-off requests (0x83D61)
+ * and the list terminator (0x83D60) have no native voice to stop; other ids
+ * go to the SSM player. The track number serves as the handle. */
+int lbAudioAx_80023870(int id, int vol, int pan, int track)
+{
+    if (id == 0x83D60 || id == 0x83D61)
+        return -1;
+    M360_AudioSfx((unsigned) id, (unsigned) vol, (unsigned) pan);
+    return track;
+}
+
 static void ProcHit(HSD_GObj* gobj)
 {
     Fighter* fp = GET_FIGHTER(gobj);

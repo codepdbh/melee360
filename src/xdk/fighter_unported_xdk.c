@@ -180,19 +180,6 @@ UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
 SILENT_VOID(efLib_DestroyAll, (HSD_GObj* gobj))
 SILENT_VOID(ft_800880D8, (Fighter* fp))
-SILENT_VOID(ft_800881D8, (Fighter* fp, int sfx_id, u8 sfx_vol, u8 sfx_pan))
-SILENT_VOID(ft_80088328, (Fighter* fp, int sfx_id, u8 sfx_vol, u8 sfx_pan))
-SILENT_VOID(ft_80088478, (Fighter* fp, int sfx_id, u8 sfx_vol, u8 sfx_pan))
-SILENT_VOID(ft_80088510, (Fighter* fp, int sfx_id, u8 sfx_vol, u8 sfx_pan))
-SILENT_VOID(ft_800885A8, (Fighter* fp, int sfx_id, u8 sfx_vol, u8 sfx_pan))
-SILENT_VOID(ft_80088640, (Fighter* fp, int sfx_id, u8 sfx_vol, u8 sfx_pan))
-SILENT_VOID(ft_80088770, (Fighter* fp))
-SILENT_VOID(ft_800887CC, (Fighter* fp))
-SILENT_VOID(ft_80088828, (Fighter* fp))
-SILENT_VOID(ft_80088884, (Fighter* fp))
-SILENT_VOID(ft_800888E0, (Fighter* fp))
-SILENT_VOID(ft_8008893C, (Fighter* fp))
-SILENT_VOID(ft_800889F4, (Fighter* fp, FtSFXArr* sfx))
 SILENT_VOID(ft_8008A1B8, (Fighter_GObj* gobj, u32 flags))
 SILENT_VOID(ftCamera_80076064, (Fighter* fp))
 SILENT_VOID(ftCo_8009E7B4, (Fighter* fp, u8 (*blend)[2]))
@@ -452,7 +439,6 @@ void lbRefract_80022BB8(void) {  Report("fighter.unported.lbRefract_80022BB8"); 
 void lbRefract_800225D4(void) {  Report("fighter.unported.lbRefract_800225D4");  }
 void lbRefSetUnuse(void) {  Report("fighter.unported.lbRefSetUnuse");  }
 int lbAudioAx_80024184(int a0, int a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lbAudioAx_80024184"); return (int) 0; }
-int lbAudioAx_80023870(int a0, int a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lbAudioAx_80023870"); return (int) 0; }
 s32 it_802E5EF4(Item_GObj* a0) { (void) a0; Report("fighter.unported.it_802E5EF4"); return (s32) 0; }
 void it_8027B4A4(Fighter_GObj* a0, Item_GObj* a1) { (void) a0; (void) a1; Report("fighter.unported.it_8027B4A4");  }
 s32 it_80272818(Item* a0) { (void) a0; Report("fighter.unported.it_80272818"); return (s32) 0; }
