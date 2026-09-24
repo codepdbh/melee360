@@ -13,7 +13,11 @@
 #include <melee/ft/ftdata.h>
 #include <melee/ft/ftparts.h>
 #include <melee/ft/types.h>
+#include <melee/ft/ft_0892.h>
+#include <melee/ft/ftchangeparam.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Fall.h>
+#include <melee/ft/kinds/ftCommon/ftCo_Landing.h>
+#include <melee/mp/mpcoll.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/lb/lbanim.h>
@@ -612,7 +616,22 @@ u32 mpLineGetFlags(int line_id)
     const M360MatchStage* st = M360_MatchStageData();
     if (line_id < 0 || (unsigned) line_id >= st->lineCount)
         return 0;
-    return st->lines[line_id].flags | st->lines[line_id].kind;
+    return st->lines[line_id].flags;
+}
+
+bool mpColl_IsOnPlatform(CollData* coll)
+{
+    return (mpLineGetFlags(coll->floor.index) & LINE_FLAG_PLATFORM) != 0;
+}
+
+void mpUpdateFloorSkip(CollData* coll)
+{
+    coll->floor_skip = coll->floor.index;
+}
+
+void mpClearFloorSkip(CollData* coll)
+{
+    coll->floor_skip = -1;
 }
 
 static int GroundStep(HSD_GObj* gobj, int stopAtEdge)
@@ -623,15 +642,6 @@ static int GroundStep(HSD_GObj* gobj, int stopAtEdge)
     float y;
     int line;
     fp->coll_data.env_flags &= ~(Collide_LeftEdge | Collide_RightEdge);
-    if (fp->coll_data.floor.index >= 0 &&
-        (unsigned) fp->coll_data.floor.index < st->lineCount &&
-        (st->lines[fp->coll_data.floor.index].flags & M360_LINE_PLATFORM) &&
-        fp->input.lstick[0].y < -0.5f) {
-        fp->coll_data.floor.index = -1;
-        fp->ground_or_air = GA_Air;
-        fp->self_vel.y = -1.0f;
-        return 0;
-    }
     if (FloorAt(fp->cur_pos.x, fp->cur_pos.y + step, fp->cur_pos.y - step, 1, &y, &line)) {
         fp->cur_pos.y = y;
         SetFloor(fp, line);
@@ -703,12 +713,22 @@ static int AirStep(HSD_GObj* gobj, bool (*land)(Fighter_GObj*, int))
     float bestY = -3.4e38f;
     fp->coll_data.last_pos = fp->coll_data.cur_pos;
     fp->coll_data.cur_pos = fp->cur_pos;
+    if (fp->coll_data.floor_skip >= 0 && (unsigned) fp->coll_data.floor_skip < st->lineCount) {
+        const M360StageLine* l = &st->lines[fp->coll_data.floor_skip];
+        const float lo = l->x0 < l->x1 ? l->x0 : l->x1;
+        const float hi = l->x0 < l->x1 ? l->x1 : l->x0;
+        if (fp->cur_pos.x < lo || fp->cur_pos.x > hi ||
+            fp->cur_pos.y < (l->y0 < l->y1 ? l->y0 : l->y1) - 12.0f)
+            fp->coll_data.floor_skip = -1;
+    }
     if (fp->cur_pos.y > fp->prev_pos.y)
         return 0;
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
         float lo, hi, t, ly;
         if (!(l->kind & M360_LINE_FLOOR))
+            continue;
+        if ((int) i == fp->coll_data.floor_skip)
             continue;
         lo = l->x0 < l->x1 ? l->x0 : l->x1;
         hi = l->x0 < l->x1 ? l->x1 : l->x0;
@@ -804,6 +824,28 @@ void ft_800835B0(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjE
     AirCeilings(GET_FIGHTER(gobj));
     if (AirStep(gobj, arg1))
         cb(gobj);
+}
+
+void ft_80082C74(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    AirWalls(GET_FIGHTER(gobj));
+    AirCeilings(GET_FIGHTER(gobj));
+    if (AirStep(gobj, NULL))
+        cb(gobj);
+}
+
+void ft_80082F28(Fighter_GObj* gobj)
+{
+    AirWalls(GET_FIGHTER(gobj));
+    AirCeilings(GET_FIGHTER(gobj));
+    if (AirStep(gobj, NULL)) {
+        Fighter* fp = GET_FIGHTER(gobj);
+        if (fp->self_vel.y > ftCo_800D0EC8(fp)) {
+            ft_8008A2BC(gobj);
+            return;
+        }
+        ftCo_Landing_Enter_Basic(gobj);
+    }
 }
 
 bool ft_80084A18(Fighter_GObj* gobj)
@@ -1133,6 +1175,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->x673 = fp->x674 = 0xFE;
     fp->x67C = fp->x67D = fp->x67E = 0xFF;
     fp->coll_data.floor.index = -1;
+    fp->coll_data.floor_skip = -1;
     fp->dmg.x18C8 = -1;
     for (i = 0; i < (int) ARRAY_SIZE(fp->x8B0); ++i) {
         fp->x8B0[i].x10 = -1;
@@ -1170,6 +1213,7 @@ void M360_FighterRespawn(void* handle, float x, float y)
     fp->ground_or_air = GA_Air;
     fp->coll_data.cur_pos = fp->cur_pos;
     fp->coll_data.floor.index = -1;
+    fp->coll_data.floor_skip = -1;
     Owner(gobj)->hitlag = 0.0f;
     Owner(gobj)->flinchFrames = 0;
     Owner(gobj)->hitTarget = -1;

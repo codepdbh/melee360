@@ -1,6 +1,8 @@
 #pragma warning(push, 3)
 #pragma warning(disable : 4244)
+#include <melee/ef/efasync.h>
 #include <melee/ef/eflib.h>
+#include <melee/ft/kinds/ftCommon/ftCo_0C60.h>
 #include <melee/ft/fighter.h>
 #include <melee/ft/ft_0877.h>
 #include <melee/ft/ft_0881.h>
@@ -137,37 +139,17 @@ UNPORTED_VOID(ftCo_800C5500, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800C5A50, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C5D34, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800CEE70, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800D5FB0, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800D6824, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800D68C0, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800D705C, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800D7100, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800D730C, (Fighter_GObj* gobj, bool arg))
 UNPORTED_BOOL(ftCo_800D8A38, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800DE9D8, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800DF910, (Fighter* fp))
 UNPORTED_VOID(ftCo_Attack_800CCF58, (Fighter_GObj* gobj, enum_t arg))
 UNPORTED_VOID(ftCo_Attack_800CDD14, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_Attack_800D6A50, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_Attack100_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackAir_CheckItemThrowInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackDash_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_AttackDash_SetMv0, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackHi3_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackHi4_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackHi4_CheckInputNoD0, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackLw3_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackLw4_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackS3_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackS4_8008C114, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_AttackS4_CheckInput, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_Catch_CheckInput, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_DownSpot_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_HammerLanding_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_ItemScrew_Enter, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_SpecialAir_CheckInput, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_SpecialS_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_SquatWait_CheckInput, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftFx_AppealS_CheckInput, (HSD_GObj* gobj))
 UNPORTED_VOID(ftGw_Attack11_Enter, (HSD_GObj* gobj))
 UNPORTED_VOID(ftLk_AttackAir_800EB3BC, (HSD_GObj* gobj))
@@ -395,4 +377,35 @@ void ftColl_8007AFF8(Fighter_GObj* gobj)
     for (i = 0; i < ARRAY_SIZE(fp->x914); ++i)
         fp->x914[i].state = HitCapsule_Disabled;
     fp->x2219_b3 = false;
+}
+
+HSD_GObjEvent ftData_SpecialN[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialHi[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialLw[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialAirHi[Ft_Kind_Max];
+
+UNPORTED_BOOL(ftCo_800D8AE0, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftCo_800CDDA0, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftGw_AttackLw3_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftGw_AttackS4_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftPe_AttackS4_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftNs_AttackS4_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftNs_AttackHi4_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftNs_AttackLw4_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftLk_AttackAir_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftGw_AttackAirN_DecideAction, (HSD_GObj* gobj))
+UNPORTED_VOID(ftGw_Attack100Start_Enter, (HSD_GObj* gobj))
+UNPORTED_VOID(ftKb_SpecialN_800F1CD8, (HSD_GObj* gobj))
+UNPORTED_VOID(ftKb_SpecialN_800F1F68, (HSD_GObj* gobj))
+UNPORTED_VOID(pl_8003E854, (int a, int b, Item_GObj* c))
+SILENT_VOID(efLib_PauseAll, (HSD_GObj* gobj))
+SILENT_VOID(efLib_ResumeAll, (HSD_GObj* gobj))
+UNPORTED_BOOL(ftCo_800C60C8, (Fighter_GObj* gobj))
+UNPORTED_BOOL(ftpickupitem_8009447C, (HSD_GObj* gobj, Item_GObj* item))
+UNPORTED_BOOL(it_8026B594, (Item_GObj* gobj))
+bool gm_8016B0FC(void) { return false; }
+Item_GObj* ftpickupitem_800942A0(Fighter_GObj* gobj, u32 flags) { (void) gobj; (void) flags; return NULL; }
+void efAsync_Spawn(HSD_GObj* gobj, void* queue_head, u32 spawn_kind, u32 gfx_id, HSD_JObj* jobj, ...)
+{
+    (void) gobj; (void) queue_head; (void) spawn_kind; (void) gfx_id; (void) jobj;
 }

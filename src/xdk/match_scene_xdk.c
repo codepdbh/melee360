@@ -39,6 +39,7 @@ void HSD_GObj_80390ED0(HSD_GObj* gobj, u32 mask);
 void HSD_GObj_80390FC0(void);
 void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
 void HSD_GObj_RunProcs(void);
+int M360_InputScriptHolding(void);
 
 enum {
     kLinkLight = 0,
@@ -104,6 +105,7 @@ static CamTransform s_cam;
 static int s_loaded;
 static int s_active;
 static int s_paused;
+static int s_holdTraced;
 static unsigned s_frame;
 static unsigned s_gameMode = 2;
 static unsigned s_campaignRound;
@@ -533,7 +535,10 @@ void M360_MatchEnter(void)
     M360_MatchTrace("match.campaign.round", s_campaignRound + 1);
     M360_MatchTrace("match.enter.blast_left", (unsigned) (int) s_stage.blastLeft);
     M360_MatchTrace("match.enter.blast_bottom", (unsigned) (int) s_stage.blastBottom);
-    M360_MatchTrace("match.enter.spawn_y", (unsigned) (int) s_stage.spawnY[0]);
+    for (i = 0; i < 4; ++i) {
+        M360_MatchTrace("match.enter.spawn_x", (unsigned) (int) s_stage.spawnX[i]);
+        M360_MatchTrace("match.enter.spawn_y", (unsigned) (int) s_stage.spawnY[i]);
+    }
 }
 
 static int OutsideBlastZone(float x, float y)
@@ -563,6 +568,23 @@ int M360_MatchFrame(void)
         s_paused = !s_paused;
         M360_MatchTrace("match.pause", s_paused);
     }
+    if (M360_InputScriptHolding()) {
+        if (!s_holdTraced) {
+            M360MatchStatus st;
+            s_holdTraced = 1;
+            M360_MatchGetStatus(&st);
+            M360_MatchTrace("snap.frame", st.frame);
+            for (i = 0; i < 2; ++i) {
+                M360_MatchTrace(i ? "snap.p2.motion" : "snap.p1.motion", st.motion[i]);
+                M360_MatchTrace(i ? "snap.p2.x" : "snap.p1.x", (unsigned) (int) st.posX[i]);
+                M360_MatchTrace(i ? "snap.p2.y" : "snap.p1.y", (unsigned) (int) st.posY[i]);
+                M360_MatchTrace(i ? "snap.p2.damage" : "snap.p1.damage", st.damage[i]);
+                M360_MatchTrace(i ? "snap.p2.stocks" : "snap.p1.stocks", st.stocksRemaining[i]);
+            }
+        }
+        return M360_MATCH_CONTINUE;
+    }
+    s_holdTraced = 0;
     if (s_paused) {
         if ((buttons & 0x200u) || ((held & 0x160u) == 0x160u && (buttons & 0x100u))) {
             M360_MatchTrace("match.exit.menu", s_frame);

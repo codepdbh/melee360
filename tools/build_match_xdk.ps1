@@ -56,7 +56,7 @@ function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$Sta
 }
 
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
-$motionIds = @(14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,42,43,44,45,46,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91)
+$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,244)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
 $tableStart = $motionText.IndexOf('MotionState ftData_MotionStateList[ftCo_MS_Count] = {')
 $headers = $motionText.Substring(0, $tableStart)
@@ -105,6 +105,23 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Landing.c') },
     @{ Path = $damageAnglePath; Dir = (Join-Path $src 'melee/ft/kinds/ftCommon') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Attack1.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackS3.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackHi3.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackLw3.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackS4.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackHi4.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackLw4.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackAir.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_LandingAir.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_AttackDash.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Attack100.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Squat.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_SquatWait.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_SquatRv.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_RunDirect.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Pass.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0DF1.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftattacks4combo.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftwalkcommon.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftaction.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftcommon.c') },

@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch] $BootToMatch)
+param([switch] $BootToMatch, [switch] $InputScript)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -341,7 +341,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original lbtime.c compilation failed.' }
 Write-Host '[M360][XEX] compiling XInput to Dolphin PAD bridge'
 $padArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
-    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', $(if ($InputScript) { '/DM360_INPUT_SCRIPT' } else { '/DM360_LIVE_INPUT' }),
     "/I$includeXbox", "/I$includeSys", "/Fo$padObject", $padSource
 )
 & $compiler $padArgs
