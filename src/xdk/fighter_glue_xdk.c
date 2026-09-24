@@ -2900,6 +2900,12 @@ void M360_FighterSetDead(void* handle)
     }
 }
 
+void M360_FighterSetDamage(void* handle, float percent)
+{
+    Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    fp->dmg.x1830_percent = percent;
+}
+
 /* Awake Ice Climbers partner of a slot, or NULL. */
 void* M360_FighterFollower(int slot)
 {

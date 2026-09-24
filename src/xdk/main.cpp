@@ -613,6 +613,14 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         RenderBatch(renderer, g_dynamic);
     }
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    if (match.suddenDeath && !match.matchOver) {
+        DrawRect(renderer, 470, 16, 340, 54, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
+        g_dynamic.count = 0;
+        g_dynamic.color = D3DCOLOR_XRGB(255, 90, 70);
+        AddText(g_dynamic, 484, 24, "SUDDEN DEATH", 4);
+        RenderBatch(renderer, g_dynamic);
+        g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    }
     if (match.timeMinutes) {
         char clock[16];
         _snprintf(clock, sizeof(clock), "%u:%02u", match.timeLeft / 60, match.timeLeft % 60);

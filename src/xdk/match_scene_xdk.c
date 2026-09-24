@@ -128,6 +128,7 @@ enum { kTimeOptionCount = sizeof(kTimeOptions) / sizeof(kTimeOptions[0]) };
 static unsigned s_timeOption;
 static int s_score[kMaxFighters];
 static int s_draw;
+static int s_suddenDeath;
 static float s_selPrevSub;
 static unsigned s_cpuLevel = 3;
 /* Item switch: -1 off, 0-4 very low to very high (gm item_freq). */
@@ -180,7 +181,7 @@ static void StartFight(void);
 
 static unsigned TimeMinutes(void)
 {
-    return IsCampaign() ? 0 : kTimeOptions[s_timeOption];
+    return IsCampaign() || s_suddenDeath ? 0 : kTimeOptions[s_timeOption];
 }
 
 static float DegToRad(float d) { return d * 0.017453292f; }
@@ -799,6 +800,7 @@ void M360_MatchEnter(void)
     s_matchOver = 0;
     s_winner = 0;
     s_draw = 0;
+    s_suddenDeath = 0;
     s_paused = 0;
     s_frame = 0;
     s_active = 1;
@@ -871,6 +873,8 @@ static void StartFight(void)
     }
     s_phase = kPhaseFight;
     s_frame = 0;
+    s_suddenDeath = 0;
+    s_draw = 0;
     /* gmvs.c: start the random item spawner once the fighters exist. */
     it_8026D018();
     CamUpdate(1);
@@ -1144,10 +1148,34 @@ int M360_MatchFrame(void)
                 s_draw = 1;
             }
         }
-        s_matchOver = 1;
-        s_winner = best;
         M360_MatchTrace("match.time.over", s_draw);
-        M360_MatchTrace("match.result.winner", s_winner);
+        if (s_draw) {
+            /* Sudden death: the tied players return with one stock at 300%,
+             * everyone else is out; the stock rules decide the winner. */
+            const int top = s_score[best];
+            unsigned n = 0;
+            s_suddenDeath = 1;
+            s_draw = 0;
+            for (i = 0; i < s_fighterCount; ++i) {
+                if (!s_fighters[i])
+                    continue;
+                s_respawn[i] = 0;
+                if (s_score[i] == top) {
+                    s_stocksRemaining[i] = 1;
+                    M360_FighterRespawn(s_fighters[i], s_stage.spawnX[n & 3], s_stage.spawnY[n & 3]);
+                    M360_FighterSetDamage(s_fighters[i], 300.0f);
+                    ++n;
+                } else {
+                    s_stocksRemaining[i] = 0;
+                    M360_FighterSetDead(s_fighters[i]);
+                }
+            }
+            M360_MatchTrace("match.sudden_death", n);
+        } else {
+            s_matchOver = 1;
+            s_winner = best;
+            M360_MatchTrace("match.result.winner", s_winner);
+        }
     }
     CamUpdate(0);
     return M360_MATCH_CONTINUE;
@@ -1208,6 +1236,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
         status->timeLeft = status->timeMinutes * 60u;
     }
     status->draw = (unsigned) s_draw;
+    status->suddenDeath = (unsigned) s_suddenDeath;
     for (i = 0; i < kMaxFighters; ++i) {
         status->selectKind[i] = s_selKind[i];
         status->selectCostume[i] = s_selCostume[i];

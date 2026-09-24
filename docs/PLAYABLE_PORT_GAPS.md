@@ -142,8 +142,9 @@ The right stick (up/down) switches the rule between stock and a timed match
 (2, 3, 4, 5 or 8 minutes). Timed matches give unlimited lives, credit a KO to
 the last fighter that hit the victim (`dmg.x18c4_source_ply`, cleared on
 landing as in the original) and subtract one point per fall; the HUD shows a
-countdown and each player's score. A tie at time-out is reported as a draw;
-sudden death is not implemented.
+countdown and each player's score. A tie at time-out starts sudden death:
+the tied players respawn with one stock at 300% and the stock rules pick the
+winner (no Bob-omb rain).
 
 ### Effects (2026-09-24)
 
@@ -209,8 +210,8 @@ the link is expected to resolve; it is not an XDK build and runs no code.
   trace events (`fighter.hit.reaction_motion`, `fighter.hitstun.frames`); the
   current saved runtime trace predates this change and contains no hit event.
 - Match rules (stage, stocks or time, items, CPU level, player count) come from
-  the native select phase. The original character/stage select screens, sudden
-  death and the persistent results flow are not integrated. P2 uses a
+  the native select phase. The original character/stage select screens and the
+  persistent results flow are not integrated. P2 uses a
   connected second controller when available; otherwise a basic CPU that
   approaches, attacks, shields, grabs and recovers is used.
 - Stage collision now supports floor/wall checks, downward platform drop-through,

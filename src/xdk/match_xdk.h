@@ -74,6 +74,7 @@ typedef struct M360MatchStatus {
     unsigned timeLeft;
     int score[4];
     unsigned draw;
+    unsigned suddenDeath;
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
@@ -122,6 +123,7 @@ void M360_FighterSleep(void* gobj);
 void M360_FighterRespawn(void* gobj, float x, float y);
 void M360_FighterRebirth(void* gobj);
 void M360_FighterSetDead(void* gobj);
+void M360_FighterSetDamage(void* gobj, float percent);
 void M360_FighterGetState(void* gobj, float* x, float* y, float* facing,
                           unsigned* motion, unsigned* damage);
 void M360_FighterCameraBox(void* gobj, float* x, float* y, float* left,
