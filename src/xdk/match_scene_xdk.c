@@ -46,7 +46,7 @@ enum {
     kLinkStage = 1,
     kLinkFighter = 2,
     kMaxMapGObjs = 8,
-    kMaxFighters = 2,
+    kMaxFighters = 4,
     kRespawnFrames = 60,
     kStartingStocks = 4,
     kGameModeClassic = 3,
@@ -155,7 +155,8 @@ static HSD_WObjDesc s_eyeDesc, s_interestDesc;
 static HSD_CameraDescPerspective s_camDesc;
 static int s_phase;
 static unsigned s_selKind[kMaxFighters];
-static unsigned s_selCostume[kMaxFighters] = { 0, 3 };
+static unsigned s_selCostume[kMaxFighters] = { 0, 3, 1, 2 };
+static unsigned s_slotCount = 2;
 static unsigned s_selReady[kMaxFighters];
 static int s_selHuman[kMaxFighters];
 static float s_selPrevStick[kMaxFighters];
@@ -656,7 +657,12 @@ void M360_MatchEnter(void)
     s_active = 1;
     memset(s_selReady, 0, sizeof(s_selReady));
     s_selHuman[0] = 1;
-    s_selHuman[1] = !IsCampaign() && M360_MatchControllerConnected(1);
+    for (i = 1; i < kMaxFighters; ++i)
+        s_selHuman[i] = 0;
+    if (IsCampaign())
+        s_slotCount = 2;
+    else if (M360_MatchControllerConnected(1))
+        s_selHuman[1] = 1;
     s_phase = kPhaseSelect;
     if (IsCampaign() && s_campaignRound > 0) {
         s_selReady[0] = s_selReady[1] = 1;
@@ -691,21 +697,28 @@ static void StartFight(void)
     unsigned i;
     if (IsCampaign())
         CampaignOpponent();
-    if (s_selKind[1] == s_selKind[0] && s_selCostume[1] == s_selCostume[0])
-        s_selCostume[1] = (s_selCostume[0] + 1) % kMaxCostumes;
+    for (i = 1; i < s_slotCount; ++i) {
+        unsigned j;
+        for (j = 0; j < i; ++j)
+            if (s_selKind[i] == s_selKind[j] && s_selCostume[i] == s_selCostume[j]) {
+                s_selCostume[i] = (s_selCostume[i] + 1) % kMaxCostumes;
+                j = (unsigned) -1;
+            }
+    }
     s_fighterCount = 0;
-    for (i = 0; i < kMaxFighters; ++i) {
-        const int port = i == 0 ? 0 : (s_selHuman[1] ? 1 : -1);
+    memset(s_fighters, 0, sizeof(s_fighters));
+    for (i = 0; i < s_slotCount; ++i) {
+        const int port = i == 0 ? 0 : (s_selHuman[i] ? (int) i : -1);
         M360_FighterSelect((int) i, s_selKind[i], s_selCostume[i]);
         s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
-                                          i ? -1.0f : 1.0f, port);
+                                          s_stage.spawnX[i] > 0.0f ? -1.0f : 1.0f, port);
         s_human[i] = port >= 0;
         s_respawn[i] = 0;
         s_stocksLost[i] = 0;
         s_stocksRemaining[i] = IsCampaign() ? kStartingStocks : s_stocks;
         if (s_fighters[i])
             s_fighterCount = i + 1;
-        M360_MatchTrace(i ? "match.select.p2.kind" : "match.select.p1.kind", s_selKind[i]);
+        M360_MatchTrace("match.select.kind", s_selKind[i]);
     }
     s_phase = kPhaseFight;
     s_frame = 0;
@@ -754,38 +767,68 @@ static int SelectInput(unsigned port, unsigned slot)
         s_stocks = s_stocks >= 9 ? 1 : s_stocks + 1;
         M360_MatchTrace("match.select.stocks", s_stocks);
     }
+    if (port == 0 && !IsCampaign() && (trig & 0x20u)) {
+        s_slotCount = s_slotCount >= kMaxFighters ? 2 : s_slotCount + 1;
+        M360_MatchTrace("match.select.players", s_slotCount);
+    }
     if (trig & 0x100u) {
         s_selReady[slot] = 1;
         M360_MatchTrace("match.select.ready", slot);
     } else if (trig & 0x200u) {
+        unsigned prev;
         if (slot == 0)
             return 1;
-        if (!s_selHuman[1])
-            s_selReady[0] = 0;
+        /* P1 editing a CPU slot steps back to the previous P1-picked slot. */
+        for (prev = slot - 1; prev > 0 && s_selHuman[prev]; --prev)
+            ;
+        if (port == 0)
+            s_selReady[prev] = 0;
     }
+    return 0;
+}
+
+/* The slot P1 edits: itself, then each unready CPU slot in order. */
+static unsigned P1Slot(void)
+{
+    unsigned i;
+    if (!s_selReady[0] || IsCampaign())
+        return 0;
+    for (i = 1; i < s_slotCount; ++i)
+        if (!s_selHuman[i] && !s_selReady[i])
+            return i;
     return 0;
 }
 
 static int SelectFrame(void)
 {
     unsigned i;
-    if (!s_selHuman[1] && !IsCampaign() && M360_MatchControllerConnected(1) &&
-        (M360_MatchPadTriggeredPort(1) & 0x1F00u)) {
-        s_selHuman[1] = 1;
-        s_selReady[1] = 0;
-        M360_MatchTrace("match.select.p2.join", 1);
-        return M360_MATCH_CONTINUE;
+    int allReady;
+    for (i = 1; i < kMaxFighters && !IsCampaign(); ++i) {
+        if (!s_selHuman[i] && M360_MatchControllerConnected(i) &&
+            (M360_MatchPadTriggeredPort(i) & 0x1F00u)) {
+            s_selHuman[i] = 1;
+            s_selReady[i] = 0;
+            if (s_slotCount < i + 1)
+                s_slotCount = i + 1;
+            M360_MatchTrace("match.select.join", i);
+            return M360_MATCH_CONTINUE;
+        }
     }
-    if (SelectInput(0, s_selReady[0] && !s_selHuman[1] && !IsCampaign() ? 1 : 0))
+    if (SelectInput(0, P1Slot()))
         return M360_MATCH_TO_MENU;
-    if (s_selHuman[1] && SelectInput(1, 1))
-        s_selReady[1] = 0;
+    for (i = 1; i < s_slotCount; ++i)
+        if (s_selHuman[i])
+            SelectInput(i, i);
     for (i = 0; i < s_modelCount; ++i)
         HSD_JObjAnimAll(s_models[i]);
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
     CamUpdate(0);
-    if (s_selReady[0] && (s_selReady[1] || IsCampaign()))
+    allReady = s_selReady[0];
+    for (i = 1; i < s_slotCount && !IsCampaign(); ++i)
+        if (!s_selReady[i])
+            allReady = 0;
+    if (allReady)
         StartFight();
     return M360_MATCH_CONTINUE;
 }
@@ -854,12 +897,13 @@ int M360_MatchFrame(void)
         HSD_JObjAnimAll(s_models[i]);
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
-    if (s_fighterCount > 1 && !s_human[1] && s_gameMode != kGameModeClassic &&
-        s_gameMode != kGameModeAdventure && M360_MatchControllerConnected(1) &&
-        (M360_MatchPadTriggeredPort(1) & 0x1F00u)) {
-        s_human[1] = 1;
-        M360_FighterSetPort(s_fighters[1], 1);
-        M360_MatchTrace("match.p2.join", s_frame);
+    for (i = 1; i < s_fighterCount && !IsCampaign(); ++i) {
+        if (s_fighters[i] && !s_human[i] && M360_MatchControllerConnected(i) &&
+            (M360_MatchPadTriggeredPort(i) & 0x1F00u)) {
+            s_human[i] = 1;
+            M360_FighterSetPort(s_fighters[i], (int) i);
+            M360_MatchTrace("match.join", i);
+        }
     }
     HSD_GObj_RunProcs();
     for (i = 0; i < s_fighterCount; ++i) {
@@ -882,8 +926,16 @@ int M360_MatchFrame(void)
             M360_MatchTrace("match.blast_zone.fighter", i);
             M360_MatchTrace("match.stocks.remaining", s_stocksRemaining[i]);
             if (!s_stocksRemaining[i]) {
+                unsigned j, alive = 0, last = 0;
+                for (j = 0; j < s_fighterCount; ++j)
+                    if (s_fighters[j] && s_stocksRemaining[j]) {
+                        ++alive;
+                        last = j;
+                    }
+                if (alive > 1)
+                    continue;
                 s_matchOver = 1;
-                s_winner = 1u - i;
+                s_winner = last;
                 M360_MatchTrace("match.result.winner", s_winner);
                 if (s_winner == 0 &&
                     (s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure) &&
@@ -949,7 +1001,8 @@ void M360_MatchGetStatus(M360MatchStatus* status)
         status->selectHuman[i] = (unsigned) s_selHuman[i];
         status->fighterKind[i] = s_fighters[i] ? M360_FighterKindIndex(s_fighters[i]) : s_selKind[i];
     }
-    for (i = 0; i < s_fighterCount && i < 2; ++i) {
+    status->slotCount = s_slotCount;
+    for (i = 0; i < s_fighterCount && i < kMaxFighters; ++i) {
         float facing;
         if (!s_fighters[i])
             continue;

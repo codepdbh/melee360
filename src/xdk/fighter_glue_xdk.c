@@ -228,7 +228,7 @@ enum {
     kMaxJoints = 128,
     kMaxDObjs = 256,
     kMaxAnims = 512,
-    kMaxFighters = 2,
+    kMaxFighters = 4,
     kMaxHitboxes = 4,
     kLinkFighter = 2,
     kFighterStates = 0x80,
@@ -463,7 +463,7 @@ enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]) };
 static M360LoadedKind s_loaded[kKindCount];
 ftData* gFtDataList[Ft_Kind_Max];
 static unsigned s_selectKind[kMaxFighters];
-static unsigned s_selectCostume[kMaxFighters] = { 0, 3 };
+static unsigned s_selectCostume[kMaxFighters] = { 0, 3, 1, 2 };
 static M360Fighter s_fighters[kMaxFighters];
 static StaleMoveTable s_staleTables[6];
 static unsigned s_hitCount;

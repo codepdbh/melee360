@@ -492,26 +492,47 @@ void RenderMenuPlaceholder(SpriteRenderer& renderer, const MeleeFlow& flow)
     RenderBatch(renderer, g_dynamic);
 }
 
+static const D3DCOLOR kPlayerColors[4] = {
+    D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255),
+    D3DCOLOR_XRGB(250, 210, 60), D3DCOLOR_XRGB(80, 210, 110)
+};
+
+static const char* PlayerTag(unsigned slot, bool human)
+{
+    static const char* const tags[4] = { "P1", "P2", "P3", "P4" };
+    return human || slot == 0 ? tags[slot & 3] : "CPU";
+}
+
 void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& match)
 {
-    static const D3DCOLOR colors[2] = { D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255) };
+    const unsigned slots = match.campaignRounds ? 2 : (match.slotCount < 2 ? 2 : match.slotCount);
+    const LONG width = static_cast<LONG>(880 / slots);
     DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.55f);
     g_dynamic.count = 0;
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
     AddText(g_dynamic, 400, 120, "CHOOSE YOUR FIGHTER", 4);
+    {
+        char line[64];
+        _snprintf(line, sizeof(line), "STAGE: %s", M360_MatchStageName(match.stageIndex));
+        line[sizeof(line) - 1] = '\0';
+        AddText(g_dynamic, 200, 190, line, 2);
+        _snprintf(line, sizeof(line), "STOCKS: %u   CPU LV: %u", match.stocks, match.cpuLevel);
+        line[sizeof(line) - 1] = '\0';
+        AddText(g_dynamic, 760, 190, line, 2);
+    }
     RenderBatch(renderer, g_dynamic);
-    for (unsigned i = 0; i < 2; ++i) {
-        const LONG x = 250 + static_cast<LONG>(i) * 420;
+    for (unsigned i = 0; i < slots && i < 4; ++i) {
+        const LONG x = 200 + static_cast<LONG>(i) * width;
         const bool campaignCpu = i == 1 && match.campaignRounds;
         char line[48];
-        DrawRect(renderer, x - 20, 230, 380, 250, D3DCOLOR_XRGB(0, 0, 0), 0.5f);
+        DrawRect(renderer, x - 20, 230, width - 20, 250, D3DCOLOR_XRGB(0, 0, 0), 0.5f);
         g_dynamic.count = 0;
-        g_dynamic.color = colors[i];
-        AddText(g_dynamic, x, 250, i == 0 ? "P1" : (match.selectHuman[1] ? "P2" : "CPU"), 3);
+        g_dynamic.color = kPlayerColors[i];
+        AddText(g_dynamic, x, 250, PlayerTag(i, match.selectHuman[i] != 0), 3);
         RenderBatch(renderer, g_dynamic);
         g_dynamic.count = 0;
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
-        AddText(g_dynamic, x, 310, campaignCpu ? "RANDOM" : M360_FighterKindName(match.selectKind[i]), 3);
+        AddText(g_dynamic, x, 310, campaignCpu ? "RANDOM" : M360_FighterKindName(match.selectKind[i]), slots > 2 ? 2 : 3);
         if (!campaignCpu) {
             _snprintf(line, sizeof(line), "COLOR %u", match.selectCostume[i] + 1);
             line[sizeof(line) - 1] = '\0';
@@ -522,26 +543,16 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     }
     g_dynamic.count = 0;
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
-    {
-        char line[64];
-        _snprintf(line, sizeof(line), "STAGE: %s", M360_MatchStageName(match.stageIndex));
-        line[sizeof(line) - 1] = '\0';
-        AddText(g_dynamic, 300, 190, line, 2);
-        _snprintf(line, sizeof(line), "STOCKS: %u   CPU LV: %u", match.stocks, match.cpuLevel);
-        line[sizeof(line) - 1] = '\0';
-        AddText(g_dynamic, 760, 190, line, 2);
+    AddText(g_dynamic, 250, 530, "LEFT/RIGHT: FIGHTER   X/Y: COLOR   A: CONFIRM   B: BACK", 2);
+    if (!match.campaignRounds) {
+        AddText(g_dynamic, 250, 570, "P1 PICKS THE CPUS. OTHER PADS: PRESS A BUTTON TO JOIN", 2);
+        AddText(g_dynamic, 250, 610, "DPAD UP/DOWN: STAGE  RB: STOCKS  LB: CPU LEVEL  RT: PLAYERS", 2);
     }
-    AddText(g_dynamic, 300, 530, "LEFT/RIGHT: FIGHTER   X/Y: COLOR   A: CONFIRM   B: BACK", 2);
-    if (!match.campaignRounds)
-        AddText(g_dynamic, 300, 610, "DPAD UP/DOWN: STAGE   RB: STOCKS   LB: CPU LEVEL", 2);
-    if (!match.selectHuman[1] && !match.campaignRounds)
-        AddText(g_dynamic, 300, 570, "P1 PICKS THE CPU AFTER CONFIRMING. P2: PRESS A BUTTON TO JOIN", 2);
     RenderBatch(renderer, g_dynamic);
 }
 
 void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
 {
-    static const D3DCOLOR colors[2] = { D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255) };
     if (match.selecting) {
         RenderCharacterSelect(renderer, match);
         return;
@@ -561,16 +572,19 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         AddText(g_dynamic, 30, 56, "B: RETURN AFTER MATCH", 1);
     }
     RenderBatch(renderer, g_dynamic);
-    for (unsigned i = 0; i < match.fighters && i < 2; ++i) {
-        const LONG x = 380 + static_cast<LONG>(i) * 340;
-        DrawRect(renderer, x - 12, 606, 250, 96, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
-        g_dynamic.count = 0;
-        g_dynamic.color = colors[i];
+    const unsigned fighters = match.fighters < 4 ? match.fighters : 4;
+    const LONG spacing = fighters > 2 ? 250 : 340;
+    const LONG firstX = fighters > 2 ? 170 : 380;
+    for (unsigned i = 0; i < fighters; ++i) {
+        const LONG x = firstX + static_cast<LONG>(i) * spacing;
         char name[48];
+        DrawRect(renderer, x - 12, 606, 236, 96, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
+        g_dynamic.count = 0;
+        g_dynamic.color = kPlayerColors[i];
         _snprintf(name, sizeof(name), "%s %s", M360_FighterKindName(match.fighterKind[i]),
-                  i == 0 ? "P1" : (match.human[1] ? "P2" : "CPU"));
+                  PlayerTag(i, match.human[i] != 0));
         name[sizeof(name) - 1] = '\0';
-        AddText(g_dynamic, x, 614, name, 2);
+        AddText(g_dynamic, x, 614, name, fighters > 2 ? 1 : 2);
         RenderBatch(renderer, g_dynamic);
         g_dynamic.count = 0;
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
@@ -582,9 +596,12 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
     }
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
     if (match.matchOver) {
+        char line[32];
         DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.48f);
         g_dynamic.count = 0;
-        AddText(g_dynamic, 548, 300, match.winner == 0 ? "P1 WINS" : "P2 WINS", 6);
+        _snprintf(line, sizeof(line), "%s WINS", PlayerTag(match.winner, match.human[match.winner & 3] != 0));
+        line[sizeof(line) - 1] = '\0';
+        AddText(g_dynamic, 548, 300, line, 6);
         AddText(g_dynamic, 400, 382,
                 match.campaignRounds && match.winner == 0
                     ? "A: NEXT FIGHT   B: MAIN MENU"
