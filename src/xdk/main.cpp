@@ -516,9 +516,15 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
         _snprintf(line, sizeof(line), "STAGE: %s", M360_MatchStageName(match.stageIndex));
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 200, 190, line, 2);
+        static const char* const itemNames[6] = { "OFF", "VERY LOW", "LOW", "MEDIUM", "HIGH", "VERY HIGH" };
         _snprintf(line, sizeof(line), "STOCKS: %u   CPU LV: %u", match.stocks, match.cpuLevel);
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 760, 190, line, 2);
+        if (!match.campaignRounds) {
+            _snprintf(line, sizeof(line), "ITEMS: %s", itemNames[match.itemFreq < 6 ? match.itemFreq : 0]);
+            line[sizeof(line) - 1] = '\0';
+            AddText(g_dynamic, 200, 212, line, 2);
+        }
     }
     RenderBatch(renderer, g_dynamic);
     for (unsigned i = 0; i < slots && i < 4; ++i) {
@@ -546,7 +552,7 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     AddText(g_dynamic, 250, 530, "LEFT/RIGHT: FIGHTER   X/Y: COLOR   A: CONFIRM   B: BACK", 2);
     if (!match.campaignRounds) {
         AddText(g_dynamic, 250, 570, "P1 PICKS THE CPUS. OTHER PADS: PRESS A BUTTON TO JOIN", 2);
-        AddText(g_dynamic, 250, 610, "DPAD UP/DOWN: STAGE  RB: STOCKS  LB: CPU LEVEL  RT: PLAYERS", 2);
+        AddText(g_dynamic, 250, 610, "DPAD UP/DOWN: STAGE  RB: STOCKS  LB: CPU LV  RT: PLAYERS  START: ITEMS", 2);
     }
     RenderBatch(renderer, g_dynamic);
 }
