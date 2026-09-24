@@ -111,6 +111,21 @@ archive loader. Item pickup/throw by fighters, random item spawns, Pokemon,
 Kirby copies, debug displays, custom item TEV/material state and moving stage
 surfaces remain traced stubs. None of this has run on the XDK or Xenia yet.
 
+### CPU AI and stages (2026-09-24)
+
+The original CPU AI (`ftCo_0A01.c`, `ftcmdscript.c`, `ftcpuattack.c`,
+`ft_3C61.c`) drives CPU fighters, initialized as VS CPU kind 4 at the selected
+level (LB in the select phase, default 3). Its stage model is native:
+`M360_FighterBuildIslands` rebuilds the floor islands from connected floor
+lines on each stage build, and the `mpCheck*` raycasts test the matching
+native lines. Stage-specific AI hooks (hazards, teams) are stubs.
+
+The select phase also picks the stage (D-pad up/down) and stocks (RB). Six
+stages load from the map GObj ids their original OnInit creates; moving
+platforms, Randall and hazards are not simulated and collision uses the
+authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
+complete the roster; Zelda/Sheik transformation and Nana are missing.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`
