@@ -287,6 +287,13 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/ftlipstickswing.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftstarrodswing.c') },
     @{ Path = (Join-Path $src 'melee/ft/ft_0D27.c') },
+    @{ Path = (Join-Path $src 'sysdolphin/baselib/particle.c') },
+    @{ Path = (Join-Path $src 'sysdolphin/baselib/generator.c') },
+    @{ Path = (Join-Path $src 'sysdolphin/baselib/psappsrt.c') },
+    @{ Path = (Join-Path $src 'melee/ef/efalt.c') },
+    @{ Path = (Join-Path $src 'melee/ef/efdata.c') },
+    @{ Path = (Join-Path $src 'melee/ef/eflib.c') },
+    @{ Path = (Join-Path $src 'melee/ef/efsync.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0A01.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftcmdscript.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftcpuattack.c') },
@@ -645,6 +652,8 @@ $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C
 $units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8(', 'void ft_80088328(', 'void ft_80088478(', 'void ft_80088510(', 'void ft_800885A8(', 'void ft_80088640(', 'void ft_80088770(', 'void ft_800887CC(', 'void ft_80088828(', 'void ft_80088884(', 'void ft_800888E0(', 'void ft_8008893C(', 'void ft_800889F4(', 'static inline int inline0(', 'void ftCo_800886D8(', 'void ft_80088998(', 'void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
 $units += New-Adapted 'melee/it/itzako.c' @{ '\bsin\b' = 'zako_sine'; '\bcos\b' = 'zako_cosine' } 'itzako'
+# MSVC rejects bitwise OR on pointers; keep the truth test explicit.
+$units += New-Adapted 'melee/ef/efasync.c' @{ '(\w+)->ptcl_bank \| \1->tex_bank' = '($1->ptcl_bank || $1->tex_bank)' } 'efasync'
 $units += New-Slice 'melee/lb/lb_00B0.c' 'bool lb_8000B074(' @('bool lb_8000B074(', 'void lb_8000C1C0(', 'void lb_8000C228(', 'void lb_8000C290(', 'void lb_8000C2F8(', 'static inline HSD_RObj* robj_next(', 'void lb_8000C390(', 'bool lb_8000B09C(', 'bool lb_8000B134(', 'void lb_8000B804(', 'static void lb_8000B9D8(HSD_JObj* jobj', 'void lb_8000BA0C(', 'static HSD_JObj* lbFindJObjWithAObj(HSD_JObj* jobj)', 'float lbGetJObjCurrFrame(', 'float lbGetJObjEndFrame(', 'static s32 lbGetFreeColorRegImpl(s32 i0, HSD_TevDesc* tevdesc', 's32 lbGetFreeColorRegister(', 's32 lb_8000CC8C(', 's32 lb_8000CCA4(', 's32 lb_8000CD90(', 's32 lb_8000CDA8(', 'void lb_8000CE30(', 'void lb_8000CE40(') 'lb_00B0_constraint_slice'
 
 $objects = @()

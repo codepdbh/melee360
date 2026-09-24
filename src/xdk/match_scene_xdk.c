@@ -499,8 +499,9 @@ static void CreateCamera(void)
     s_cameraGObj = GObj_Create(19, 20, 0);
     HSD_GObjObject_80390A70(s_cameraGObj, HSD_GObj_CameraKind, s_cobj);
     GObj_SetupGXLinkMax(s_cameraGObj, CameraRender, 0);
-    /* Items draw on GX link 6 (item.c). */
-    s_cameraGObj->gxlink_prios = (1 << kLinkLight) | (1 << kLinkStage) | (1 << kLinkFighter) | (1 << 6);
+    /* Items draw on GX link 6 (item.c), effects on 7 and 8 (efLib_Init). */
+    s_cameraGObj->gxlink_prios = (1 << kLinkLight) | (1 << kLinkStage) | (1 << kLinkFighter) | (1 << 6) |
+                                  (1 << 7) | (1 << 8);
     memset(&s_cam, 0, sizeof(s_cam));
     s_cam.fov = kCamFov;
 }
@@ -782,6 +783,7 @@ static void StartFight(void)
     }
     s_fighterCount = 0;
     memset(s_fighters, 0, sizeof(s_fighters));
+    M360_FighterEffectsInit();
     for (i = 0; i < s_slotCount; ++i) {
         const int port = i == 0 ? 0 : (s_selHuman[i] ? (int) i : -1);
         M360_FighterSelect((int) i, s_selKind[i], s_selCostume[i]);
