@@ -222,9 +222,13 @@ static int s_selProbeP2;
 static int IsCampaign(void);
 static void StartFight(void);
 void M360_FighterDrawHitboxes(void);
+void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds);
+void M360_HudFrame(unsigned frame);
+void M360_HudStockLost(unsigned slot);
+void M360_HudStop(void);
 
 /* Hitbox/hurtbox overlay, toggled with X while paused; drawn last on the
- * effect link so it sits over the scene. */
+ * world effect link so it sits over the scene. */
 static int s_debugHitboxes;
 
 static void DebugRender(HSD_GObj* gobj, int pass)
@@ -748,9 +752,11 @@ static void CreateCamera(void)
     s_cameraGObj = GObj_Create(19, 20, 0);
     HSD_GObjObject_80390A70(s_cameraGObj, HSD_GObj_CameraKind, s_cobj);
     GObj_SetupGXLinkMax(s_cameraGObj, CameraRender, 0);
-    /* Items draw on GX link 6 (item.c), effects on 7 and 8 (efLib_Init). */
+    /* Items draw on GX link 6 (item.c), world effects on 7 (efLib_Init).
+     * Link 8 holds screen-space particles, drawn by the IfAll HUD camera
+     * (links 8, 10 and 11). */
     s_cameraGObj->gxlink_prios = (1 << kLinkLight) | (1 << kLinkStage) | (1 << kLinkFighter) | (1 << 6) |
-                                  (1 << 7) | (1 << 8);
+                                  (1 << 7);
     memset(&s_cam, 0, sizeof(s_cam));
     s_cam.fov = kCamFov;
 }
@@ -820,6 +826,7 @@ int M360_MatchLoad(void)
 static void FreeAllGObjs(void)
 {
     int link;
+    M360_HudStop();
     for (link = 0; link < 64; ++link) {
         HSD_GObj* gobj = HSD_GObjPLinkHead[link];
         while (gobj) {
@@ -949,6 +956,11 @@ void M360_MatchCameraVectors(float* interest, float* eye)
     eye[2] = s_cam.position.z;
 }
 
+unsigned M360_MatchSlotStocks(unsigned slot)
+{
+    return slot < kMaxFighters && s_fighters[slot] ? s_stocksRemaining[slot] : 0;
+}
+
 unsigned M360_MatchStageCount(void)
 {
     return kStageCount;
@@ -1059,8 +1071,10 @@ static void StartFight(void)
     {
         HSD_GObj* debug = GObj_Create(HSD_GOBJ_CLASS_STAGE, 5, 0);
         if (debug)
-            GObj_SetupGXLink(debug, DebugRender, 8, 255);
+            GObj_SetupGXLink(debug, DebugRender, 7, 255);
     }
+    /* Original in-match HUD (IfAll): damage panels, stocks, timer, "GO!". */
+    M360_HudStart(s_slotCount, IsCampaign() ? kStartingStocks : s_stocks, TimeMinutes() * 60u);
     CamUpdate(1);
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
     TraceHeap("match.heap.used", "match.heap.largest_free");
@@ -1263,6 +1277,7 @@ int M360_MatchFrame(void)
         return M360_MATCH_CONTINUE;
     }
     ++s_frame;
+    M360_HudFrame(s_frame);
     for (i = 0; i < s_modelCount; ++i)
         HSD_JObjAnimAll(s_models[i]);
     UpdateMapColl();
@@ -1311,6 +1326,7 @@ int M360_MatchFrame(void)
                 --s_score[i];
                 s_respawn[i] = kRespawnFrames;
                 M360_FighterSetDead(s_fighters[i]);
+                M360_HudStockLost(i);
                 M360_MatchTrace("match.time.ko_by", (unsigned) by);
                 continue;
             }
@@ -1318,6 +1334,7 @@ int M360_MatchFrame(void)
                 --s_stocksRemaining[i];
             s_respawn[i] = s_stocksRemaining[i] ? kRespawnFrames : 0;
             M360_FighterSetDead(s_fighters[i]);
+            M360_HudStockLost(i);
             M360_MatchTrace("match.blast_zone.fighter", i);
             M360_MatchTrace("match.stocks.remaining", s_stocksRemaining[i]);
             if (!s_stocksRemaining[i]) {
