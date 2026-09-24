@@ -23,6 +23,12 @@
 #include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/pl/player.h>
 #include <melee/ft/kinds/ftCommon/types.h>
+#include <melee/ft/kinds/ftMario/ftmario.h>
+#include <melee/ft/kinds/ftMario/ftmariospecialhi.h>
+#include <melee/ft/kinds/ftMario/ftmariospeciallw.h>
+#include <melee/ft/kinds/ftMario/ftmariospecialn.h>
+#include <melee/ft/kinds/ftMario/ftmariospecials.h>
+#include <melee/ft/kinds/ftMario/types.h>
 #include <melee/lb/lbanim.h>
 #include <melee/lb/lbarchive.h>
 #include <melee/pl/plstale.h>
@@ -110,6 +116,7 @@ typedef struct M360Fighter {
     unsigned flinchFrames;
     int traceMotion;
     int dead;
+    u32 datAttrs[0x140]; /* fighter_dat_attrs_alloc_data storage */
 } M360Fighter;
 
 
@@ -460,6 +467,23 @@ void ftAnim_8006DF0C(Fighter* fp)
     }
 }
 
+/* Costume/part animation hooks from the Mario motion table (metal and
+ * vitamin swaps); the native part-visibility path does not model them. */
+void ftAnim_80070C48(Fighter_GObj* gobj, s32 arg)
+{
+    (void) gobj; (void) arg;
+}
+
+void ftAnim_80070CC4(Fighter_GObj* gobj, int arg)
+{
+    (void) gobj; (void) arg;
+}
+
+void ftAnim_80070FB4(Fighter_GObj* gobj, s32 a, s32 b)
+{
+    (void) gobj; (void) a; (void) b;
+}
+
 /* The shield-tilt pose blends a second skeleton (x8AC_animSkeleton) that the
  * native animation path does not build yet; the Guard animation itself still
  * plays through the normal motion tree. */
@@ -562,6 +586,16 @@ static void BuildMotionTables(void)
         s_fighterStates[i] = unknown;
     for (i = 0; i < M360_MotionTableCount; ++i)
         s_commonStates[M360_MotionTable[i].msid] = M360_MotionTable[i].state;
+    for (i = 0; i < ftMr_MS_SelfCount && i < kFighterStates; ++i)
+        s_fighterStates[i] = ftMr_Init_MotionStateTable[i];
+    ftData_SpecialN[Ft_Kind_Mario] = ftMr_SpecialN_Enter;
+    ftData_SpecialS[Ft_Kind_Mario] = ftMr_SpecialS_Enter;
+    ftData_SpecialHi[Ft_Kind_Mario] = ftMr_SpecialHi_Enter;
+    ftData_SpecialLw[Ft_Kind_Mario] = ftMr_SpecialLw_Enter;
+    ftData_SpecialAirN[Ft_Kind_Mario] = ftMr_SpecialAirN_Enter;
+    ftData_SpecialAirS[Ft_Kind_Mario] = ftMr_SpecialAirS_Enter;
+    ftData_SpecialAirHi[Ft_Kind_Mario] = ftMr_SpecialAirHi_Enter;
+    ftData_SpecialAirLw[Ft_Kind_Mario] = ftMr_SpecialAirLw_Enter;
 }
 
 static int FloorAt(float x, float yTop, float yBottom, int allowPlatform, float* y,
@@ -966,6 +1000,23 @@ static int AirCollide(HSD_GObj* gobj)
         return 0;
     fp->coll_data.env_flags |= Collide_FloorHug;
     return 1;
+}
+
+GroundOrAir ft_80081D0C(Fighter_GObj* gobj)
+{
+    return AirCollide(gobj) ? GA_Air : GA_Ground;
+}
+
+bool ft_800824A0(Fighter_GObj* gobj, ftCollisionBox* ecb)
+{
+    (void) ecb;
+    return AirCollide(gobj) != 0;
+}
+
+bool ft_80082888(Fighter_GObj* gobj, ftCollisionBox* ecb)
+{
+    (void) ecb;
+    return GroundStep(gobj, 0) != 0;
 }
 
 void ft_80083910(Fighter_GObj* gobj, HSD_GObjEvent cb)
@@ -1390,6 +1441,8 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->x20_actionStateList = s_fighterStates;
     fp->anim_id = -1;
     fp->gobj = gobj;
+    fp->dat_attrs_backup = f->datAttrs;
+    ftMr_Init_OnLoad(gobj);
     fp->x21FC_flag.byte = 1;
     fp->smash_attrs.x2135 = -1;
     fp->coll_data.floor.index = -1;
@@ -1442,6 +1495,7 @@ void M360_FighterRespawn(void* handle, float x, float y)
     s_playerPos[fp->player_id].y = y;
     Fighter_UnkInitReset_80067C98(fp);
     Fighter_ResetInputData_80068854(gobj);
+    ftMr_Init_OnDeath(gobj);
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
     fp->gr_vel = 0.0f;
