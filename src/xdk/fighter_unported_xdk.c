@@ -7,6 +7,7 @@
 #include <melee/db/db.h>
 #include <melee/ft/ftdata.h>
 #include <melee/gr/stage.h>
+#include <melee/gr/ground.h>
 #include <melee/gm/gm_18A1.h>
 #include <melee/lb/lblanguage.h>
 #include <sysdolphin/baselib/mobj.h>
@@ -142,22 +143,8 @@ static void Report(const char* name)
 #define SILENT_VOID(name, params) \
     void name params { }
 
-UNPORTED_BOOL(ftCo_80094E54, (Fighter* fp))
-UNPORTED_BOOL(ftCo_80095328, (Fighter_GObj* gobj, bool* arg))
-UNPORTED_VOID(ftCo_800957F4, (Fighter_GObj* gobj, FtMotionId msid))
-UNPORTED_VOID(ftCo_800C4ED8, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_800C5500, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800C5A50, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_800C5D34, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_Attack_800CDD14, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_HammerLanding_Enter, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftCo_ItemScrew_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftMh_MS_389_80151018, (HSD_GObj* gobj))
 UNPORTED_VOID(ftCh_GrabUnk1_8015BC88, (HSD_GObj* gobj))
-UNPORTED_BOOL(ftpickupitem_80094790, (HSD_GObj* gobj))
-UNPORTED_VOID(ftpickupitem_80094818, (HSD_GObj* gobj, bool arg))
-UNPORTED_BOOL(ft_800D2D0C, (Fighter_GObj* gobj))
-UNPORTED_VOID(ft_800D2E7C, (Fighter_GObj* gobj, Vec3* v))
 UNPORTED_VOID(ftCo_800C8540, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
 UNPORTED_VOID(ft_80081C88, (Fighter_GObj* gobj, float scl_y))
@@ -206,7 +193,6 @@ bool ftCo_8009E714(Fighter_GObj* gobj, Fighter_Part part, int a, float x, float 
     (void) gobj; (void) part; (void) a; (void) x; (void) y; (void) b; (void) c; (void) d;
     return false;
 }
-bool ftCo_800C5240(Fighter_GObj* gobj) { (void) gobj; return false; }
 int mpLineGetNext(int line_id) { (void) line_id; return -1; }
 int mpLineGetPrev(int line_id) { (void) line_id; return -1; }
 
@@ -234,14 +220,11 @@ HSD_GObjEvent ftData_SpecialAirN[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialAirS[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialAirLw[Ft_Kind_Max];
 
-UNPORTED_VOID(ftCo_800CDDA0, (Fighter_GObj* gobj))
 UNPORTED_VOID(pl_8003E854, (int a, int b, Item_GObj* c))
 SILENT_VOID(efLib_PauseAll, (HSD_GObj* gobj))
 SILENT_VOID(efLib_ResumeAll, (HSD_GObj* gobj))
 UNPORTED_BOOL(ftCo_800C60C8, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftpickupitem_8009447C, (HSD_GObj* gobj, Item_GObj* item))
 bool gm_8016B0FC(void) { return false; }
-Item_GObj* ftpickupitem_800942A0(Fighter_GObj* gobj, u32 flags) { (void) gobj; (void) flags; return NULL; }
 void efAsync_Spawn(HSD_GObj* gobj, void* queue_head, u32 spawn_kind, u32 gfx_id, HSD_JObj* jobj, ...)
 {
     (void) gobj; (void) queue_head; (void) spawn_kind; (void) gfx_id; (void) jobj;
@@ -389,34 +372,11 @@ void ftPartsPObjSetDefaultClass(void) {  Report("fighter.unported.ftPartsPObjSet
 void ftPartsPObjClearDefaultClass(void) {  Report("fighter.unported.ftPartsPObjClearDefaultClass");  }
 void ftMh_MS_343_80151484(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftMh_MS_343_80151484");  }
 void ftMh_MS_341_8014FE58(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftMh_MS_341_8014FE58");  }
-void ftCo_HammerWait_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerWait_IASA");  }
-void ftCo_HammerFall_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerFall_IASA");  }
-void ftCo_DamageIce_Init(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_Init");  }
-void ftCo_DamageIce_HitWhileFrozen(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_HitWhileFrozen");  }
 bool ftCo_800D3158(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800D3158"); return (bool) 0; }
-bool ftCo_800D2FA4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800D2FA4"); return (bool) 0; }
 bool ftCo_800C74F4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C74F4"); return (bool) 0; }
 void ftCo_800C703C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C703C");  }
-bool ftCo_800C5DDC(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C5DDC"); return (bool) 0; }
-bool ftCo_800C5CD4(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C5CD4"); return (bool) 0; }
-void ftCo_800C555C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C555C");  }
-void ftCo_800C554C(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800C554C");  }
-bool ftCo_800C53E4(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800C53E4"); return (bool) 0; }
-void ftCo_800C511C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C511C");  }
-bool ftCo_800C44CC(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C44CC"); return (bool) 0; }
-bool ftCo_800C3538(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C3538"); return (bool) 0; }
-void ftCo_800C318C(Fighter_GObj* a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800C318C");  }
 void ftCo_800C2FD8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C2FD8");  }
-bool ftCo_800C0CB8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C0CB8"); return (bool) 0; }
-void ftCo_800C0B20(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C0B20");  }
-void ftCo_800C0A98(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C0A98");  }
-bool ftCo_800C0A28(Fighter_GObj* a0, UNK_T a1, ftCommon_BuryType a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftCo_800C0A28"); return (bool) 0; }
-void ftCo_800C08A0(Fighter_GObj* a0, Fighter_GObj* a1, DynamicsDesc* a2, ftCommon_BuryType a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.ftCo_800C08A0");  }
-void ftCo_800C0874(Fighter_GObj* a0, UNK_T a1, ftCommon_BuryType a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftCo_800C0874");  }
 void ftCo_800A0DA4(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800A0DA4");  }
-void ftCo_8009750C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_8009750C");  }
-void ftCo_80095744(Fighter_GObj* a0, bool* a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_80095744");  }
-void ftCo_80090984(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80090984");  }
 void ftCh_Init_80156014(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_Init_80156014");  }
 void ftCh_GrabUnk1_8015ADD0(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_GrabUnk1_8015ADD0");  }
 void ftAnim_80070F28(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070F28");  }
@@ -430,16 +390,10 @@ s32 Player_GetRemainingHPByIndex(s32 a0, s32 a1) { (void) a0; (void) a1; Report(
 bool Player_GetMoreFlagsBit3(s32 a0) { (void) a0; Report("fighter.unported.Player_GetMoreFlagsBit3"); return (bool) 0; }
 bool Player_GetMoreFlagsBit0(s32 a0) { (void) a0; Report("fighter.unported.Player_GetMoreFlagsBit0"); return (bool) 0; }
 int Player_GetCoins(int a0) { (void) a0; Report("fighter.unported.Player_GetCoins"); return (int) 0; }
-int Fighter_SuperMushroomEnd(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_SuperMushroomEnd"); return (int) 0; }
-bool Fighter_SuperMushroomApply(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_SuperMushroomApply"); return (bool) 0; }
-bool Fighter_PoisonMushroomEnd(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_PoisonMushroomEnd"); return (bool) 0; }
-bool Fighter_PoisonMushroomApply(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_PoisonMushroomApply"); return (bool) 0; }
 
 /* Shield, dodge and special-fall dependencies. Item tosses and grabs out of
  * shield stay unavailable until items/grabs are integrated; the Yoshi and
  * Sheik branches are unreachable with the current Mario-only roster. */
-UNPORTED_BOOL(ftCo_8009515C, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_8009563C, (Fighter_GObj* gobj))
 SILENT_VOID(efLib_SetParamAlpha, (HSD_GObj* gobj, u8 alpha))
 SILENT_VOID(pl_8003E0E8, (int slot, int sub))
 SILENT_VOID(pl_8003E114, (int slot, int sub, float health))
@@ -448,11 +402,6 @@ int un_80322598(int spawn_id, float y) { (void) spawn_id; (void) y; return 0; }
 
 /* Grab/throw dependencies outside the Mario-vs-Mario match: item grabs,
  * tether/hookshot items, cargo throws, Kirby/Yoshi/Samus/Mewtwo/Fox hooks. */
-UNPORTED_BOOL(ftCo_800951D0, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_80095254, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800952DC, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftpickupitem_80094694, (Fighter_GObj* gobj, FtMotionId msid, bool arg))
-UNPORTED_VOID(ftpickupitem_800948A8, (Fighter_GObj* gobj, Item_GObj* item))
 UNPORTED_VOID(Fighter_UpdateModelScale, (Fighter_GObj* gobj))
 SILENT_VOID(ftCamera_800762F4, (HSD_GObj* gobj))
 SILENT_VOID(pl_80040614, (int slot, bool sub, float damage))
@@ -491,23 +440,8 @@ float Stage_GetCamBoundsTopOffset(void)
 }
 /* Luigi fireball and Dr. Mario pill items. */
 
-/* Item swing states referenced by some characters' motion tables
- * (ft_0CD3.c, ftstarrodswing.c, ftlipstickswing.c). They are entered only
- * while holding a battering item, which the quick match never spawns. */
-#define ITEM_SWING_STATE(name)                                              \
-    void ftCo_##name##_Anim(Fighter_GObj* gobj) { Report("fighter.unported.ftCo_" #name); } \
-    void ftCo_##name##_IASA(Fighter_GObj* gobj) { (void) gobj; }          \
-    void ftCo_##name##_Phys(Fighter_GObj* gobj) { (void) gobj; }          \
-    void ftCo_##name##_Coll(Fighter_GObj* gobj) { (void) gobj; }
-ITEM_SWING_STATE(SwordSwing)
-ITEM_SWING_STATE(BatSwing)
-ITEM_SWING_STATE(ParasolSwing)
-ITEM_SWING_STATE(HarisenSwing)
-ITEM_SWING_STATE(StarRodSwing)
-ITEM_SWING_STATE(LipstickSwing)
 
 /* Item hooks of the added characters (Bowser's flame, item throws). */
-UNPORTED_BOOL(ftCo_80094EA4, (Fighter_GObj* gobj))
 bool mpLib_80056C54(int line_id, Vec3* pos, int* line_id_out, Vec3* vec_out, u32* flags_out,
                     Vec3* normal_out, float a, float b)
 {
@@ -516,12 +450,6 @@ bool mpLib_80056C54(int line_id, Vec3* pos, int* line_id_out, Vec3* vec_out, u32
     Report("fighter.unported.mpLib_80056C54");
     return false;
 }
-UNPORTED_VOID(ftCo_800CD350, (Fighter_GObj* gobj, int a, int b, float c))
-UNPORTED_VOID(ftCo_800CD418, (Fighter_GObj* gobj, int a, int b, float c))
-UNPORTED_VOID(ftCo_800CD4E0, (Fighter_GObj* gobj, int a, int b, float c))
-UNPORTED_VOID(ftCo_800CD5A8, (Fighter_GObj* gobj, int a, int b, float c))
-UNPORTED_VOID(ftCo_800CD82C, (Fighter_GObj* gobj, int a, int b, float c))
-UNPORTED_VOID(ftCo_800CDAB4, (Fighter_GObj* gobj, int a, int b, float c))
 
 /* Projectile/held items and stage hooks of Fox, Falco, Pikachu, Pichu,
  * Samus, Link, Young Link, Mewtwo, Zelda and Sheik (generated from the
@@ -540,7 +468,6 @@ unsigned int pl_800386D8(plActionStats* a0, ssize_t a1) { (void) a0; (void) a1; 
 /* Peach, Yoshi, Ness and Mr. Game & Watch items plus Kirby copy hooks
  * (generated by tools/host_xdk_check/gen_stubs.py). */
 void HSD_MObjReqAnim(HSD_MObj* mobj, f32 startframe) { (void) mobj; (void) startframe; Report("fighter.unported.HSD_MObjReqAnim"); }
-bool ftCo_800C0C88(ftCommon_BuryType a0) { (void) a0; Report("fighter.unported.ftCo_800C0C88"); return (bool) 0; }
 s32 ftKb_SpecialN_800F1CD8(HSD_GObj* gobj) { (void) gobj; Report("fighter.unported.ftKb_SpecialN_800F1CD8"); return (s32) 0; }
 void ftKb_SpecialN_800F1D24(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ftKb_SpecialN_800F1D24"); }
 void ftKb_SpecialN_800F1F1C(Fighter_GObj* gobj, Vec3* a1) { (void) gobj; (void) a1; Report("fighter.unported.ftKb_SpecialN_800F1F1C"); }
@@ -610,8 +537,6 @@ void ftCo_800C7800(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.f
 void ftCo_800C78B0(HSD_GObj* gobj, HSD_GObj* owner) { (void) gobj; (void) owner; Report("fighter.unported.ftCo_800C78B0"); }
 void ftCo_800C7B0C(Fighter_GObj* gobj, Vec3* arg1, Vec3* arg2, lbColl_80008D30_arg1* arg3, f32 arg4) { (void) gobj; (void) arg1; (void) arg2; (void) arg3; (void) arg4; Report("fighter.unported.ftCo_800C7B0C"); }
 void ftCo_800C7C60(Fighter_GObj* gobj, int damage_amount) { (void) gobj; (void) damage_amount; Report("fighter.unported.ftCo_800C7C60"); }
-void ftCo_800C92E4(Fighter_GObj* gobj, Vec3* a1, Vec3* a2, lbColl_80008D30_arg1* a3, float a4) { (void) gobj; (void) a1; (void) a2; (void) a3; (void) a4; Report("fighter.unported.ftCo_800C92E4"); }
-void ftCo_Barrel_Enter(Fighter_GObj* gobj, Item_GObj* a1) { (void) gobj; (void) a1; Report("fighter.unported.ftCo_Barrel_Enter"); }
 void ftData_80085560(int idx, int increment) { (void) idx; (void) increment; Report("fighter.unported.ftData_80085560"); }
 void ftData_8008572C(FighterKind a0) { (void) a0; Report("fighter.unported.ftData_8008572C"); }
 void ftData_800857E0(FighterKind a0) { (void) a0; Report("fighter.unported.ftData_800857E0"); }
@@ -735,3 +660,19 @@ bool lbLang_IsSettingJP(void) { return false; }
 StKind Stage_80225194(void) { return (StKind) 0; }
 GrKind Stage_8022519C(StKind stkind) { (void) stkind; return (GrKind) 0; }
 bool Stage_80224FDC(Vec3* out) { (void) out; return false; }
+
+/* Dynamics, part-animation, stat and ground hooks of the item states. */
+bool Ground_801C4DD0(void) {  Report("fighter.unported.Ground_801C4DD0"); return (bool) 0; }
+DynamicsDesc* Ground_801C5700(int i) { (void) i; Report("fighter.unported.Ground_801C5700"); return (DynamicsDesc*) 0; }
+void ftAnim_80070734(HSD_JObj* a0, float frame) { (void) a0; (void) frame; Report("fighter.unported.ftAnim_80070734"); }
+void ftCo_8009E140(Fighter* fp, bool a1) { (void) fp; (void) a1; Report("fighter.unported.ftCo_8009E140"); }
+void ftCo_8009EAF8(HSD_GObj* gobj) { (void) gobj; Report("fighter.unported.ftCo_8009EAF8"); }
+void ft_800880AC(Fighter* a0) { (void) a0; Report("fighter.unported.ft_800880AC"); }
+void ft_80088110(Fighter* a0) { (void) a0; Report("fighter.unported.ft_80088110"); }
+void pl_8003E978(int slot, bool fp_x221F_b4, Item_GObj* item_gobj) { (void) slot; (void) fp_x221F_b4; (void) item_gobj; Report("fighter.unported.pl_8003E978"); }
+void pl_8003EC30(int slot, int a1, int a2, float a3) { (void) slot; (void) a1; (void) a2; (void) a3; Report("fighter.unported.pl_8003EC30"); }
+void pl_8003FDF4(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_8003FDF4"); }
+void pl_800403C0(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_800403C0"); }
+Fighter_ItemEvent ftData_OnItemPickupExt[Ft_Kind_Max];
+/* gr/stage.c state; only the Bury states read it here. */
+StageInfo stage_info;
