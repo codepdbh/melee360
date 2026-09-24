@@ -2906,6 +2906,37 @@ void M360_FighterSetDamage(void* handle, float percent)
     fp->dmg.x1830_percent = percent;
 }
 
+/* Grounded fighters ride their floor line when stage collision moves: the
+ * point under the fighter keeps its parameter along the line. */
+void M360_FighterFollowFloors(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    unsigned i;
+    for (i = 0; i < ARRAY_SIZE(s_fighters); ++i) {
+        M360Fighter* f = &s_fighters[i];
+        Fighter* fp = &f->fighter;
+        const M360StageLine* l;
+        float dx, t, nx, ny, ox, oy;
+        int line;
+        if (!f->gobj || f->dead || fp->x221F_b3 || fp->ground_or_air != GA_Ground)
+            continue;
+        line = fp->coll_data.floor.index;
+        if (line < 0 || (unsigned) line >= st->lineCount)
+            continue;
+        l = &st->lines[line];
+        if (l->x0 == l->px0 && l->y0 == l->py0 && l->x1 == l->px1 && l->y1 == l->py1)
+            continue;
+        dx = l->px1 - l->px0;
+        t = dx > 1e-4f || dx < -1e-4f ? (fp->cur_pos.x - l->px0) / dx : 0.5f;
+        ox = l->px0 + dx * t;
+        oy = l->py0 + (l->py1 - l->py0) * t;
+        nx = l->x0 + (l->x1 - l->x0) * t;
+        ny = l->y0 + (l->y1 - l->y0) * t;
+        fp->cur_pos.x += nx - ox;
+        fp->cur_pos.y += ny - oy;
+    }
+}
+
 /* Awake Ice Climbers partner of a slot, or NULL. */
 void* M360_FighterFollower(int slot)
 {
