@@ -31,3 +31,4 @@ upstream/
 third_party/
 reference/
 tools/xenon-emulator/
+build-host/

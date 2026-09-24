@@ -66,7 +66,7 @@ function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$Sta
 }
 
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
-$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,247,248,249,250,244)
+$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,247,248,249,250,244,178,179,180,181,182,205,206,207,208,209,210,211,233,234,235,236,237,238,35,36,37)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
 $tableStart = $motionText.IndexOf('MotionState ftData_MotionStateList[ftCo_MS_Count] = {')
 $headers = $motionText.Substring(0, $tableStart)
@@ -184,13 +184,22 @@ $units = @(
     @{ Path = (Join-Path $probe 'ftchangeparam.c'); Dir = (Join-Path $src 'melee/ft') },
     @{ Path = (Join-Path $src 'melee/lb/lbcommand.c') },
     @{ Path = (Join-Path $src 'melee/lb/lbanim.c') },
-    @{ Path = $motionTable; Dir = (Join-Path $src 'melee/ft') }
+    @{ Path = $motionTable; Dir = (Join-Path $src 'melee/ft') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_FallSpecial.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Guard.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Escape.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_EscapeAir.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakFly.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakFall.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakDown.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ShieldBreakStand.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Furafura.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Rebound.c') }
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C(', 'void ft_80084DB0(') 'ft_081B_slice'
 $units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_0A01.c' '/// @todo .sdata2 order hack' @('static inline float convertStickAxis(', 'float ftCo_GetCpuLStickX(', 'float ftCo_GetCpuLStickY(', 'float ftCo_GetCpuLTrigger(', 'float ftCo_GetCpuRTrigger(', 'HSD_Pad ftCo_GetCpuButtons(', 'float ftCo_GetCpuCStickX(', 'float ftCo_GetCpuCStickY(', 'bool ftCo_IsCpuControlled(') 'ftCo_0A01_cpu_input_slice'
 $units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
 $units += New-Slice 'melee/ft/ftswing.c' 'void ftCo_FallAerial_Coll(' @('void ftCo_FallAerial_Coll(') 'ftswing_slice'
-$units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_FallSpecial.c' 'void ftCo_800968C8(' @('bool ftCo_80096CC8(') 'ftCo_FallSpecial_slice'
 
 $objects = @()
 $base = @('/nologo','/c','/TC','/O2','/MT','/GS-','/D_XBOX','/DXBOX','/DNDEBUG',

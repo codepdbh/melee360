@@ -436,6 +436,63 @@ void ftAnim_8006FF74(Fighter* fp, Fighter_Part start)
     (void) fp; (void) start;
 }
 
+/* The shield-tilt pose blends a second skeleton (x8AC_animSkeleton) that the
+ * native animation path does not build yet; the Guard animation itself still
+ * plays through the normal motion tree. */
+void ftAnim_8006F4C8(Fighter* fp, bool do_blending, FigaTree* tree)
+{
+    (void) fp; (void) do_blending; (void) tree;
+}
+
+void ftAnim_8006FA58(Fighter* fp, Fighter_Part part, HSD_Joint* joint)
+{
+    (void) fp; (void) part; (void) joint;
+}
+
+void ftAnim_8006FB88(Fighter* fp, Fighter_Part part, HSD_Joint* joint)
+{
+    (void) fp; (void) part; (void) joint;
+}
+
+void ftAnim_80070010(Fighter* fp, Fighter_Part start, float t, float t_inv, HSD_Joint* joint)
+{
+    (void) fp; (void) start; (void) t; (void) t_inv; (void) joint;
+}
+
+void ftAnim_80070108(Fighter* fp, Fighter_Part start, float t, float t_inv, HSD_Joint* joint)
+{
+    (void) fp; (void) start; (void) t; (void) t_inv; (void) joint;
+}
+
+void ftAnim_80070710(HSD_JObj* jobj, float frame)
+{
+    (void) jobj; (void) frame;
+}
+
+FigaTree* ftData_80085E50(Fighter* fp, enum_t msid)
+{
+    (void) fp; (void) msid;
+    return NULL;
+}
+
+static HSD_JObj* FindAnimatedJObj(HSD_JObj* jobj)
+{
+    for (; jobj; jobj = jobj->next) {
+        HSD_JObj* child;
+        if (jobj->aobj)
+            return jobj;
+        if (!(jobj->flags & JOBJ_INSTANCE) && (child = FindAnimatedJObj(jobj->child)) != NULL)
+            return child;
+    }
+    return NULL;
+}
+
+float lbGetJObjEndFrame(HSD_JObj* jobj)
+{
+    jobj = FindAnimatedJObj(jobj);
+    return jobj ? jobj->aobj->end_frame : 0.0f;
+}
+
 void ftData_80085CD8(Fighter* fp, Fighter* src, enum_t msid)
 {
     (void) src;
@@ -844,6 +901,24 @@ void ft_80082F28(Fighter_GObj* gobj)
         }
         ftCo_Landing_Enter_Basic(gobj);
     }
+}
+
+void ft_80083090(Fighter_GObj* gobj, bool (*arg1)(Fighter_GObj*, int), HSD_GObjEvent cb)
+{
+    ft_800831CC(gobj, arg1, cb);
+}
+
+void ft_800845B4(Fighter_GObj* gobj)
+{
+    if (!GroundStep(gobj, 0))
+        ftCo_Fall_Enter(gobj);
+}
+
+void ft_800847D0(Fighter_GObj* gobj, ftCollisionBox* box)
+{
+    (void) box;
+    if (!GroundStep(gobj, 0))
+        ftCo_Fall_Enter(gobj);
 }
 
 bool ft_80084A18(Fighter_GObj* gobj)
