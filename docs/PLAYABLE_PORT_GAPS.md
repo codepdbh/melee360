@@ -45,6 +45,41 @@ nibble-boundary regression checks pass. Local validation scripts/results are in
 `build-x360/audio-validation/`. These checks do not establish audible playback
 in Xenia or on console; that still needs an in-game listening check.
 
+## Original common actions (2026-09-24)
+
+`tools/build_match_xdk.ps1` now also compiles the original shield, dodge,
+grab/throw, captured, ledge, teeter, taunt, special-fall and rebound units and
+Mario's special moves (`ftmario.c`, `ftmariospecial{n,s,hi,lw}.c`). Their
+motion-table entries are extracted with the others; the Mario table fills the
+fighter-specific state list and the `ftData_Special*` dispatch slots.
+
+Native glue additions, all over the loaded Battlefield collision lines:
+
+- air/ground collision variants used by these states, including landing
+  checks for a released or thrown victim that only have a `CollData`;
+- ledge detection from the fighter's original ledge-snap box (`ftData` x44)
+  on ledge-flagged floor ends while falling, feeding `ftCliffCommon_80081298`;
+- the Wait/Walk edge stop that raises `Collide_Edge` for teeter;
+- floor endpoint/distance/connection queries and a segment raycast.
+
+Still missing for these actions: item objects (fireball, cape, tether
+items, item throws out of shield), the shield bubble effect, the stick-driven
+shield tilt (second animation skeleton), wall-bound ledge edge cases, moving
+ledges and non-Mario character hooks, which are traced as
+`fighter.unported.*`. A successful ledge grab traces `fighter.cliff.catch`.
+
+### Host link check
+
+The XDK is not available in every environment. `tools/host_xdk_check/`
+contains a clang-based stand-in for the XDK `cl.exe` (32-bit MSVC mode, stub
+CRT headers) so `tools/probe_gameplay_xdk.ps1` and `tools/build_match_xdk.ps1`
+can run unchanged under PowerShell on Linux. `check_match.sh` compiles the
+match objects and reports referenced symbols that neither they, the other XEX
+sources (approximated by `external_defined.py`) nor the recorded baseline
+define, plus duplicate definitions. It needs `upstream/melee-pc` at the pinned
+commit, `pwsh`, `clang` and `llvm-nm`. Passing it means the units compile and
+the link is expected to resolve; it is not an XDK build and runs no code.
+
 ## Missing integration
 
 - Reproduce movement, jumping, attacks and hitstun in Xenia with recorded
@@ -63,10 +98,11 @@ in Xenia or on console; that still needs an in-game listening check.
   VS rules, fighter selection, stage selection, configurable stocks/time and
   persistent results flow are not integrated. P2 uses a connected second
   controller when available; otherwise a basic approach-and-attack CPU is used.
-- Stage collision now supports floor/wall checks, downward platform drop-through
-  and a basic ceiling crossing stop. Ledge grabs/slips, platform one-way edge
-  cases, moving geometry, hazards, items and the original full collision flags
-  remain incomplete.
+- Stage collision now supports floor/wall checks, downward platform drop-through,
+  a basic ceiling crossing stop, ledge grabs and edge teeter. ECB-based
+  collision, ledge slips (MissFoot), platform one-way edge cases, moving
+  geometry, hazards, items and the original full collision flags remain
+  incomplete.
 - Quick match now uses four stocks, reports a winner and returns to the menu
   with B; a connected second XInput controller can control P2. The stock count
   is fixed, there is no match timer, and VS setup still bypasses character/stage
