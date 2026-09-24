@@ -22,6 +22,11 @@ awk '{print $1}' "$ROOT/tools/host_xdk_check/baseline-undefined.txt" | sort > "$
 python3 "$ROOT/tools/host_xdk_check/external_defined.py" > "$OUT/external.names"
 sort -u "$OUT/baseline.names" "$OUT/external.names" > "$OUT/resolved.names"
 comm -23 "$OUT/undefined.names" "$OUT/resolved.names" > "$OUT/new-undefined.names"
+# Functions both the match objects and the rest of the XEX define would
+# collide at link time.
+for o in "$OUT"/match/*.obj; do /usr/lib/llvm-18/bin/llvm-nm --defined-only "$o"; done |
+    awk '$2 == "T" {sub(/^_/, "", $3); print $3}' | sort -u > "$OUT/defined.names"
+comm -12 "$OUT/defined.names" <(sort -u "$OUT/external.names") | sed 's/^/DUPLICATE-XEX /' || true
 echo "match objects: $(ls "$OUT"/match/*.obj | wc -l); undefined: $(wc -l < "$OUT/undefined.names"); new vs baseline: $(wc -l < "$OUT/new-undefined.names")"
 grep -wFf "$OUT/new-undefined.names" "$OUT/undefined.txt" || true
 # The XDK C front end is C89: flag late declarations and implicit calls in
