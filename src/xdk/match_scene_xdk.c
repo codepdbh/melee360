@@ -1024,6 +1024,13 @@ int M360_MatchFrame(void)
         /* Zelda/Sheik swap the slot's active fighter (Player_GetEntity). */
         if (M360_FighterActive((int) i))
             s_fighters[i] = M360_FighterActive((int) i);
+        if (M360_FighterFollower((int) i)) {
+            /* Nana is lost on her own when she leaves the blast zone. */
+            void* nana = M360_FighterFollower((int) i);
+            M360_FighterGetState(nana, &x, &y, &facing, &motion, &damage);
+            if (OutsideBlastZone(x, y))
+                M360_FighterSleep(nana);
+        }
         if (s_respawn[i]) {
             if (--s_respawn[i] == 0 && (s_stocksRemaining[i] || TimeMinutes()))
                 M360_FighterRebirth(s_fighters[i]);

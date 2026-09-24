@@ -124,7 +124,11 @@ The select phase also picks the stage (D-pad up/down) and stocks (RB). Six
 stages load from the map GObj ids their original OnInit creates; moving
 platforms, Randall and hazards are not simulated and collision uses the
 authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
-complete the roster; Nana is missing.
+complete the roster. Popo now spawns with Nana as the slot's sub entity (a
+hidden roster entry); she is always CPU driven (`Player_8003248C` reports the
+sub fighter as CPU) and the original AI follows Popo with `cpu.kind` 6. Nana
+is put to sleep when she leaves the blast zone or when Popo loses a stock,
+and rejoins on Popo's rebirth.
 
 Zelda and Sheik spawn together like the original Player code: the partner is
 created as the slot's sub entity and put to sleep (`ftCo_800BFD04`), and
