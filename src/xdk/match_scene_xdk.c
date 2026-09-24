@@ -14,6 +14,7 @@
 #include <sysdolphin/baselib/gobjgxlink.h>
 #include <sysdolphin/baselib/gobjobject.h>
 #include <sysdolphin/baselib/gobjplink.h>
+#include <sysdolphin/baselib/gobjproc.h>
 #include <sysdolphin/baselib/jobj.h>
 #include <sysdolphin/baselib/lobj.h>
 #include <sysdolphin/baselib/wobj.h>
@@ -41,7 +42,32 @@ void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
 void it_8026D018(void);
 s32 HSD_Randi(s32 max);
 void HSD_GObj_RunProcs(void);
+void M360_StageSetKind(int grkind);
+void M360_FighterHangInfo(void* gobj, unsigned* out);
 int M360_InputScriptHolding(void);
+unsigned M360_HeapLargestFree(void);
+unsigned M360_HeapUsed(void);
+
+volatile unsigned g_m360Crumb;
+volatile unsigned g_m360CrumbDetail;
+
+void M360_MatchHangInfo(unsigned* out)
+{
+    HSD_GObjProc* proc = HSD_GObj_CurrentInvokedProc;
+    out[0] = g_m360Crumb;
+    out[1] = proc ? (unsigned) (uintptr_t) proc->on_invoke : 0;
+    out[2] = proc && proc->gobj ? proc->gobj->p_link : 99;
+    out[3] = g_m360CrumbDetail;
+    out[4] = out[5] = out[6] = 0;
+    if (proc && proc->gobj && proc->gobj->p_link == 8)
+        M360_FighterHangInfo(proc->gobj, &out[4]);
+}
+
+static void TraceHeap(const char* used, const char* largest)
+{
+    M360_MatchTrace(used, M360_HeapUsed());
+    M360_MatchTrace(largest, M360_HeapLargestFree());
+}
 
 enum {
     kLinkLight = 0,
@@ -107,18 +133,19 @@ typedef struct M360StageDesc {
     int hidden;
     const M360GrJoint* joints;
     int jointCount;
+    int grkind;
 } M360StageDesc;
 
 static const M360StageDesc s_stages[] = {
-    { "BATTLEFIELD", "GrNBa.dat", { 0, 3, 1, 6, -1 }, 3, NULL, 0 },
-    { "FINAL DESTINATION", "GrNLa.dat", { 0, 1, 2, 3, -1 }, -1, kLastJoints, 1 },
-    { "DREAM LAND", "GrOp.dat", { 0, 3, 7, 5, 4, 6, 1, 8, -1 }, -1, NULL, 0 },
-    { "YOSHIS STORY", "GrSt.dat", { 0, 1, 3, 2, -1 }, -1, NULL, 0 },
-    { "FOUNTAIN OF DREAMS", "GrIz.dat", { 0, 1, 3, -1 }, -1, kIzumiJoints, 3 },
-    { "YOSHIS ISLAND 64", "GrOy.dat", { 0, 1, 4, 5, 2, 3, -1 }, -1, NULL, 0 },
-    { "HYRULE TEMPLE", "GrSh.dat", { 0, 1, 2, -1 }, -1, NULL, 0 },
-    { "KONGO JUNGLE 64", "GrOk.dat", { 0, 3, 1, 2, -1 }, -1, kOldKongoJoints, 2 },
-    { "JUNGLE JAPES", "GrGd.dat", { 0, 4, 5, 6, 1, 3, 2, -1 }, -1, NULL, 0 },
+    { "BATTLEFIELD", "GrNBa.dat", { 0, 3, 1, 6, -1 }, 3, NULL, 0, Gr_Kind_Battle },
+    { "FINAL DESTINATION", "GrNLa.dat", { 0, 1, 2, 3, -1 }, -1, kLastJoints, 1, Gr_Kind_Last },
+    { "DREAM LAND", "GrOp.dat", { 0, 3, 7, 5, 4, 6, 1, 8, -1 }, -1, NULL, 0, Gr_Kind_OldPupupu },
+    { "YOSHIS STORY", "GrSt.dat", { 0, 1, 3, 2, -1 }, -1, NULL, 0, Gr_Kind_Story },
+    { "FOUNTAIN OF DREAMS", "GrIz.dat", { 0, 1, 3, -1 }, -1, kIzumiJoints, 3, Gr_Kind_Izumi },
+    { "YOSHIS ISLAND 64", "GrOy.dat", { 0, 1, 4, 5, 2, 3, -1 }, -1, NULL, 0, Gr_Kind_OldYoshi },
+    { "HYRULE TEMPLE", "GrSh.dat", { 0, 1, 2, -1 }, -1, NULL, 0, Gr_Kind_Shrine },
+    { "KONGO JUNGLE 64", "GrOk.dat", { 0, 3, 1, 2, -1 }, -1, kOldKongoJoints, 2, Gr_Kind_OldKongo },
+    { "JUNGLE JAPES", "GrGd.dat", { 0, 4, 5, 6, 1, 3, 2, -1 }, -1, NULL, 0, Gr_Kind_Garden },
 };
 
 enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
@@ -190,6 +217,7 @@ static unsigned s_slotCount = 2;
 static unsigned s_selReady[kMaxFighters];
 static int s_selHuman[kMaxFighters];
 static float s_selPrevStick[kMaxFighters];
+static int s_selProbeP2;
 
 static int IsCampaign(void);
 static void StartFight(void);
@@ -872,6 +900,7 @@ static int BuildStage(unsigned index)
         index = 0;
     }
     desc = &s_stages[index];
+    M360_StageSetKind(desc->grkind);
     if (s_builtStage != ~0u)
         FreeAllGObjs();
     memset(s_points, 0, sizeof(s_points));
@@ -949,8 +978,7 @@ void M360_MatchEnter(void)
         s_selHuman[i] = 0;
     if (IsCampaign())
         s_slotCount = 2;
-    else if (M360_MatchControllerConnected(1))
-        s_selHuman[1] = 1;
+    s_selProbeP2 = !IsCampaign();
     s_phase = kPhaseSelect;
     if (IsCampaign() && s_campaignRound > 0) {
         s_selReady[0] = s_selReady[1] = 1;
@@ -1018,6 +1046,7 @@ static void StartFight(void)
     it_8026D018();
     CamUpdate(1);
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
+    TraceHeap("match.heap.used", "match.heap.largest_free");
     M360_MatchTrace("match.p2.human", s_human[1]);
 }
 
@@ -1113,6 +1142,13 @@ static int SelectFrame(void)
 {
     unsigned i;
     int allReady;
+    /* Pads are read by the frame loop, so a second controller is probed on
+     * the first select frame rather than at match entry. */
+    if (s_selProbeP2) {
+        s_selProbeP2 = 0;
+        if (M360_MatchControllerConnected(1))
+            s_selHuman[1] = 1;
+    }
     for (i = 1; i < kMaxFighters && !IsCampaign(); ++i) {
         if (!s_selHuman[i] && M360_MatchControllerConnected(i) &&
             (M360_MatchPadTriggeredPort(i) & 0x1F00u)) {
@@ -1190,6 +1226,8 @@ int M360_MatchFrame(void)
                     unsigned fm, fd;
                     M360_FighterGetState(s_fighters[i], &fx, &fy, &facing, &fm, &fd);
                     M360_MatchTrace(i ? "snap.p2.facing_neg" : "snap.p1.facing_neg", facing < 0.0f);
+                    if (!s_human[i])
+                        M360_FighterTraceCpu(s_fighters[i]);
                 }
             }
         }
@@ -1219,7 +1257,9 @@ int M360_MatchFrame(void)
             M360_MatchTrace("match.join", i);
         }
     }
+    g_m360Crumb = 1;
     HSD_GObj_RunProcs();
+    g_m360Crumb = 2;
     for (i = 0; i < s_fighterCount; ++i) {
         float x, y, facing;
         unsigned motion, damage;
@@ -1320,14 +1360,22 @@ int M360_MatchFrame(void)
             M360_MatchTrace("match.result.winner", s_winner);
         }
     }
+    if (s_frame % 300 == 0) {
+        TraceHeap("match.heap.used", "match.heap.largest_free");
+        for (i = 0; i < s_fighterCount; ++i)
+            if (s_fighters[i] && !s_human[i])
+                M360_FighterTraceCpu(s_fighters[i]);
+    }
     CamUpdate(0);
     return M360_MATCH_CONTINUE;
 }
 
 void M360_MatchRender(void)
 {
+    g_m360Crumb = 4;
     if (s_active)
         HSD_GObj_80390FC0();
+    g_m360Crumb = 5;
 }
 
 void M360_MatchLeave(void)

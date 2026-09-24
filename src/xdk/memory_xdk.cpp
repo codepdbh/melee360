@@ -129,6 +129,24 @@ extern "C" long OSCheckHeap(int heap)
     return free_bytes;
 }
 
+extern "C" unsigned M360_HeapLargestFree(void)
+{
+    u32 largest = 0;
+    for (M360_MemBlock* block = s_first; block; block = block->next)
+        if (!block->used && block->size > largest)
+            largest = block->size;
+    return largest;
+}
+
+extern "C" unsigned M360_HeapUsed(void)
+{
+    u32 used = 0;
+    for (M360_MemBlock* block = s_first; block; block = block->next)
+        if (block->used)
+            used += block->size + kHeaderSize;
+    return used;
+}
+
 extern "C" void M360_HSD_MemoryAssertFail(const char* file, u32 line, const char* expr)
 {
     std::fprintf(stderr, "[M360][MEMORY] assertion failed: %s (%s:%u)\n",

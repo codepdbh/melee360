@@ -666,7 +666,7 @@ Write-Host '[M360][XEX] compiling original fighter states and native match glue'
 $matchObjects = @(& (Join-Path $PSScriptRoot 'build_match_xdk.ps1') -Compiler $compiler -Build $build)
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
-    '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/LIBPATH:$libXbox",
+    '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/MAP:$(Join-Path $build 'melee360.map')", "/LIBPATH:$libXbox",
     $gameplayLayoutObject, $menuInputObject, $menuInputTestObject,
     $object, $compatObject, $lbtimeObject, $padObject, $controllerObject,
     $lbmathObject, $spriteObject, $bootObject, $archiveObject,

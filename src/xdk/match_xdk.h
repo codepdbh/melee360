@@ -136,6 +136,7 @@ void M360_FighterCameraBox(void* gobj, float* x, float* y, float* left,
 void M360_FighterSetCpuLevel(unsigned level);
 unsigned M360_FighterHitCount(void);
 int M360_FighterLastAttacker(void* gobj);
+void M360_FighterTraceCpu(void* gobj);
 
 #ifdef __cplusplus
 }
