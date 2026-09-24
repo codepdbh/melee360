@@ -1395,7 +1395,7 @@ void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleT
     s_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
     s_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     s_device->SetRenderState(D3DRS_DESTBLEND, blend == 1 ? D3DBLEND_ONE : D3DBLEND_INVSRCALPHA);
-    s_device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+    s_device->SetRenderState(D3DRS_ZENABLE, blend == 2 ? D3DZB_FALSE : D3DZB_TRUE);
     s_device->SetRenderState(D3DRS_ZWRITEENABLE, depthWrite ? TRUE : FALSE);
     s_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
     s_device->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALL);
