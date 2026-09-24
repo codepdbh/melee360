@@ -2937,6 +2937,38 @@ void M360_FighterFollowFloors(void)
     }
 }
 
+void M360_DrawDebugCapsule(const Vec3* a, const Vec3* b, float radius, float r, float g,
+                           float bl, float alpha);
+
+/* Debug overlay: hurt capsules in yellow (blue while intangible or
+ * invincible), active hit capsules in red. */
+void M360_FighterDrawHitboxes(void)
+{
+    unsigned i;
+    int j;
+    for (i = 0; i < ARRAY_SIZE(s_fighters); ++i) {
+        M360Fighter* f = &s_fighters[i];
+        Fighter* fp = &f->fighter;
+        if (!f->gobj || f->dead || fp->x221F_b3)
+            continue;
+        for (j = 0; j < fp->hurt_capsules_len && j < (int) ARRAY_SIZE(fp->hurt_capsules); ++j) {
+            const HurtCapsule* h = &fp->hurt_capsules[j].capsule;
+            if (h->state == HurtCapsule_Disabled)
+                continue;
+            if (h->state == HurtCapsule_Enabled)
+                M360_DrawDebugCapsule(&h->a_pos, &h->b_pos, h->scale, 1.0f, 0.9f, 0.1f, 0.35f);
+            else
+                M360_DrawDebugCapsule(&h->a_pos, &h->b_pos, h->scale, 0.2f, 0.5f, 1.0f, 0.35f);
+        }
+        for (j = 0; j < (int) ARRAY_SIZE(fp->x914); ++j) {
+            const HitCapsule* hc = &fp->x914[j];
+            if (hc->state == HitCapsule_Disabled)
+                continue;
+            M360_DrawDebugCapsule(&hc->x58, &hc->x4C, hc->scale, 1.0f, 0.15f, 0.1f, 0.5f);
+        }
+    }
+}
+
 /* Awake Ice Climbers partner of a slot, or NULL. */
 void* M360_FighterFollower(int slot)
 {

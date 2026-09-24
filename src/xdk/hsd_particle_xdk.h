@@ -20,7 +20,8 @@ typedef struct M360ParticleTexture {
 } M360ParticleTexture;
 
 /* Draws one quad (4 corners, clockwise) modulating the texture (white if
- * none) by the vertex colour. blend 0: alpha, 1: additive. */
+ * none) by the vertex colour. blend 0: alpha, 1: additive, 2: alpha without
+ * depth test (debug overlays). */
 void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleTexture* texture,
                           unsigned blend, int depthWrite);
 

@@ -190,6 +190,14 @@ quake kind (loop, small, medium, large) runs for the original frame count
 drives the offset from a stage quake GObj animation (`grLib_801C9CEC`), so the
 exact motion differs.
 
+### Hitbox overlay (2026-09-24)
+
+While a match is paused, X toggles a debug overlay drawn on the last effect
+link without depth test: hurt capsules in yellow (blue when intangible or
+invincible) and active hit capsules in red, from their previous to current
+position. Use it in Xenia to check capsule contact against the
+`fighter.hit.*` trace events.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`
@@ -209,10 +217,9 @@ the link is expected to resolve; it is not an XDK build and runs no code.
   changes; no live Xenia run has verified that the original callbacks respond
   to those inputs. Attack availability still depends on partially stubbed
   fighter helpers.
-- Replace the provisional damage/knockback path with the original damage
-  state flow and validate hitlag, DI, tumble, landing and recovery behavior.
-  Damage motion IDs 75-91 now resolve through Mario's original motion/animation
-  data, but their temporary callbacks and hitstun timing are native scaffolding.
+- Validate hitlag, DI, tumble, landing and recovery behavior in Xenia. The
+  damage states (`ftCo_Damage.c`, `ftCo_DamageFall.c`, the Down states) and
+  `ftcoll.c` now link from the original sources.
 - Verify an actual capsule/hurtbox contact in Xenia and check the new reaction
   trace events (`fighter.hit.reaction_motion`, `fighter.hitstun.frames`); the
   current saved runtime trace predates this change and contains no hit event.
