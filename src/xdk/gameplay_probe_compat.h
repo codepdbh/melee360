@@ -3,6 +3,9 @@
 #include "hsdjobj_xdk_compat.h"
 #include <float.h>
 #include <math.h>
+/* Metrowerks fabs intrinsics; undeclared on XDK they would implicitly return int. */
+#define __fabs(x) fabs(x)
+#define __fabsf(x) fabsf(x)
 /* OSContext is already supplied by the existing XDK platform shim. */
 #define _DOLPHIN_OSCONTEXT_H_
 #include <sysdolphin/baselib/video.h>

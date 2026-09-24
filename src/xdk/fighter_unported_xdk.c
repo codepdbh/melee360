@@ -519,7 +519,6 @@ s8 gm_8017E280(u16 a0, u32 a1) { (void) a0; (void) a1; Report("fighter.unported.
 bool gm_8018841C(void) {  Report("fighter.unported.gm_8018841C"); return (bool) 0; }
 void gm_801BEB68(int a0) { (void) a0; Report("fighter.unported.gm_801BEB68"); }
 void* gm_801BEC54(void) {  Report("fighter.unported.gm_801BEC54"); return (void*) 0; }
-bool gm_IsCKindUnlocked(u8 ckind) { (void) ckind; Report("fighter.unported.gm_IsCKindUnlocked"); return (bool) 0; }
 bool gm_IsCurrently1PMode(void) {  Report("fighter.unported.gm_IsCurrently1PMode"); return (bool) 0; }
 void grCorneria_801DDCF0(Vec3* a0) { (void) a0; Report("fighter.unported.grCorneria_801DDCF0"); }
 void grFigureGet_80219C34(HSD_GObj* a0) { (void) a0; Report("fighter.unported.grFigureGet_80219C34"); }

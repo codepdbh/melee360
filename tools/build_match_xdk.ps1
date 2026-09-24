@@ -65,6 +65,49 @@ function New-RangeSlice([string]$Relative, [string]$FirstSignature, [string]$Sta
     return @{ Path = $path; Dir = (Split-Path (Join-Path $src $Relative)) }
 }
 
+# Drop unused stack-padding arrays inside function bodies (they only steer the
+# original codegen and are often C99 mixed declarations the C89 XDK frontend
+# rejects); struct/union members are untouched. Line numbers are preserved.
+function Convert-PaddingDecls([string]$Text) {
+    $padLine = '^(\s*)((?:UNUSED\s+)?(?:unsigned char|u8|s8|char|u16|s16|u32|s32|int|u64|f32|float)\s+_\s*\[[^\]]*\]\s*;)(\s*)$'
+    $lines = $Text -split "`n"
+    $stack = New-Object System.Collections.Generic.List[string]
+    $pending = ''
+    $changed = $false
+    for ($i = 0; $i -lt $lines.Count; ++$i) {
+        $line = $lines[$i]
+        $trimmed = $line.TrimStart()
+        if ($trimmed.StartsWith('#')) { continue }
+        if ($stack.Count -gt 0 -and $stack[$stack.Count - 1] -eq 'code') {
+            $m = [regex]::Match($line.TrimEnd("`r"), $padLine)
+            if (-not $m.Success) { $m = [regex]::Match($line.TrimEnd("`r"), '^\s*_\s*\[\s*\d+\s*\]\s*=\s*[^;]+;\s*$') }
+            if ($m.Success) {
+                $lines[$i] = $(if ($line.EndsWith("`r")) { "`r" } else { '' })
+                $changed = $true
+                $pending = ''
+                continue
+            }
+        }
+        $code = [regex]::Replace($line, '//.*$|"(?:\\.|[^"\\])*"|''(?:\\.|[^''\\])*''', '')
+        foreach ($ch in $code.ToCharArray()) {
+            if ($ch -eq '{') {
+                $kind = if ($pending -match '\b(struct|union|enum)\b|=\s*$|=\s*\{?\s*$') { 'data' } elseif ($stack.Count -gt 0 -and $stack[$stack.Count - 1] -eq 'data') { 'data' } else { 'code' }
+                $stack.Add($kind); $pending = ''
+            } elseif ($ch -eq '}') {
+                if ($stack.Count -gt 0) { $stack.RemoveAt($stack.Count - 1) }
+                $pending = ''
+            } elseif ($ch -eq ';') {
+                $pending = ''
+            } else {
+                $pending += $ch
+            }
+        }
+        $pending += ' '
+    }
+    if ($changed) { return ($lines -join "`n") }
+    return $Text
+}
+
 function New-Adapted([string]$Relative, [hashtable]$Replacements, [string]$Name) {
     $text = Get-Content -Raw (Join-Path $src $Relative)
     foreach ($key in $Replacements.Keys) { $text = [regex]::Replace($text, $key, $Replacements[$key]) }
@@ -663,10 +706,33 @@ $base = @('/nologo','/c','/TC','/O2','/MT','/GS-','/D_XBOX','/DXBOX','/DNDEBUG',
     "/FI$(Join-Path $root 'src/xdk/gameplay_probe_compat.h')",
     "/FI$overlay/melee/ft/forward.h", "/FI$overlay/melee/ft/kinds/ftCommon/forward.h",
     "/FI$overlay/melee/ft/types.h")
+# Quoted kind "forward.h" includes resolve beside the source before /I paths,
+# so force every kind overlay (same include guards) ahead of the originals.
+$kindForward = @(Get-ChildItem -Path (Join-Path $overlay 'melee/ft/kinds') -Filter 'forward.h' -Recurse |
+    Where-Object { $_.Directory.Name -ne 'ftCommon' } | ForEach-Object { "/FI$($_.FullName)" })
 foreach ($unit in $units) {
     $dir = if ($unit.Dir) { $unit.Dir } else { Split-Path $unit.Path }
     $object = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($unit.Path) + '.obj')
-    & $Compiler ($base + @('/W3', "/I$dir", "/Fo$object", $unit.Path)) | Write-Host
+    $compilePath = $unit.Path
+    $leadInclude = @()
+    $unitText = Get-Content -Raw -LiteralPath $unit.Path
+    # The XDK C frontend rejects const objects inside other constant initializers.
+    $constPattern = '(?m)^static\s+(?:u8|u16|u32|s8|s16|s32|int|MotionFlags)\s+const\s+(\w+)\s*=\s*([^;]+);'
+    # It also rounds the FLT_MAX literal 3.4028235e38f above FLT_MAX; use float.h's spelling.
+    $fltMaxPattern = '3\.4028235e\+?38f?'
+    $adaptedText = [regex]::Replace($unitText, $constPattern, {
+        param($m) 'enum { ' + $m.Groups[1].Value + ' = (' + ($m.Groups[2].Value -replace '\s+', ' ').Trim() + ') };'
+    })
+    $adaptedText = [regex]::Replace($adaptedText, $fltMaxPattern, '3.402823466e+38F')
+    if ($adaptedText -match '\b_\s*\[') { $adaptedText = Convert-PaddingDecls $adaptedText }
+    if ($adaptedText -cne $unitText) {
+        $adaptedDir = Join-Path $out 'const_adapted'
+        New-Item -ItemType Directory -Force $adaptedDir | Out-Null
+        $compilePath = Join-Path $adaptedDir ([IO.Path]::GetFileName($unit.Path))
+        Set-Content -Encoding ASCII -LiteralPath $compilePath $adaptedText
+        $leadInclude = @("/I$dir")
+    }
+    & $Compiler ($leadInclude + $base + $kindForward + @('/W3', "/I$dir", "/Fo$object", $compilePath)) | Write-Host
     if ($LASTEXITCODE -ne 0) { throw "Original fighter unit failed: $($unit.Path)" }
     $objects += $object
 }
