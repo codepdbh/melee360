@@ -29,6 +29,9 @@
 #define SDATA
 #endif
 #define F32_MAX FLT_MAX
+#ifndef SIGNF
+#define SIGNF(x) ((x) > 0.0f ? 1.0f : -1.0f)
+#endif
 #ifndef M_PI_3
 #define M_PI_3 (3.14159265358979323846 / 3.0)
 #endif
