@@ -97,6 +97,7 @@ void M360_MatchSetMode(unsigned gameMode, unsigned round);
 void M360_MatchGetStatus(M360MatchStatus* status);
 const M360MatchStage* M360_MatchStageData(void);
 unsigned M360_MatchStageCount(void);
+unsigned M360_MatchSlotStocks(unsigned slot);
 float M360_MatchStageScale(void);
 void M360_MatchCameraVectors(float* interest, float* eye);
 const char* M360_MatchStageName(unsigned index);
