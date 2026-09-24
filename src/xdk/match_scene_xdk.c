@@ -88,8 +88,9 @@ typedef struct CamBounds {
 
 /* Stages whose original ground code only creates and animates map GObjs;
  * the ids follow each stage's OnInit (grbattle.c, grlast.c, groldpupupu.c,
- * grstory.c, grizumi.c, groldyoshi.c). Moving platforms and hazards are not
- * simulated: collision uses the lines as authored. */
+ * grstory.c, grizumi.c, groldyoshi.c, grshrine.c, groldkongo.c,
+ * grgarden.c). Moving platforms and hazards (Kongo's barrel, Japes' water
+ * and Klaptraps) are not simulated: collision uses the lines as authored. */
 typedef struct M360StageDesc {
     const char* name;
     const char* file;
@@ -104,6 +105,9 @@ static const M360StageDesc s_stages[] = {
     { "YOSHIS STORY", "GrSt.dat", { 0, 1, 3, 2, -1 }, -1 },
     { "FOUNTAIN OF DREAMS", "GrIz.dat", { 0, 1, 3, -1 }, -1 },
     { "YOSHIS ISLAND 64", "GrOy.dat", { 0, 1, 4, 5, 2, 3, -1 }, -1 },
+    { "HYRULE TEMPLE", "GrSh.dat", { 0, 1, 2, -1 }, -1 },
+    { "KONGO JUNGLE 64", "GrOk.dat", { 0, 3, 1, 2, -1 }, -1 },
+    { "JUNGLE JAPES", "GrGd.dat", { 0, 4, 5, 6, 1, 3, 2, -1 }, -1 },
 };
 
 enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
@@ -274,7 +278,7 @@ static void LoadCollision(void)
     DiscVec2* verts = s_coll->verts;
     int i;
     s_stage.lineCount = 0;
-    for (i = 0; i < s_coll->line_count && s_stage.lineCount < 128; ++i) {
+    for (i = 0; i < s_coll->line_count && s_stage.lineCount < M360_MAX_STAGE_LINES; ++i) {
         M360StageLine* out = &s_stage.lines[s_stage.lineCount++];
         out->x0 = verts[lines[i].v0_idx].x * s_scale;
         out->y0 = verts[lines[i].v0_idx].y * s_scale;
