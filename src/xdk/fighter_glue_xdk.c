@@ -42,6 +42,9 @@
 
 #include "match_xdk.h"
 
+bool lb_8000B074(HSD_JObj* jobj);
+void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
+
 extern void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
 
 typedef union AnimFn {
@@ -436,6 +439,27 @@ void ftAnim_8006FF74(Fighter* fp, Fighter_Part start)
     (void) fp; (void) start;
 }
 
+bool ftAnim_8006F368(Fighter* fp, Fighter_Part part)
+{
+    return fp->parts[part].joint && lb_8000B074(fp->parts[part].joint);
+}
+
+/* ftAnim_8006DF0C: keep a grabbed fighter's special joint on its hip. */
+void ftAnim_8006DF0C(Fighter* fp)
+{
+    if (fp->x2221_b2) {
+        HSD_JObj* root = fp->parts[0].joint;
+        HSD_JObj* special = fp->parts[DP(struct ftData_x8, fp->ft_data->x8)->x10].joint;
+        Mtx mtx;
+        Vec3 pos0, vec;
+        DISC_VEC3_GET(pos0, p_ftCommonData->x808);
+        lb_8000B1CC(fp->parts[ftParts_GetBoneIndex(fp, FtPart_HipN)].joint, &pos0, &vec);
+        HSD_MtxInverse(HSD_JObjGetMtxPtr(root), mtx);
+        PSMTXMultVec(mtx, &vec, &vec);
+        HSD_JObjSetTranslate(special, &vec);
+    }
+}
+
 /* The shield-tilt pose blends a second skeleton (x8AC_animSkeleton) that the
  * native animation path does not build yet; the Guard animation itself still
  * plays through the normal motion tree. */
@@ -714,24 +738,23 @@ void ft_80084104(Fighter_GObj* gobj)
         ftCo_Fall_Enter(gobj);
 }
 
-static int AirStep(HSD_GObj* gobj, bool (*land)(Fighter_GObj*, int))
+/* Finds the highest floor line crossed while moving from `from` to `to`,
+ * honoring the platform-drop skip line and an optional per-line filter. */
+static int LandBetween(Fighter* fp, const Vec3* from, Vec3* to,
+                       bool (*land)(Fighter_GObj*, int))
 {
-    Fighter* fp = GET_FIGHTER(gobj);
     const M360MatchStage* st = M360_MatchStageData();
     unsigned i;
     int best = -1;
     float bestY = -3.4e38f;
-    fp->coll_data.last_pos = fp->coll_data.cur_pos;
-    fp->coll_data.cur_pos = fp->cur_pos;
     if (fp->coll_data.floor_skip >= 0 && (unsigned) fp->coll_data.floor_skip < st->lineCount) {
         const M360StageLine* l = &st->lines[fp->coll_data.floor_skip];
         const float lo = l->x0 < l->x1 ? l->x0 : l->x1;
         const float hi = l->x0 < l->x1 ? l->x1 : l->x0;
-        if (fp->cur_pos.x < lo || fp->cur_pos.x > hi ||
-            fp->cur_pos.y < (l->y0 < l->y1 ? l->y0 : l->y1) - 12.0f)
+        if (to->x < lo || to->x > hi || to->y < (l->y0 < l->y1 ? l->y0 : l->y1) - 12.0f)
             fp->coll_data.floor_skip = -1;
     }
-    if (fp->cur_pos.y > fp->prev_pos.y)
+    if (to->y > from->y)
         return 0;
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
@@ -742,12 +765,12 @@ static int AirStep(HSD_GObj* gobj, bool (*land)(Fighter_GObj*, int))
             continue;
         lo = l->x0 < l->x1 ? l->x0 : l->x1;
         hi = l->x0 < l->x1 ? l->x1 : l->x0;
-        if (fp->cur_pos.x < lo || fp->cur_pos.x > hi || hi - lo < 1e-4f)
+        if (to->x < lo || to->x > hi || hi - lo < 1e-4f)
             continue;
-        t = (fp->cur_pos.x - l->x0) / (l->x1 - l->x0);
+        t = (to->x - l->x0) / (l->x1 - l->x0);
         ly = l->y0 + (l->y1 - l->y0) * t;
-        if (fp->prev_pos.y >= ly - 0.01f && fp->cur_pos.y <= ly && ly > bestY) {
-            if (land && !land(gobj, (int) i))
+        if (from->y >= ly - 0.01f && to->y <= ly && ly > bestY) {
+            if (land && !land(fp->gobj, (int) i))
                 continue;
             bestY = ly;
             best = (int) i;
@@ -755,9 +778,19 @@ static int AirStep(HSD_GObj* gobj, bool (*land)(Fighter_GObj*, int))
     }
     if (best < 0)
         return 0;
-    fp->cur_pos.y = bestY;
-    fp->coll_data.cur_pos = fp->cur_pos;
+    to->y = bestY;
     SetFloor(fp, best);
+    return 1;
+}
+
+static int AirStep(HSD_GObj* gobj, bool (*land)(Fighter_GObj*, int))
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    fp->coll_data.last_pos = fp->coll_data.cur_pos;
+    fp->coll_data.cur_pos = fp->cur_pos;
+    if (!LandBetween(fp, &fp->prev_pos, &fp->cur_pos, land))
+        return 0;
+    fp->coll_data.cur_pos = fp->cur_pos;
     return 1;
 }
 
@@ -919,6 +952,245 @@ void ft_800847D0(Fighter_GObj* gobj, ftCollisionBox* box)
     (void) box;
     if (!GroundStep(gobj, 0))
         ftCo_Fall_Enter(gobj);
+}
+
+/* Air collision used by grab/throw states (mpColl_800477E0 in ft_80082578):
+ * reports floor contact through env_flags like the original. */
+static int AirCollide(HSD_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    fp->coll_data.env_flags &= ~Collide_FloorMask;
+    AirWalls(fp);
+    AirCeilings(fp);
+    if (!AirStep(gobj, NULL))
+        return 0;
+    fp->coll_data.env_flags |= Collide_FloorHug;
+    return 1;
+}
+
+void ft_80083910(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (AirCollide(gobj))
+        cb(gobj);
+}
+
+void ft_80083B68(Fighter_GObj* gobj)
+{
+    AirCollide(gobj);
+}
+
+void ft_80083C00(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (AirCollide(gobj))
+        cb(gobj);
+}
+
+void ft_80083CE4(Fighter_GObj* gobj, bool (*cb1)(Fighter_GObj*, int), HSD_GObjEvent cb2)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    AirWalls(fp);
+    AirCeilings(fp);
+    if (AirStep(gobj, cb1))
+        cb2(gobj);
+}
+
+void ft_8008403C(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (!GroundStep(gobj, 0))
+        cb(gobj);
+}
+
+void ft_800841B8(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    if (!GroundStep(gobj, 1))
+        cb(gobj);
+}
+
+void ftCo_AirCatchHit_Coll(Fighter_GObj* gobj)
+{
+    if (AirCollide(gobj)) {
+        Fighter* fp = GET_FIGHTER(gobj);
+        if (fp->self_vel.y > ftCo_800D0EC8(fp))
+            ft_8008A2BC(gobj);
+        else
+            ftCo_Landing_Enter_Basic(gobj);
+    }
+}
+
+/* CollData-only entry points used when a grab releases or throws its victim.
+ * The native stage collision works on the owning fighter, which embeds the
+ * CollData. */
+static Fighter* CollOwner(CollData* coll)
+{
+    return (Fighter*) ((char*) coll - offsetof(Fighter, coll_data));
+}
+
+void mpColl_80043670(CollData* coll)
+{
+    coll->x130_flags |= CollData_X130_Clear;
+}
+
+void mpColl_80043680(CollData* coll, Vec3* pos)
+{
+    coll->cur_pos = *pos;
+    coll->prev_pos = coll->cur_pos;
+    coll->last_pos = coll->prev_pos;
+    coll->x130_flags |= CollData_X130_Clear;
+}
+
+static bool CollAir(CollData* coll)
+{
+    Fighter* fp = CollOwner(coll);
+    coll->env_flags &= ~Collide_FloorMask;
+    if (!LandBetween(fp, &coll->last_pos, &coll->cur_pos, NULL))
+        return false;
+    coll->env_flags |= Collide_FloorHug;
+    return true;
+}
+
+bool mpColl_800471F8(CollData* coll)
+{
+    return CollAir(coll);
+}
+
+bool mpColl_800477E0(CollData* coll)
+{
+    return CollAir(coll);
+}
+
+bool mpColl_80048654(CollData* coll)
+{
+    Fighter* fp = CollOwner(coll);
+    float y;
+    int line;
+    coll->env_flags &= ~Collide_FloorMask;
+    if (!FloorAt(coll->cur_pos.x, coll->cur_pos.y + 4.0f, coll->cur_pos.y - 4.0f, 1, &y, &line))
+        return CollAir(coll);
+    coll->cur_pos.y = y;
+    SetFloor(fp, line);
+    coll->env_flags |= Collide_FloorHug;
+    return true;
+}
+
+bool mpLib_80054ED8(int line_id)
+{
+    return line_id >= 0 && (unsigned) line_id < M360_MatchStageData()->lineCount;
+}
+
+int mpLib_8005199C_Floor(Vec3* vec, int joint_id_skip, int joint_id_only)
+{
+    float y;
+    int line;
+    (void) joint_id_skip; (void) joint_id_only;
+    return FloorAt(vec->x, vec->y, -30000.0f, 1, &y, &line) ? line : -1;
+}
+
+static int LineEndsMeet(const M360StageLine* a, const M360StageLine* b)
+{
+    const float d0x = a->x1 - b->x0, d0y = a->y1 - b->y0;
+    const float d1x = a->x0 - b->x1, d1y = a->y0 - b->y1;
+    return d0x * d0x + d0y * d0y < 4.0f || d1x * d1x + d1y * d1y < 4.0f;
+}
+
+bool mpLinesConnected(int start_id, int target_id)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    unsigned char seen[128];
+    int queue[128];
+    int head = 0, tail = 0;
+    unsigned i;
+    if (!mpLib_80054ED8(start_id) || !mpLib_80054ED8(target_id))
+        return false;
+    if (start_id == target_id)
+        return true;
+    memset(seen, 0, sizeof(seen));
+    seen[start_id] = 1;
+    queue[tail++] = start_id;
+    while (head < tail) {
+        const M360StageLine* cur = &st->lines[queue[head++]];
+        for (i = 0; i < st->lineCount; ++i) {
+            if (seen[i] || st->lines[i].kind != cur->kind || !LineEndsMeet(cur, &st->lines[i]))
+                continue;
+            if ((int) i == target_id)
+                return true;
+            seen[i] = 1;
+            queue[tail++] = (int) i;
+        }
+    }
+    return false;
+}
+
+/* mpCheckAllRemap: nearest stage line crossed by the segment (x0,y0)-(x1,y1). */
+bool mpCheckAllRemap(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* normal_out,
+                     int joint_id_skip, int joint_id_only, float x0, float y0, float x1, float y1)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    const float dx = x1 - x0, dy = y1 - y0;
+    float bestT = 2.0f;
+    int best = -1;
+    unsigned i;
+    (void) joint_id_skip; (void) joint_id_only;
+    for (i = 0; i < st->lineCount; ++i) {
+        const M360StageLine* l = &st->lines[i];
+        const float ex = l->x1 - l->x0, ey = l->y1 - l->y0;
+        const float den = dx * ey - dy * ex;
+        float t, u;
+        if (den > -1e-6f && den < 1e-6f)
+            continue;
+        t = ((l->x0 - x0) * ey - (l->y0 - y0) * ex) / den;
+        u = ((l->x0 - x0) * dy - (l->y0 - y0) * dx) / den;
+        if (t < 0.0f || t > 1.0f || u < 0.0f || u > 1.0f || t >= bestT)
+            continue;
+        bestT = t;
+        best = (int) i;
+    }
+    if (best < 0)
+        return false;
+    if (pos_out) {
+        pos_out->x = x0 + dx * bestT;
+        pos_out->y = y0 + dy * bestT;
+        pos_out->z = 0.0f;
+    }
+    if (line_id_out)
+        *line_id_out = best;
+    if (flags_out)
+        *flags_out = st->lines[best].flags;
+    if (normal_out) {
+        const M360StageLine* l = &st->lines[best];
+        float nx = -(l->y1 - l->y0), ny = l->x1 - l->x0;
+        const float len = sqrtf(nx * nx + ny * ny);
+        normal_out->x = len > 0.0f ? nx / len : 0.0f;
+        normal_out->y = len > 0.0f ? ny / len : 1.0f;
+        normal_out->z = 0.0f;
+    }
+    return true;
+}
+
+int mpLib_8004DD90_Floor(int line_id, Vec3* vec, float* y_out, u32* flags_out, Vec3* normal_out)
+{
+    const M360StageLine* l;
+    float x, t;
+    if (!mpLib_80054ED8(line_id))
+        return -1;
+    l = &M360_MatchStageData()->lines[line_id];
+    x = vec->x;
+    if (x < (l->x0 < l->x1 ? l->x0 : l->x1))
+        x = l->x0 < l->x1 ? l->x0 : l->x1;
+    if (x > (l->x0 < l->x1 ? l->x1 : l->x0))
+        x = l->x0 < l->x1 ? l->x1 : l->x0;
+    t = l->x1 != l->x0 ? (x - l->x0) / (l->x1 - l->x0) : 0.0f;
+    if (y_out)
+        *y_out = l->y0 + (l->y1 - l->y0) * t - vec->y;
+    if (flags_out)
+        *flags_out = l->flags;
+    if (normal_out) {
+        float nx = -(l->y1 - l->y0), ny = l->x1 - l->x0;
+        const float len = sqrtf(nx * nx + ny * ny);
+        normal_out->x = len > 0.0f ? nx / len : 0.0f;
+        normal_out->y = len > 0.0f ? ny / len : 1.0f;
+        normal_out->z = 0.0f;
+    }
+    return line_id;
 }
 
 bool ft_80084A18(Fighter_GObj* gobj)
