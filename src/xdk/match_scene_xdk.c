@@ -491,7 +491,8 @@ static void CreateCamera(void)
     s_cameraGObj = GObj_Create(19, 20, 0);
     HSD_GObjObject_80390A70(s_cameraGObj, HSD_GObj_CameraKind, s_cobj);
     GObj_SetupGXLinkMax(s_cameraGObj, CameraRender, 0);
-    s_cameraGObj->gxlink_prios = (1 << kLinkLight) | (1 << kLinkStage) | (1 << kLinkFighter);
+    /* Items draw on GX link 6 (item.c). */
+    s_cameraGObj->gxlink_prios = (1 << kLinkLight) | (1 << kLinkStage) | (1 << kLinkFighter) | (1 << 6);
     memset(&s_cam, 0, sizeof(s_cam));
     s_cam.fov = kCamFov;
 }
@@ -601,6 +602,21 @@ static int BuildStage(unsigned index)
     s_stageIndex = index;
     CamUpdate(1);
     return 1;
+}
+
+float M360_MatchStageScale(void)
+{
+    return s_scale;
+}
+
+void M360_MatchCameraVectors(float* interest, float* eye)
+{
+    interest[0] = s_cam.interest.x;
+    interest[1] = s_cam.interest.y;
+    interest[2] = s_cam.interest.z;
+    eye[0] = s_cam.position.x;
+    eye[1] = s_cam.position.y;
+    eye[2] = s_cam.position.z;
 }
 
 unsigned M360_MatchStageCount(void)

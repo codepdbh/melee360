@@ -90,11 +90,26 @@ ground point 4 (offset per player) and runs the original rebirth states with
 the PlCo platform accessory. Fighter voice/SFX tracks (`ft_0881.c`) now reach
 the SSM player through a native `lbAudioAx_80023870`.
 
-Known gaps for the new characters: projectiles and held items (fireballs,
-blasters, arrows, bombs, turnips, eggs, PK fire/thunder, needles, Din's fire,
-shadow ball, G&W props, Bowser's flame, DK's floor walk) are traced stubs, so
-the moves play without their objects; Ness's up special needs PK Thunder;
-Zelda/Sheik transformation, costume hats and Kirby are unported.
+Known gaps for the new characters: DK's floor walk (mpLib_80056C54),
+Zelda/Sheik transformation, costume hats and Kirby are unported; projectile
+items now link (see Item system).
+
+### Item system (2026-09-24)
+
+The match build now also compiles the original item core (`melee/it/*.c`,
+with `itzako.c` adapted for the XDK sin/cos macros) and all 166 item kinds,
+so fighter projectiles and held items (fireballs, blasters, arrows, bombs,
+turnips, eggs, PK fire/thunder, needles, Din's fire, shadow ball, G&W props,
+cape, ...) run their original code. `M360_FighterLoad` loads ItCo through
+`Item_80266FA8` and initializes the item allocators (`Item_80266FCC`, again at
+each match). Items draw on GX link 6, which the match camera now includes.
+
+Native glue supplies blast-zone/stage-scale queries, camera vectors, item
+ground-collision variants, fixed ECB setup, line normals, multi-line checks,
+one-shot SFX (`lbAudioAx_800237A8`) and `lbArchive_80017040` over the native
+archive loader. Item pickup/throw by fighters, random item spawns, Pokemon,
+Kirby copies, debug displays, custom item TEV/material state and moving stage
+surfaces remain traced stubs. None of this has run on the XDK or Xenia yet.
 
 ### Host link check
 
