@@ -287,6 +287,10 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/ftlipstickswing.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftstarrodswing.c') },
     @{ Path = (Join-Path $src 'melee/ft/ft_0D27.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0A01.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftcmdscript.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftcpuattack.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_3C61.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftPopo/ftpopo.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftPopo/ftpopospecialhi.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftPopo/ftpopospeciallw.c') },
@@ -638,7 +642,6 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopaspecials.c') }
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C(', 'Fighter_GObj* ft_80082E3C(', 'void ft_80084DB0(') 'ft_081B_slice'
-$units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_0A01.c' '/// @todo .sdata2 order hack' @('static inline float convertStickAxis(', 'float ftCo_GetCpuLStickX(', 'float ftCo_GetCpuLStickY(', 'float ftCo_GetCpuLTrigger(', 'float ftCo_GetCpuRTrigger(', 'HSD_Pad ftCo_GetCpuButtons(', 'float ftCo_GetCpuCStickX(', 'float ftCo_GetCpuCStickY(', 'bool ftCo_IsCpuControlled(') 'ftCo_0A01_cpu_input_slice'
 $units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8(', 'void ft_80088328(', 'void ft_80088478(', 'void ft_80088510(', 'void ft_800885A8(', 'void ft_80088640(', 'void ft_80088770(', 'void ft_800887CC(', 'void ft_80088828(', 'void ft_80088884(', 'void ft_800888E0(', 'void ft_8008893C(', 'void ft_800889F4(', 'static inline int inline0(', 'void ftCo_800886D8(', 'void ft_80088998(', 'void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
 $units += New-Adapted 'melee/it/itzako.c' @{ '\bsin\b' = 'zako_sine'; '\bcos\b' = 'zako_cosine' } 'itzako'
