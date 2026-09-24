@@ -628,3 +628,9 @@ Item_GObj* it_802B2560(Fighter_GObj* gobj, float facing_dir, Vec3* pos, Fighter_
     Report("fighter.unported.it_802B2560");
     return NULL;
 }
+
+/* Ledge bookkeeping without a gameplay effect in the quick match: stage
+ * joint callbacks (static Battlefield) and ledge-grab statistics. */
+SILENT_VOID(mpLib_8005811C, (CollData* coll, int ledge_id))
+SILENT_VOID(pl_8003FFDC, (int a, int b, int c, int d, int e))
+SILENT_VOID(pl_80040048, (int slot, int sub))
