@@ -2826,6 +2826,19 @@ float M360_MatchPadStickXPort(unsigned port)
     return port < 4 ? HSD_PadGameStatus[port].nml_stickX : 0.0f;
 }
 
+float M360_MatchPadSubStickYPort(unsigned port)
+{
+    return port < 4 ? HSD_PadGameStatus[port].nml_subStickY : 0.0f;
+}
+
+/* Slot of the last fighter that hit this one (ftColl_8007861C), -1 if none. */
+int M360_FighterLastAttacker(void* handle)
+{
+    Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    const s32 ply = fp->dmg.x18c4_source_ply;
+    return ply >= 0 && ply < 6 && ply != (s32) fp->player_id ? (int) ply : -1;
+}
+
 float M360_MatchPadY(void)
 {
     return HSD_PadGameStatus[0].nml_stickY;

@@ -121,6 +121,14 @@ static M360StageArchive s_stageArchives[kStageCount];
 static unsigned s_stageIndex;
 static unsigned s_builtStage = ~0u;
 static unsigned s_stocks = 4;
+/* Rule: 0 is stock mode, otherwise a timed match of this many minutes where
+ * lives are unlimited and the score is KOs minus falls. */
+static const unsigned kTimeOptions[] = { 0, 2, 3, 4, 5, 8 };
+enum { kTimeOptionCount = sizeof(kTimeOptions) / sizeof(kTimeOptions[0]) };
+static unsigned s_timeOption;
+static int s_score[kMaxFighters];
+static int s_draw;
+static float s_selPrevSub;
 static unsigned s_cpuLevel = 3;
 /* Item switch: -1 off, 0-4 very low to very high (gm item_freq). */
 static int s_itemFreq = -1;
@@ -169,6 +177,11 @@ static float s_selPrevStick[kMaxFighters];
 
 static int IsCampaign(void);
 static void StartFight(void);
+
+static unsigned TimeMinutes(void)
+{
+    return IsCampaign() ? 0 : kTimeOptions[s_timeOption];
+}
 
 static float DegToRad(float d) { return d * 0.017453292f; }
 
@@ -728,6 +741,7 @@ void M360_MatchEnter(void)
     memset(s_fighters, 0, sizeof(s_fighters));
     s_matchOver = 0;
     s_winner = 0;
+    s_draw = 0;
     s_paused = 0;
     s_frame = 0;
     s_active = 1;
@@ -793,6 +807,7 @@ static void StartFight(void)
         s_respawn[i] = 0;
         s_stocksLost[i] = 0;
         s_stocksRemaining[i] = IsCampaign() ? kStartingStocks : s_stocks;
+        s_score[i] = 0;
         if (s_fighters[i])
             s_fighterCount = i + 1;
         M360_MatchTrace("match.select.kind", s_selKind[i]);
@@ -845,6 +860,18 @@ static int SelectInput(unsigned port, unsigned slot)
     if (port == 0 && !IsCampaign() && (trig & 0x10u)) {
         s_stocks = s_stocks >= 9 ? 1 : s_stocks + 1;
         M360_MatchTrace("match.select.stocks", s_stocks);
+    }
+    if (port == 0 && !IsCampaign()) {
+        /* Right stick up/down switches between stock and timed rules. */
+        const float sy = M360_MatchPadSubStickYPort(0);
+        const unsigned prevOption = s_timeOption;
+        if (sy > 0.7f && s_selPrevSub <= 0.7f)
+            s_timeOption = (s_timeOption + 1) % kTimeOptionCount;
+        else if (sy < -0.7f && s_selPrevSub >= -0.7f)
+            s_timeOption = (s_timeOption + kTimeOptionCount - 1) % kTimeOptionCount;
+        if (s_timeOption != prevOption)
+            M360_MatchTrace("match.select.time", kTimeOptions[s_timeOption]);
+        s_selPrevSub = sy;
     }
     if (port == 0 && !IsCampaign() && (trig & 0x1000u)) {
         s_itemFreq = s_itemFreq >= 4 ? -1 : s_itemFreq + 1;
@@ -995,13 +1022,23 @@ int M360_MatchFrame(void)
         if (!s_fighters[i])
             continue;
         if (s_respawn[i]) {
-            if (--s_respawn[i] == 0 && s_stocksRemaining[i])
+            if (--s_respawn[i] == 0 && (s_stocksRemaining[i] || TimeMinutes()))
                 M360_FighterRebirth(s_fighters[i]);
             continue;
         }
         M360_FighterGetState(s_fighters[i], &x, &y, &facing, &motion, &damage);
         if (OutsideBlastZone(x, y)) {
             ++s_stocksLost[i];
+            if (TimeMinutes()) {
+                const int by = M360_FighterLastAttacker(s_fighters[i]);
+                if (by >= 0 && (unsigned) by < s_fighterCount)
+                    ++s_score[by];
+                --s_score[i];
+                s_respawn[i] = kRespawnFrames;
+                M360_FighterSetDead(s_fighters[i]);
+                M360_MatchTrace("match.time.ko_by", (unsigned) by);
+                continue;
+            }
             if (s_stocksRemaining[i])
                 --s_stocksRemaining[i];
             s_respawn[i] = s_stocksRemaining[i] ? kRespawnFrames : 0;
@@ -1026,6 +1063,24 @@ int M360_MatchFrame(void)
                     M360_MatchTrace("match.campaign.complete", s_gameMode);
             }
         }
+    }
+    if (TimeMinutes() && s_frame >= TimeMinutes() * 60u * 60u) {
+        unsigned best = 0;
+        s_draw = 0;
+        for (i = 1; i < s_fighterCount; ++i) {
+            if (!s_fighters[i])
+                continue;
+            if (s_score[i] > s_score[best]) {
+                best = i;
+                s_draw = 0;
+            } else if (s_score[i] == s_score[best]) {
+                s_draw = 1;
+            }
+        }
+        s_matchOver = 1;
+        s_winner = best;
+        M360_MatchTrace("match.time.over", s_draw);
+        M360_MatchTrace("match.result.winner", s_winner);
     }
     CamUpdate(0);
     return M360_MATCH_CONTINUE;
@@ -1078,6 +1133,14 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->stocks = IsCampaign() ? kStartingStocks : s_stocks;
     status->cpuLevel = s_cpuLevel;
     status->itemFreq = (unsigned) (s_itemFreq + 1);
+    status->timeMinutes = TimeMinutes();
+    if (status->timeMinutes && s_phase != kPhaseSelect) {
+        const unsigned total = status->timeMinutes * 3600u;
+        status->timeLeft = s_frame < total ? (total - s_frame + 59u) / 60u : 0;
+    } else {
+        status->timeLeft = status->timeMinutes * 60u;
+    }
+    status->draw = (unsigned) s_draw;
     for (i = 0; i < kMaxFighters; ++i) {
         status->selectKind[i] = s_selKind[i];
         status->selectCostume[i] = s_selCostume[i];
@@ -1094,6 +1157,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
                              &status->motion[i], &status->damage[i]);
         status->stocksLost[i] = s_stocksLost[i];
         status->stocksRemaining[i] = s_stocksRemaining[i];
+        status->score[i] = s_score[i];
         status->human[i] = (unsigned) s_human[i];
     }
 }
