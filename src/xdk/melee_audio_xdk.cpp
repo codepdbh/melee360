@@ -36,6 +36,7 @@ short s_sfxRightScratch[kSfxMaxFrames];
 unsigned s_sfxNextVoice = 0;
 unsigned s_sfxSubmitted = 0;
 unsigned s_sfxMisses = 0;
+unsigned s_sfxBankFallbacks = 0;
 unsigned s_sfxBankBase[55] = {};
 unsigned s_sfxBankCount[55] = {};
 bool s_sfxBankIndexReady = false;
@@ -212,7 +213,11 @@ bool DecodeSfx(const SfxBank* bank, unsigned sfxId, unsigned voiceIndex,
     }
 }
 
-bool ResolveSfxBank(unsigned sfxId, SfxBank** outBank, unsigned* outBankId)
+/* sfxId is the SSM sample id from the SEM stream; preferSlot is the SEM bank
+ * (sound id / 10000), which is also the ssm_files index (lbaudio_ax.c). SSM id
+ * ranges overlap between files that are never loaded together (menu, stage
+ * and 1P banks), so the bank's own file must win over a range scan. */
+bool ResolveSfxBank(unsigned sfxId, unsigned preferSlot, SfxBank** outBank, unsigned* outBankId)
 {
     unsigned slot;
     if (!s_sfxBankIndexReady) {
@@ -229,6 +234,14 @@ bool ResolveSfxBank(unsigned sfxId, SfxBank** outBank, unsigned* outBankId)
         }
         s_sfxBankIndexReady = true;
     }
+    if (preferSlot < 55 && sfxId >= s_sfxBankBase[preferSlot] &&
+        sfxId - s_sfxBankBase[preferSlot] < s_sfxBankCount[preferSlot]) {
+        *outBank = LoadSfxBank(preferSlot);
+        *outBankId = sfxId;
+        if (*outBank)
+            return true;
+    }
+    ++s_sfxBankFallbacks;
     for (slot = 0; slot < 55; ++slot) {
         if (sfxId >= s_sfxBankBase[slot] &&
             sfxId - s_sfxBankBase[slot] < s_sfxBankCount[slot]) {
@@ -470,7 +483,7 @@ extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan)
     if (!s_engine || !s_master || !boundedVolume)
         return;
     if (!ResolveSfxSampleId(sfxId, &sampleId) ||
-        !ResolveSfxBank(sampleId, &bank, &bankId) ||
+        !ResolveSfxBank(sampleId, sfxId / 10000u, &bank, &bankId) ||
         !DecodeSfx(bank, bankId, voiceIndex, &sampleRate, &frames,
                             s_sfxLeftScratch,
                             s_sfxRightScratch)) {
