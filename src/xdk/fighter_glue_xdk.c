@@ -833,7 +833,7 @@ static void AnimAdvance(M360Fighter* f)
     }
     HSD_AObjInvokeCallBacks();
     for (i = 0; i < f->jointCount; ++i)
-        if (f->joints[i]->aobj) {
+        if (f->joints[i]->aobj && !f->parts[i].flags_b5) {
             fp->cur_anim_frame = f->joints[i]->aobj->curr_frame;
             break;
         }
@@ -862,7 +862,7 @@ bool ftAnim_IsFramesRemaining(Fighter_GObj* gobj)
     unsigned i;
     for (i = 0; i < f->jointCount; ++i) {
         HSD_AObj* aobj = f->joints[i]->aobj;
-        if (aobj && !(aobj->flags & AOBJ_NO_ANIM))
+        if (aobj && !f->parts[i].flags_b5 && !(aobj->flags & AOBJ_NO_ANIM))
             return true;
     }
     return false;
@@ -890,7 +890,7 @@ float ftAnim_8006F484(Fighter_GObj* gobj)
     M360Fighter* f = Owner(gobj);
     unsigned i;
     for (i = 0; i < f->jointCount; ++i)
-        if (f->joints[i]->aobj)
+        if (f->joints[i]->aobj && !f->parts[i].flags_b5)
             return f->joints[i]->aobj->end_frame;
     return 0.0f;
 }
@@ -932,21 +932,145 @@ void ftAnim_8006DF0C(Fighter* fp)
     }
 }
 
-/* Costume/part animation hooks from the Mario motion table (metal and
- * vitamin swaps); the native part-visibility path does not model them. */
-void ftAnim_80070C48(Fighter_GObj* gobj, s32 arg)
+/* Part animations (ftanim.c): hand poses and similar sub-skeleton anims from
+ * ftData x1C. The original animates a shadow skeleton (x4_jobj2) and copies it
+ * over the displayed joints; here both are the same JObj, so the part anim
+ * replaces the joint's AObj and flags_b5 keeps it out of the frame queries.
+ * The blend-in over arg3 frames is not reproduced. */
+static HSD_AnimJoint* s_animJointStack[30];
+
+static void NextAnimJointInTree(HSD_AnimJoint** panimjoint, int* pdepth)
 {
-    (void) gobj; (void) arg;
+    HSD_AnimJoint* cur = *panimjoint;
+    HSD_AnimJoint* next;
+    int i = *pdepth;
+    if (cur->child) {
+        if (i < 30)
+            s_animJointStack[i++] = cur;
+        next = cur->child;
+    } else if (cur->next) {
+        next = cur->next;
+    } else {
+        next = NULL;
+        while (i > 0) {
+            if (s_animJointStack[i - 1]->next) {
+                next = s_animJointStack[--i]->next;
+                break;
+            }
+            --i;
+        }
+    }
+    *pdepth = i;
+    *panimjoint = next;
 }
 
+static struct ftData_x1C* PartAnimData(Fighter* fp, int slot)
+{
+    if (!fp->ft_data->x1C || slot < 0 || slot >= (int) ARRAY_SIZE(fp->x8B0))
+        return NULL;
+    return (struct ftData_x1C*) (uintptr_t) DP(DiscU32, fp->ft_data->x1C)[slot].v;
+}
+
+void ftAnim_ApplyPartAnim(Fighter_GObj* gobj, s32 arg1, s32 arg2, f32 arg3)
+{
+    M360Fighter* f = Owner(gobj);
+    Fighter* fp = GET_FIGHTER(gobj);
+    struct ftData_x1C* data = PartAnimData(fp, arg1);
+    HSD_AnimJoint* animjoint;
+    int i, depth = 0;
+    if (!data || arg2 < 0)
+        return;
+    fp->x8B0[arg1].x11 = (s8) arg2;
+    fp->x8B0[arg1].x4 = arg3;
+    fp->x8B0[arg1].x8 = 0.0f;
+    fp->x8B0[arg1].xC = 0.0f;
+    animjoint = (HSD_AnimJoint*) (uintptr_t) DP(DiscU32, data->x8)[arg2].v;
+    i = data->x0;
+    while (animjoint && i < (int) f->jointCount) {
+        if (!fp->parts[i].flags_b0 && animjoint->aobjdesc) {
+            HSD_JObj* jobj = fp->parts[i].joint;
+            HSD_JObjAddAnim(jobj, animjoint, NULL, NULL);
+            HSD_JObjClearFlags(jobj, 0x20000);
+            HSD_JObjReqAnimByFlags(jobj, 1, 0.0f);
+            HSD_JObjAnim(jobj);
+            fp->parts[i].flags_b5 = true;
+        }
+        ++i;
+        NextAnimJointInTree(&animjoint, &depth);
+    }
+}
+
+/* Motion change: transient part anims end (the new motion tree already
+ * covers their joints), persistent ones (x10) are applied again. */
+void ftAnim_80070F28(HSD_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    int i, j;
+    for (i = 0; i < (int) ARRAY_SIZE(fp->x8B0); ++i) {
+        struct ftData_x1C* data;
+        if (fp->x8B0[i].x11 == -1)
+            continue;
+        data = PartAnimData(fp, i);
+        if (data) {
+            u8* parts = DP(u8, data->x4);
+            for (j = 0; j < data->x2; ++j)
+                fp->parts[parts[j]].flags_b5 = false;
+        }
+        fp->x8B0[i].x11 = -1;
+    }
+}
+
+void ftAnim_80070E74(Fighter_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    int i;
+    for (i = 0; i < (int) ARRAY_SIZE(fp->x8B0); ++i)
+        if (fp->x8B0[i].x10 != -1)
+            ftAnim_ApplyPartAnim(gobj, i, fp->x8B0[i].x10, 0.0f);
+}
+
+void ftAnim_80070C48(Fighter_GObj* gobj, s32 arg)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    if (arg >= 0 && arg < (int) ARRAY_SIZE(fp->x8B0) && fp->x8B0[arg].x10 != -1)
+        ftAnim_ApplyPartAnim(gobj, arg, fp->x8B0[arg].x10, 0.0f);
+}
+
+/* Drop a part anim and give its joints back to the current motion tree at
+ * the current frame. */
 void ftAnim_80070CC4(Fighter_GObj* gobj, int arg)
 {
-    (void) gobj; (void) arg;
+    M360Fighter* f = Owner(gobj);
+    Fighter* fp = GET_FIGHTER(gobj);
+    struct ftData_x1C* data = PartAnimData(fp, arg);
+    FigaTree* tree = fp->x590;
+    if (!data || fp->x8B0[arg].x11 == -1)
+        return;
+    fp->x8B0[arg].x11 = -1;
+    if (tree) {
+        s8* nodes = tree->nodes;
+        FigaTrack* tracks = tree->tracks;
+        unsigned i;
+        for (i = 0; i < f->jointCount && *nodes != -1; ++i) {
+            if (f->parts[i].flags_b5 && i >= data->x0) {
+                HSD_JObj* j = f->joints[i];
+                HSD_JObjRemoveAnimByFlags(j, 1);
+                lbAnim_8001E6D8(j, tree, tracks, *nodes);
+                HSD_JObjReqAnimByFlags(j, 1, fp->cur_anim_frame);
+                HSD_JObjAnim(j);
+                f->parts[i].flags_b5 = false;
+            }
+            tracks += *nodes;
+            ++nodes;
+        }
+    }
 }
 
 void ftAnim_80070FB4(Fighter_GObj* gobj, s32 a, s32 b)
 {
-    (void) gobj; (void) a; (void) b;
+    Fighter* fp = GET_FIGHTER(gobj);
+    if (a >= 0 && a < (int) ARRAY_SIZE(fp->x8B0))
+        fp->x8B0[a].x10 = (s8) b;
 }
 
 /* ftparts.c getters; the original ftPartGetRotZ reads the Y rotation. */

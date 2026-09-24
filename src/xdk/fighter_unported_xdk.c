@@ -149,7 +149,6 @@ UNPORTED_VOID(ftCo_800C8540, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
 UNPORTED_BOOL(ft_80084BFC, (Fighter_GObj* gobj, int* a, int* b, int* c))
 UNPORTED_BOOL(ft_80084C38, (Fighter_GObj* gobj, int* a, int* b, int* c))
-UNPORTED_VOID(ftAnim_ApplyPartAnim, (Fighter_GObj* gobj, s32 a, s32 b, float c))
 UNPORTED_VOID(ftAnim_800704F0, (Fighter_GObj* gobj, int tobj_idx, float frame))
 UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
@@ -365,8 +364,6 @@ void ftCo_800C703C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_
 void ftCo_800C2FD8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C2FD8");  }
 void ftCh_Init_80156014(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_Init_80156014");  }
 void ftCh_GrabUnk1_8015ADD0(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_GrabUnk1_8015ADD0");  }
-void ftAnim_80070F28(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070F28");  }
-void ftAnim_80070E74(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070E74");  }
 void ftAnim_80070654(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070654");  }
 void Player_SetTotalCoins(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.Player_SetTotalCoins");  }
 void Player_SetCoins(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.Player_SetCoins");  }
