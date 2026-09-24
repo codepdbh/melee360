@@ -33,6 +33,42 @@
 #include <melee/ft/kinds/ftMario/ftmariospecialn.h>
 #include <melee/ft/kinds/ftMario/ftmariospecials.h>
 #include <melee/ft/kinds/ftMario/types.h>
+#include <melee/ft/kinds/ftLuigi/ftluigi.h>
+#include <melee/ft/kinds/ftLuigi/ftluigispecialn.h>
+#include <melee/ft/kinds/ftLuigi/ftluigispecials.h>
+#include <melee/ft/kinds/ftLuigi/ftluigispecialhi.h>
+#include <melee/ft/kinds/ftLuigi/ftluigispeciallw.h>
+#include <melee/ft/kinds/ftDrMario/ftdrmario.h>
+#include <melee/ft/kinds/ftCaptain/ftcaptain.h>
+#include <melee/ft/kinds/ftCaptain/ftcaptainspecialhi.h>
+#include <melee/ft/kinds/ftCaptain/ftcaptainspeciallw.h>
+#include <melee/ft/kinds/ftCaptain/ftcaptainspecialn.h>
+#include <melee/ft/kinds/ftCaptain/ftcaptainspecials.h>
+#include <melee/ft/kinds/ftGanon/ftganon.h>
+#include <melee/ft/kinds/ftMars/ftmars.h>
+#include <melee/ft/kinds/ftMars/ftmarsspecialhi.h>
+#include <melee/ft/kinds/ftMars/ftmarsspeciallw.h>
+#include <melee/ft/kinds/ftMars/ftmarsspecialn.h>
+#include <melee/ft/kinds/ftMars/ftmarsspecials.h>
+#include <melee/ft/kinds/ftEmblem/ftemblem.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkey.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavyfall.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavyjump.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavylanding.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavyturn.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavywait0.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavywait1.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyheavywalk.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyms3450.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyspecialhi.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyspeciallw.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyspecialn.h>
+#include <melee/ft/kinds/ftDonkey/ftdonkeyspecials.h>
+#include <melee/ft/kinds/ftKoopa/ftkoopa.h>
+#include <melee/ft/kinds/ftKoopa/ftkoopaspecialhi.h>
+#include <melee/ft/kinds/ftKoopa/ftkoopaspeciallw.h>
+#include <melee/ft/kinds/ftKoopa/ftkoopaspecialn.h>
+#include <melee/ft/kinds/ftKoopa/ftkoopaspecials.h>
 #include <melee/lb/lbanim.h>
 #include <melee/lb/lbarchive.h>
 #include <melee/pl/plstale.h>
@@ -88,7 +124,8 @@ enum {
     kMaxFighters = 2,
     kMaxHitboxes = 4,
     kLinkFighter = 2,
-    kFighterStates = 0x80
+    kFighterStates = 0x80,
+    kMaxCostumes = 6
 };
 
 typedef struct M360Hitbox {
@@ -126,18 +163,102 @@ typedef struct M360Fighter {
 } M360Fighter;
 
 
-static ftData* s_ftData;
-static HSD_Joint* s_modelJoint;
-static HSD_MatAnimJoint* s_modelMatAnim;
-static unsigned char* s_animImage;
-static unsigned s_animImageSize;
-static FigaTree* s_trees[kMaxAnims];
+/* Per-character archives and entry points, following ftdata.c's per-kind
+ * tables (OnLoad, OnDeath, motion-state table, special-move dispatch). */
+typedef struct M360KindDesc {
+    FighterKind kind;
+    const char* name;
+    const char* dat;
+    const char* dataSymbol;
+    const char* animDat;
+    const char* costumeDat[kMaxCostumes];
+    const char* costumeJoint[kMaxCostumes];
+    const char* costumeMatAnim[kMaxCostumes];
+    MotionState* states;
+    unsigned stateCount;
+    HSD_GObjEvent onLoad;
+    HSD_GObjEvent onDeath;
+    HSD_GObjEvent special[8];
+} M360KindDesc;
+
+typedef struct M360LoadedKind {
+    ftData* data;
+    unsigned char* animImage;
+    unsigned animImageSize;
+    FigaTree* trees[kMaxAnims];
+    MotionState states[kFighterStates];
+    HSD_Joint* costumeJoint[kMaxCostumes];
+    HSD_MatAnimJoint* costumeMatAnim[kMaxCostumes];
+    int loaded;
+} M360LoadedKind;
+
+static const M360KindDesc s_kinds[] = {
+    { Ft_Kind_Mario, "MARIO", "PlMr.dat", "ftDataMario", "PlMrAJ.dat",
+      { "PlMrNr.dat", "PlMrYe.dat", "PlMrBk.dat", "PlMrBu.dat", "PlMrGr.dat", NULL },
+      { "PlyMario5K_Share_joint", "PlyMario5KYe_Share_joint", "PlyMario5KBk_Share_joint", "PlyMario5KBu_Share_joint", "PlyMario5KGr_Share_joint", NULL },
+      { "PlyMario5K_Share_matanim_joint", "PlyMario5KYe_Share_matanim_joint", "PlyMario5KBk_Share_matanim_joint", "PlyMario5KBu_Share_matanim_joint", "PlyMario5KGr_Share_matanim_joint", NULL },
+      ftMr_Init_MotionStateTable, sizeof(ftMr_Init_MotionStateTable) / sizeof(MotionState), ftMr_Init_OnLoad, ftMr_Init_OnDeath,
+      { ftMr_SpecialN_Enter, ftMr_SpecialS_Enter, ftMr_SpecialHi_Enter, ftMr_SpecialLw_Enter, ftMr_SpecialAirN_Enter, ftMr_SpecialAirS_Enter, ftMr_SpecialAirHi_Enter, ftMr_SpecialAirLw_Enter } },
+    { Ft_Kind_Luigi, "LUIGI", "PlLg.dat", "ftDataLuigi", "PlLgAJ.dat",
+      { "PlLgNr.dat", "PlLgWh.dat", "PlLgAq.dat", "PlLgPi.dat", NULL, NULL },
+      { "PlyLuigi5K_Share_joint", "PlyLuigi5KWh_Share_joint", "PlyLuigi5KAq_Share_joint", "PlyLuigi5KPi_Share_joint", NULL, NULL },
+      { "PlyLuigi5K_Share_matanim_joint", "PlyLuigi5KWh_Share_matanim_joint", "PlyLuigi5KAq_Share_matanim_joint", "PlyLuigi5KPi_Share_matanim_joint", NULL, NULL },
+      ftLg_Init_MotionStateTable, sizeof(ftLg_Init_MotionStateTable) / sizeof(MotionState), ftLg_Init_OnLoad, ftLg_Init_OnDeath,
+      { ftLg_SpecialN_Enter, ftLg_SpecialS_Enter, ftLg_SpecialHi_Enter, ftLg_SpecialLw_Enter, ftLg_SpecialAirN_Enter, ftLg_SpecialAirS_Enter, ftLg_SpecialAirHi_Enter, ftLg_SpecialAirLw_Enter } },
+    { Ft_Kind_DrMario, "DR. MARIO", "PlDr.dat", "ftDataDrmario", "PlDrAJ.dat",
+      { "PlDrNr.dat", "PlDrRe.dat", "PlDrBu.dat", "PlDrGr.dat", "PlDrBk.dat", NULL },
+      { "PlyDrmario5K_Share_joint", "PlyDrmario5KRe_Share_joint", "PlyDrmario5KBu_Share_joint", "PlyDrmario5KGr_Share_joint", "PlyDrmario5KBk_Share_joint", NULL },
+      { "PlyDrmario5K_Share_matanim_joint", "PlyDrmario5KRe_Share_matanim_joint", "PlyDrmario5KBu_Share_matanim_joint", "PlyDrmario5KGr_Share_matanim_joint", "PlyDrmario5KBk_Share_matanim_joint", NULL },
+      ftDr_Init_MotionStateTable, sizeof(ftDr_Init_MotionStateTable) / sizeof(MotionState), ftDr_Init_OnLoad, ftDr_Init_OnDeath,
+      { ftMr_SpecialN_Enter, ftMr_SpecialS_Enter, ftMr_SpecialHi_Enter, ftMr_SpecialLw_Enter, ftMr_SpecialAirN_Enter, ftMr_SpecialAirS_Enter, ftMr_SpecialAirHi_Enter, ftMr_SpecialAirLw_Enter } },
+    { Ft_Kind_Captain, "CAPTAIN FALCON", "PlCa.dat", "ftDataCaptain", "PlCaAJ.dat",
+      { "PlCaNr.dat", "PlCaGy.dat", "PlCaRe.dat", "PlCaWh.dat", "PlCaGr.dat", "PlCaBu.dat" },
+      { "PlyCaptain5K_Share_joint", "PlyCaptain5KGy_Share_joint", "PlyCaptain5KRe_Share_joint", "PlyCaptain5KWh_Share_joint", "PlyCaptain5KGr_Share_joint", "PlyCaptain5KBu_Share_joint" },
+      { NULL, NULL, NULL, NULL, NULL, NULL },
+      ftCa_Init_MotionStateTable, sizeof(ftCa_Init_MotionStateTable) / sizeof(MotionState), ftCa_Init_OnLoad, ftCa_Init_OnDeath,
+      { ftCa_SpecialN_Enter, ftCa_SpecialS_Enter, ftCa_SpecialHi_Enter, ftCa_SpecialLw_Enter, ftCa_SpecialAirN_Enter, ftCa_SpecialAirS_Enter, ftCa_SpecialAirHi_Enter, ftCa_SpecialAirLw_Enter } },
+    { Ft_Kind_Ganon, "GANONDORF", "PlGn.dat", "ftDataGanon", "PlGnAJ.dat",
+      { "PlGnNr.dat", "PlGnRe.dat", "PlGnBu.dat", "PlGnGr.dat", "PlGnLa.dat", NULL },
+      { "PlyGanon5K_Share_joint", "PlyGanon5KRe_Share_joint", "PlyGanon5KBu_Share_joint", "PlyGanon5KGr_Share_joint", "PlyGanon5KLa_Share_joint", NULL },
+      { NULL, NULL, NULL, NULL, NULL, NULL },
+      ftGn_Init_MotionStateTable, sizeof(ftGn_Init_MotionStateTable) / sizeof(MotionState), ftGn_Init_OnLoad, ftGn_Init_OnDeath,
+      { ftCa_SpecialN_Enter, ftCa_SpecialS_Enter, ftCa_SpecialHi_Enter, ftCa_SpecialLw_Enter, ftCa_SpecialAirN_Enter, ftCa_SpecialAirS_Enter, ftCa_SpecialAirHi_Enter, ftCa_SpecialAirLw_Enter } },
+    { Ft_Kind_Mars, "MARTH", "PlMs.dat", "ftDataMars", "PlMsAJ.dat",
+      { "PlMsNr.dat", "PlMsRe.dat", "PlMsGr.dat", "PlMsBk.dat", "PlMsWh.dat", NULL },
+      { "PlyMars5K_Share_joint", "PlyMars5KRe_Share_joint", "PlyMars5KGr_Share_joint", "PlyMars5KBk_Share_joint", "PlyMars5KWh_Share_joint", NULL },
+      { "PlyMars5K_Share_matanim_joint", "PlyMars5KRe_Share_matanim_joint", "PlyMars5KGr_Share_matanim_joint", "PlyMars5KBk_Share_matanim_joint", "PlyMars5KWh_Share_matanim_joint", NULL },
+      ftMs_Init_MotionStateTable, sizeof(ftMs_Init_MotionStateTable) / sizeof(MotionState), ftMs_Init_OnLoad, ftMs_Init_OnDeath,
+      { ftMs_SpecialN_Enter, ftMs_SpecialS_Enter, ftMs_SpecialHi_Enter, ftMs_SpecialLw_Enter, ftMs_SpecialAirN_Enter, ftMs_SpecialAirS_Enter, ftMs_SpecialAirHi_Enter, ftMs_SpecialAirLw_Enter } },
+    { Ft_Kind_Emblem, "ROY", "PlFe.dat", "ftDataEmblem", "PlFeAJ.dat",
+      { "PlFeNr.dat", "PlFeRe.dat", "PlFeBu.dat", "PlFeGr.dat", "PlFeYe.dat", NULL },
+      { "PlyEmblem5K_Share_joint", "PlyEmblem5KRe_Share_joint", "PlyEmblem5KBu_Share_joint", "PlyEmblem5KGr_Share_joint", "PlyEmblem5KYe_Share_joint", NULL },
+      { "PlyEmblem5K_Share_matanim_joint", "PlyEmblem5KRe_Share_matanim_joint", "PlyEmblem5KBu_Share_matanim_joint", "PlyEmblem5KGr_Share_matanim_joint", "PlyEmblem5KYe_Share_matanim_joint", NULL },
+      ftFe_Init_MotionStateTable, sizeof(ftFe_Init_MotionStateTable) / sizeof(MotionState), ftFe_Init_OnLoad, ftFe_Init_OnDeath,
+      { ftMs_SpecialN_Enter, ftMs_SpecialS_Enter, ftMs_SpecialHi_Enter, ftMs_SpecialLw_Enter, ftMs_SpecialAirN_Enter, ftMs_SpecialAirS_Enter, ftMs_SpecialAirHi_Enter, ftMs_SpecialAirLw_Enter } },
+    { Ft_Kind_Donkey, "DONKEY KONG", "PlDk.dat", "ftDataDonkey", "PlDkAJ.dat",
+      { "PlDkNr.dat", "PlDkBk.dat", "PlDkRe.dat", "PlDkBu.dat", "PlDkGr.dat", NULL },
+      { "PlyDonkey5K_Share_joint", "PlyDonkey5KBk_Share_joint", "PlyDonkey5KRe_Share_joint", "PlyDonkey5KBu_Share_joint", "PlyDonkey5KGr_Share_joint", NULL },
+      { "PlyDonkey5K_Share_matanim_joint", "PlyDonkey5KBk_Share_matanim_joint", "PlyDonkey5KRe_Share_matanim_joint", "PlyDonkey5KBu_Share_matanim_joint", "PlyDonkey5KGr_Share_matanim_joint", NULL },
+      ftDk_Init_MotionStateTable, sizeof(ftDk_Init_MotionStateTable) / sizeof(MotionState), ftDk_Init_OnLoad, ftDk_Init_OnDeath,
+      { ftDk_SpecialN_Enter, ftDk_SpecialS_Enter, ftDk_SpecialHi_Enter, ftDk_SpecialLw_Enter, ftDk_SpecialAirN_Enter, ftDk_SpecialAirS_Enter, ftDk_SpecialAirHi_Enter, NULL } },
+    { Ft_Kind_Koopa, "BOWSER", "PlKp.dat", "ftDataKoopa", "PlKpAJ.dat",
+      { "PlKpNr.dat", "PlKpRe.dat", "PlKpBu.dat", "PlKpBk.dat", NULL, NULL },
+      { "PlyKoopa5K_Share_joint", "PlyKoopa5KRe_Share_joint", "PlyKoopa5KBu_Share_joint", "PlyKoopa5KBk_Share_joint", NULL, NULL },
+      { "PlyKoopa5K_Share_matanim_joint", "PlyKoopa5KRe_Share_matanim_joint", "PlyKoopa5KBu_Share_matanim_joint", "PlyKoopa5KBk_Share_matanim_joint", NULL, NULL },
+      ftKp_Init_MotionStateTable, sizeof(ftKp_Init_MotionStateTable) / sizeof(MotionState), ftKp_Init_OnLoad, ftKp_Init_OnDeath,
+      { ftKp_SpecialN_Enter, ftKp_SpecialS_Enter, ftKp_SpecialHi_Enter, ftKp_SpecialLw_Enter, ftKp_SpecialAirN_Enter, ftKp_SpecialAirS_Enter, ftKp_SpecialAirHi_Enter, ftKp_SpecialAirLw_Enter } },
+};
+
+enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]) };
+
+static M360LoadedKind s_loaded[kKindCount];
+static unsigned s_selectKind[kMaxFighters];
+static unsigned s_selectCostume[kMaxFighters] = { 0, 3 };
 static M360Fighter s_fighters[kMaxFighters];
 static StaleMoveTable s_staleTables[6];
 static unsigned s_hitCount;
 static unsigned s_cpuLevel = 1;
 static MotionState s_commonStates[ftCo_MS_Count];
-static MotionState s_fighterStates[0x80];
 static Vec3 s_playerPos[6];
 static Vec3 s_rebirthOffset[6];
 static float s_playerFacing[6];
@@ -147,6 +268,8 @@ static const char* s_unportedName[64];
 static unsigned s_unportedCount;
 
 static void BuildMotionTables(void);
+static void OnDeath(HSD_GObj* gobj);
+static MotionState s_unknownState;
 
 static void Unported(const char* name)
 {
@@ -195,21 +318,103 @@ StaleMoveTable* Player_GetStaleMoveTableIndexPtr(s32 slot)
     return &s_staleTables[slot < 6 && slot >= 0 ? slot : 0];
 }
 
+static M360LoadedKind* LoadKind(unsigned index)
+{
+    const M360KindDesc* desc;
+    M360LoadedKind* k;
+    unsigned i;
+    if (index >= kKindCount)
+        return NULL;
+    desc = &s_kinds[index];
+    k = &s_loaded[index];
+    if (k->loaded)
+        return k->loaded > 0 ? k : NULL;
+    k->loaded = -1;
+    k->data = LoadArchiveSymbol(desc->dat, desc->dataSymbol);
+    k->animImage = M360_ReadDiscFile(desc->animDat, &k->animImageSize);
+    M360_MatchTrace("fighter.aj.bytes", k->animImageSize);
+    if (!k->data || !k->animImage)
+        return NULL;
+    M360_MatchTrace("fighter.attr.gravity_x1000",
+               (unsigned) (k->data->x0->gravity * 1000.0f + 0.5f));
+    M360_MatchTrace("fighter.attr.walk_max_x1000",
+               (unsigned) (k->data->x0->walk_max_vel * 1000.0f + 0.5f));
+    M360_MatchTrace("fighter.attr.max_jumps", (unsigned) k->data->x0->max_jumps);
+    M360_MatchTrace("fighter.attr.weight_x1000", (unsigned) (k->data->x0->weight * 1000.0f));
+    for (i = 0; i < kFighterStates; ++i)
+        k->states[i] = s_unknownState;
+    for (i = 0; i < desc->stateCount && i < kFighterStates; ++i)
+        k->states[i] = desc->states[i];
+    ftData_SpecialN[desc->kind] = desc->special[0];
+    ftData_SpecialS[desc->kind] = desc->special[1];
+    ftData_SpecialHi[desc->kind] = desc->special[2];
+    ftData_SpecialLw[desc->kind] = desc->special[3];
+    ftData_SpecialAirN[desc->kind] = desc->special[4];
+    ftData_SpecialAirS[desc->kind] = desc->special[5];
+    ftData_SpecialAirHi[desc->kind] = desc->special[6];
+    ftData_SpecialAirLw[desc->kind] = desc->special[7];
+    k->loaded = 1;
+    return k;
+}
+
+/* Costume model (PlXxNr/Ye/...); falls back to the default costume. */
+static int LoadCostume(M360LoadedKind* k, const M360KindDesc* desc, unsigned costume)
+{
+    if (costume >= kMaxCostumes || !desc->costumeDat[costume])
+        costume = 0;
+    if (!k->costumeJoint[costume] && desc->costumeDat[costume]) {
+        unsigned size = 0;
+        unsigned char* image = M360_ReadDiscFile(desc->costumeDat[costume], &size);
+        void* archive = image ? M360_ArchiveOpen(image, size) : NULL;
+        M360_MatchTrace(desc->costumeDat[costume], size);
+        if (archive) {
+            k->costumeJoint[costume] = M360_ArchiveFind(archive, desc->costumeJoint[costume]);
+            if (desc->costumeMatAnim[costume])
+                k->costumeMatAnim[costume] = M360_ArchiveFind(archive, desc->costumeMatAnim[costume]);
+        }
+    }
+    if (!k->costumeJoint[costume] && costume)
+        return LoadCostume(k, desc, 0);
+    return k->costumeJoint[costume] ? (int) costume : -1;
+}
+
+unsigned M360_FighterKindCount(void)
+{
+    return kKindCount;
+}
+
+const char* M360_FighterKindName(unsigned index)
+{
+    return index < kKindCount ? s_kinds[index].name : "";
+}
+
+void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume)
+{
+    if (slot < 0 || slot >= kMaxFighters)
+        return;
+    s_selectKind[slot] = kindIndex < kKindCount ? kindIndex : 0;
+    s_selectCostume[slot] = costume;
+}
+
+static const M360KindDesc* KindDesc(FighterKind kind, M360LoadedKind** loaded)
+{
+    unsigned i;
+    for (i = 0; i < kKindCount; ++i)
+        if (s_kinds[i].kind == kind) {
+            if (loaded)
+                *loaded = &s_loaded[i];
+            return &s_kinds[i];
+        }
+    if (loaded)
+        *loaded = &s_loaded[0];
+    return &s_kinds[0];
+}
+
 int M360_FighterLoad(void)
 {
     Fighter_LoadCommonData();
-    s_ftData = LoadArchiveSymbol("PlMr.dat", "ftDataMario");
-    s_modelJoint = LoadArchiveSymbol("PlMrNr.dat", "PlyMario5K_Share_joint");
-    if (!p_ftCommonData || !s_ftData || !s_modelJoint)
+    if (!p_ftCommonData)
         return 0;
-    s_modelMatAnim = LoadArchiveSymbol("PlMrNr.dat", "PlyMario5K_Share_matanim_joint");
-    s_animImage = M360_ReadDiscFile("PlMrAJ.dat", &s_animImageSize);
-    M360_MatchTrace("fighter.aj.bytes", s_animImageSize);
-    M360_MatchTrace("fighter.attr.gravity_x1000",
-               (unsigned) (s_ftData->x0->gravity * 1000.0f + 0.5f));
-    M360_MatchTrace("fighter.attr.walk_max_x1000",
-               (unsigned) (s_ftData->x0->walk_max_vel * 1000.0f + 0.5f));
-    M360_MatchTrace("fighter.attr.max_jumps", (unsigned) s_ftData->x0->max_jumps);
     BuildMotionTables();
     M360_MatchTrace("fighter.kb.xF4_x1000", (unsigned) (p_ftCommonData->xF4 * 1000.0f));
     M360_MatchTrace("fighter.kb.xF8_x1000", (unsigned) (p_ftCommonData->xF8 * 1000.0f));
@@ -219,8 +424,7 @@ int M360_FighterLoad(void)
     M360_MatchTrace("fighter.kb.x11C_x1000", (unsigned) (p_ftCommonData->x11C * 1000.0f));
     M360_MatchTrace("fighter.kb.x120_x1000", (unsigned) (p_ftCommonData->x120 * 1000.0f));
     M360_MatchTrace("fighter.kb.x154_x1000", (unsigned) (p_ftCommonData->x154 * 1000.0f));
-    M360_MatchTrace("fighter.attr.weight_x1000", (unsigned) (s_ftData->x0->weight * 1000.0f));
-    return s_animImage != NULL;
+    return LoadKind(0) != NULL && LoadCostume(&s_loaded[0], &s_kinds[0], 0) >= 0;
 }
 
 void M360_FighterResetMatch(void)
@@ -229,27 +433,27 @@ void M360_FighterResetMatch(void)
     memset(s_fighters, 0, sizeof(s_fighters));
 }
 
-static FigaTree* LoadTree(int anim)
+static FigaTree* LoadTree(M360LoadedKind* k, int anim)
 {
     struct Fighter_WaitAnimData* entry;
     unsigned char* copy;
     void* archive;
-    if (anim < 0 || anim >= kMaxAnims)
+    if (!k || !k->data || anim < 0 || anim >= kMaxAnims)
         return NULL;
-    if (s_trees[anim])
-        return s_trees[anim];
-    entry = &s_ftData->xC[anim];
-    if (!entry->x8 || (unsigned) entry->x4 + (unsigned) entry->x8 > s_animImageSize)
+    if (k->trees[anim])
+        return k->trees[anim];
+    entry = &k->data->xC[anim];
+    if (!entry->x8 || (unsigned) entry->x4 + (unsigned) entry->x8 > k->animImageSize)
         return NULL;
     copy = HSD_MemAlloc(entry->x8);
     if (!copy)
         return NULL;
-    memcpy(copy, s_animImage + entry->x4, entry->x8);
+    memcpy(copy, k->animImage + entry->x4, entry->x8);
     archive = M360_ArchiveOpen(copy, entry->x8);
     if (!archive)
         return NULL;
-    s_trees[anim] = M360_ArchiveFind(archive, M360_ArchiveFirstSymbol(archive));
-    return s_trees[anim];
+    k->trees[anim] = M360_ArchiveFind(archive, M360_ArchiveFirstSymbol(archive));
+    return k->trees[anim];
 }
 
 static void CollectJoints(M360Fighter* f, HSD_JObj* jobj, HSD_Joint* desc)
@@ -306,7 +510,7 @@ static void FighterRender(HSD_GObj* gobj, int pass)
 static void ResetJoints(M360Fighter* f)
 {
     unsigned i;
-    const unsigned special = s_ftData->x8->x10;
+    const unsigned special = f->fighter.ft_data->x8->x10;
     HSD_JObjRemoveAnimAllByFlags(f->joints[0], 1);
     for (i = 1; i < f->jointCount; ++i) {
         HSD_JObj* j = f->joints[i];
@@ -553,8 +757,10 @@ float lbGetJObjEndFrame(HSD_JObj* jobj)
 
 void ftData_80085CD8(Fighter* fp, Fighter* src, enum_t msid)
 {
+    M360LoadedKind* k;
     (void) src;
-    fp->x590 = LoadTree(msid);
+    KindDesc(fp->kind, &k);
+    fp->x590 = LoadTree(k, msid);
     fp->x597_bits = fp->kind;
 }
 
@@ -590,22 +796,11 @@ static void BuildMotionTables(void)
     memset(&unknown, 0, sizeof(unknown));
     unknown.anim_id = -1;
     unknown.anim_cb = UnknownMotion_Anim;
+    s_unknownState = unknown;
     for (i = 0; i < ftCo_MS_Count; ++i)
         s_commonStates[i] = unknown;
-    for (i = 0; i < kFighterStates; ++i)
-        s_fighterStates[i] = unknown;
     for (i = 0; i < M360_MotionTableCount; ++i)
         s_commonStates[M360_MotionTable[i].msid] = M360_MotionTable[i].state;
-    for (i = 0; i < ftMr_MS_SelfCount && i < kFighterStates; ++i)
-        s_fighterStates[i] = ftMr_Init_MotionStateTable[i];
-    ftData_SpecialN[Ft_Kind_Mario] = ftMr_SpecialN_Enter;
-    ftData_SpecialS[Ft_Kind_Mario] = ftMr_SpecialS_Enter;
-    ftData_SpecialHi[Ft_Kind_Mario] = ftMr_SpecialHi_Enter;
-    ftData_SpecialLw[Ft_Kind_Mario] = ftMr_SpecialLw_Enter;
-    ftData_SpecialAirN[Ft_Kind_Mario] = ftMr_SpecialAirN_Enter;
-    ftData_SpecialAirS[Ft_Kind_Mario] = ftMr_SpecialAirS_Enter;
-    ftData_SpecialAirHi[Ft_Kind_Mario] = ftMr_SpecialAirHi_Enter;
-    ftData_SpecialAirLw[Ft_Kind_Mario] = ftMr_SpecialAirLw_Enter;
 }
 
 static int FloorAt(float x, float yTop, float yBottom, int allowPlatform, float* y,
@@ -972,23 +1167,33 @@ static int FindLedge(Fighter* fp, int left, int* ledge)
     return 0;
 }
 
-static int TryCliff(HSD_GObj* gobj)
+/* Raises Collide_*LedgeGrab like mpColl_80047E14 for the given facing
+ * (0 checks both sides). */
+static int DetectLedge(Fighter* fp, int dir, int* ledge)
 {
-    Fighter* fp = GET_FIGHTER(gobj);
-    int ledge;
     fp->coll_data.env_flags &= ~Collide_LedgeGrabMask;
     if (fp->x2064_ledgeCooldown || fp->x2224_b2 || fp->cur_pos.y >= fp->prev_pos.y ||
         !fp->ft_data || !fp->ft_data->x44)
         return 0;
-    if (fp->facing_dir >= 0.0f && FindLedge(fp, 1, &ledge)) {
+    if (dir >= 0 && FindLedge(fp, 1, ledge)) {
         fp->coll_data.env_flags |= Collide_LeftLedgeGrab;
-        fp->coll_data.ledge_id_left = ledge;
-    } else if (fp->facing_dir <= 0.0f && FindLedge(fp, 0, &ledge)) {
-        fp->coll_data.env_flags |= Collide_RightLedgeGrab;
-        fp->coll_data.ledge_id_right = ledge;
-    } else {
-        return 0;
+        fp->coll_data.ledge_id_left = *ledge;
+        return 1;
     }
+    if (dir <= 0 && FindLedge(fp, 0, ledge)) {
+        fp->coll_data.env_flags |= Collide_RightLedgeGrab;
+        fp->coll_data.ledge_id_right = *ledge;
+        return 1;
+    }
+    return 0;
+}
+
+static int TryCliff(HSD_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    int ledge;
+    if (!DetectLedge(fp, fp->facing_dir < 0.0f ? -1 : 1, &ledge))
+        return 0;
     if (ftCliffCommon_80081298(gobj)) {
         M360_MatchTrace("fighter.cliff.catch", (unsigned) ledge);
         return 1;
@@ -1164,6 +1369,29 @@ void ft_80083844(Fighter_GObj* gobj, HSD_GObjEvent cb)
 void ft_80083DCC(Fighter_GObj* gobj)
 {
     AirCollide(gobj);
+}
+
+/* ft_CheckGroundAndLedge/ft_8008239C: air collision that also flags a
+ * grabbable ledge for the caller's own ftCliffCommon_80081298 check. */
+bool ft_CheckGroundAndLedge(Fighter_GObj* gobj, int dir)
+{
+    int ledge;
+    if (AirCollide(gobj))
+        return true;
+    DetectLedge(GET_FIGHTER(gobj), dir, &ledge);
+    return false;
+}
+
+bool ft_8008239C(Fighter_GObj* gobj, int dir, ftCollisionBox* height_attributes)
+{
+    (void) height_attributes;
+    return ft_CheckGroundAndLedge(gobj, dir);
+}
+
+bool ft_80082978(HSD_GObj* gobj, ftCollisionBox* arg1)
+{
+    (void) arg1;
+    return GroundStep(gobj, 1) != 0;
 }
 
 bool ft_800821DC(Fighter_GObj* gobj)
@@ -1582,6 +1810,13 @@ static void ProcFinish(HSD_GObj* gobj)
     HSD_JObjSetTranslate(gobj->hsd_obj, &fp->cur_pos);
 }
 
+static void OnDeath(HSD_GObj* gobj)
+{
+    const M360KindDesc* desc = KindDesc(GET_FIGHTER(gobj)->kind, NULL);
+    if (desc->onDeath)
+        desc->onDeath(gobj);
+}
+
 static void RemoveUserData(void* data)
 {
     (void) data;
@@ -1594,15 +1829,28 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     HSD_GObj* gobj;
     HSD_JObj* root;
     Vec3 scale;
+    const M360KindDesc* desc;
+    M360LoadedKind* kind;
+    int costume;
     int i;
-    if (!s_ftData || slot < 0 || slot >= kMaxFighters)
+    if (slot < 0 || slot >= kMaxFighters)
+        return NULL;
+    kind = LoadKind(s_selectKind[slot]);
+    if (!kind) {
+        M360_MatchTrace("fighter.kind.fallback", s_selectKind[slot]);
+        s_selectKind[slot] = 0;
+        kind = LoadKind(0);
+    }
+    desc = &s_kinds[s_selectKind[slot]];
+    costume = kind ? LoadCostume(kind, desc, s_selectCostume[slot]) : -1;
+    if (costume < 0)
         return NULL;
     f = &s_fighters[slot];
     memset(f, 0, sizeof(*f));
     fp = &f->fighter;
     gobj = GObj_Create(HSD_GOBJ_CLASS_FIGHTER, 8, 0);
-    root = HSD_JObjLoadJoint(s_modelJoint);
-    HSD_JObjAddAnimAll(root, NULL, s_modelMatAnim, NULL);
+    root = HSD_JObjLoadJoint(kind->costumeJoint[costume]);
+    HSD_JObjAddAnimAll(root, NULL, kind->costumeMatAnim[costume], NULL);
     HSD_JObjReqAnimAll(root, 0.0f);
     HSD_JObjAnimAll(root);
     HSD_GObjObject_80390A70(gobj, HSD_GObj_JObjKind, root);
@@ -1610,7 +1858,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     GObj_SetupGXLink(gobj, FighterRender, kLinkFighter, 0);
     f->gobj = gobj;
     f->port = port;
-    CollectJoints(f, root, s_modelJoint);
+    CollectJoints(f, root, kind->costumeJoint[costume]);
     for (i = 0; i < (int) f->jointCount; ++i) {
         f->parts[i].joint = f->joints[i];
         f->parts[i].x4_jobj2 = f->joints[i];
@@ -1618,17 +1866,18 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     }
     fp->parts = f->parts;
     for (i = 0; i < 4; ++i) {
-        DiscU32(*table)[4] = (DiscU32(*)[4]) s_ftData->x8->x0.vis_table;
+        DiscU32(*table)[4] = (DiscU32(*)[4]) kind->data->x8->x0.vis_table;
         f->vis[i] = (FtPartsVisLookup*) (uintptr_t) table[0][i].v;
     }
     SetVisGroup(f, 0, -1);
     SetVisGroup(f, 1, -1);
-    fp->ft_data = s_ftData;
-    fp->co_attrs = *s_ftData->x0;
-    fp->x24 = s_ftData->xC;
-    fp->x28 = (u8(*)[2]) s_ftData->x10;
-    fp->kind = Ft_Kind_Mario;
-    fp->x597_bits = Ft_Kind_Mario;
+    fp->ft_data = kind->data;
+    fp->co_attrs = *kind->data->x0;
+    fp->x24 = kind->data->xC;
+    fp->x28 = (u8(*)[2]) kind->data->x10;
+    fp->kind = desc->kind;
+    fp->x597_bits = desc->kind;
+    fp->x619_costume_id = (u8) costume;
     fp->player_id = (u8) slot;
     fp->x618_player_id = (u8) (port < 0 ? 0 : port);
     fp->x61A_controller_index = (u8) slot;
@@ -1643,12 +1892,13 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->x34_scale.x = fp->x34_scale.y = fp->x34_scale.z = 1.0f;
     fp->x18 = ftCo_MS_Count;
     fp->x1C_actionStateList = s_commonStates;
-    fp->x20_actionStateList = s_fighterStates;
+    fp->x20_actionStateList = kind->states;
     fp->anim_id = -1;
     fp->gobj = gobj;
     fp->dat_attrs_backup = f->datAttrs;
     fp->x890_cameraBox = &f->cameraSubject;
-    ftMr_Init_OnLoad(gobj);
+    if (desc->onLoad)
+        desc->onLoad(gobj);
     fp->x21FC_flag.byte = 1;
     fp->smash_attrs.x2135 = -1;
     fp->coll_data.floor.index = -1;
@@ -1701,7 +1951,7 @@ void M360_FighterRespawn(void* handle, float x, float y)
     s_playerPos[fp->player_id].y = y;
     Fighter_UnkInitReset_80067C98(fp);
     Fighter_ResetInputData_80068854(gobj);
-    ftMr_Init_OnDeath(gobj);
+    OnDeath(gobj);
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
     fp->gr_vel = 0.0f;
@@ -1731,7 +1981,7 @@ void Fighter_UnkProcessDeath_80068354(Fighter_GObj* gobj)
     fp->coll_data.floor_skip = -1;
     ftColl_8007AFF8(gobj);
     ftColl_8007B0C0(gobj, HurtCapsule_Enabled);
-    ftMr_Init_OnDeath(gobj);
+    OnDeath(gobj);
 }
 
 /* fn_8016719C: rebirth above the stage's first rebirth point, offset 16
