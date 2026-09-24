@@ -74,7 +74,7 @@ function New-Adapted([string]$Relative, [hashtable]$Replacements, [string]$Name)
 }
 
 # Original motion-state entries, copied verbatim from ftmotionstates.c.
-$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,247,248,249,250,244,178,179,180,181,182,205,206,207,208,209,210,211,233,234,235,236,237,238,35,36,37,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,239,240,241,242,243,252,253,254,255,256,257,258,259,260,261,262,263,264,265,245,246,12,13,266,267,268,269,270,301,302,303,304,144,145,146,147,276,277)
+$motionIds = @(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,247,248,249,250,244,178,179,180,181,182,205,206,207,208,209,210,211,233,234,235,236,237,238,35,36,37,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,239,240,241,242,243,252,253,254,255,256,257,258,259,260,261,262,263,264,265,245,246,12,13,266,267,268,269,270,301,302,303,304,144,145,146,147,276,277,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,307,308,309,310,311,312,313,314,315,316,317,318,319,320,321,294,295,296,297,298,299,300,305,306,325,326,340,293)
 $motionText = Get-Content -Raw (Join-Path $src 'melee/ft/ftmotionstates.c')
 $tableStart = $motionText.IndexOf('MotionState ftData_MotionStateList[ftCo_MS_Count] = {')
 $headers = $motionText.Substring(0, $tableStart)
@@ -251,6 +251,42 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CargoWait.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_CargoWalk.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_JumpAerialF1.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftpickupitem.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ItemThrow.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Lift.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ItemScrew.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ItemScope.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ItemScopeFire.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ItemScopeRapid.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_ItemScopeStart.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DamageScrew.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerFall.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerJump.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerKneeBend.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerLanding.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerTurn.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerWait.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_HammerWalk.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_KinokoGiantEnd.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_KinokoGiantStart.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_KinokoSmallEnd.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_KinokoSmallStart.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_WarpStar.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Barrel.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_BarrelWait.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Bury.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_BuryWait.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DamageBind.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DamageSong.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_DamageIce.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0CD1.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0CD3.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0CDD.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0CDF.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0CE3.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftlipstickswing.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftstarrodswing.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ft_0D27.c') },
     @{ Path = (Join-Path $src 'melee/it/it_26B1.c') },
     @{ Path = (Join-Path $src 'melee/it/it_2725.c') },
     @{ Path = (Join-Path $src 'melee/it/it_279C.c') },
@@ -564,7 +600,7 @@ $units = @(
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80082B1C(', 'Fighter_GObj* ft_80082E3C(', 'void ft_80084DB0(') 'ft_081B_slice'
 $units += New-Slice 'melee/ft/kinds/ftCommon/ftCo_0A01.c' '/// @todo .sdata2 order hack' @('static inline float convertStickAxis(', 'float ftCo_GetCpuLStickX(', 'float ftCo_GetCpuLStickY(', 'float ftCo_GetCpuLTrigger(', 'float ftCo_GetCpuRTrigger(', 'HSD_Pad ftCo_GetCpuButtons(', 'float ftCo_GetCpuCStickX(', 'float ftCo_GetCpuCStickY(', 'bool ftCo_IsCpuControlled(') 'ftCo_0A01_cpu_input_slice'
-$units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8(', 'void ft_80088328(', 'void ft_80088478(', 'void ft_80088510(', 'void ft_800885A8(', 'void ft_80088640(', 'void ft_80088770(', 'void ft_800887CC(', 'void ft_80088828(', 'void ft_80088884(', 'void ft_800888E0(', 'void ft_8008893C(', 'void ft_800889F4(', 'void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
+$units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8(', 'void ft_80088328(', 'void ft_80088478(', 'void ft_80088510(', 'void ft_800885A8(', 'void ft_80088640(', 'void ft_80088770(', 'void ft_800887CC(', 'void ft_80088828(', 'void ft_80088884(', 'void ft_800888E0(', 'void ft_8008893C(', 'void ft_800889F4(', 'static inline int inline0(', 'void ftCo_800886D8(', 'void ft_80088998(', 'void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
 $units += New-Adapted 'melee/it/itzako.c' @{ '\bsin\b' = 'zako_sine'; '\bcos\b' = 'zako_cosine' } 'itzako'
 $units += New-Slice 'melee/lb/lb_00B0.c' 'bool lb_8000B074(' @('bool lb_8000B074(', 'void lb_8000C1C0(', 'void lb_8000C228(', 'void lb_8000C290(', 'void lb_8000C2F8(', 'static inline HSD_RObj* robj_next(', 'void lb_8000C390(', 'bool lb_8000B09C(', 'bool lb_8000B134(', 'void lb_8000B804(', 'static void lb_8000B9D8(HSD_JObj* jobj', 'void lb_8000BA0C(', 'static HSD_JObj* lbFindJObjWithAObj(HSD_JObj* jobj)', 'float lbGetJObjCurrFrame(', 'float lbGetJObjEndFrame(', 'static s32 lbGetFreeColorRegImpl(s32 i0, HSD_TevDesc* tevdesc', 's32 lbGetFreeColorRegister(', 's32 lb_8000CC8C(', 's32 lb_8000CCA4(', 's32 lb_8000CD90(', 's32 lb_8000CDA8(') 'lb_00B0_constraint_slice'
