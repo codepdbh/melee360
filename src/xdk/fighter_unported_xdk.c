@@ -139,16 +139,9 @@ static void Report(const char* name)
 #define SILENT_VOID(name, params) \
     void name params { }
 
-UNPORTED_BOOL(ftCo_80091A4C, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_80091AD8, (Fighter_GObj* gobj, int mv_x20))
-UNPORTED_VOID(ftCo_80091B90, (Fighter_GObj* gobj, int arg))
-UNPORTED_VOID(ftCo_80091B9C, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_80094E54, (Fighter* fp))
 UNPORTED_BOOL(ftCo_80095328, (Fighter_GObj* gobj, bool* arg))
 UNPORTED_VOID(ftCo_800957F4, (Fighter_GObj* gobj, FtMotionId msid))
-UNPORTED_BOOL(ftCo_80099264, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_80099794, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_80099A58, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800C3B10, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C4ED8, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C5500, (Fighter_GObj* gobj))
@@ -534,13 +527,8 @@ bool ftCo_800C0A28(Fighter_GObj* a0, UNK_T a1, ftCommon_BuryType a2) { (void) a0
 void ftCo_800C08A0(Fighter_GObj* a0, Fighter_GObj* a1, DynamicsDesc* a2, ftCommon_BuryType a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.ftCo_800C08A0");  }
 void ftCo_800C0874(Fighter_GObj* a0, UNK_T a1, ftCommon_BuryType a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftCo_800C0874");  }
 void ftCo_800A0DA4(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_800A0DA4");  }
-void ftCo_80099D9C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80099D9C");  }
-void ftCo_80098C9C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80098C9C");  }
-void ftCo_80098B20(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80098B20");  }
 void ftCo_8009750C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_8009750C");  }
-void ftCo_800968C8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800968C8");  }
 void ftCo_80095744(Fighter_GObj* a0, bool* a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_80095744");  }
-void ftCo_80094138(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_80094138");  }
 void ftCo_80090984(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_80090984");  }
 void ftCh_Init_80156014(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_Init_80156014");  }
 void ftCh_GrabUnk1_8015ADD0(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_GrabUnk1_8015ADD0");  }
@@ -559,3 +547,27 @@ int Fighter_SuperMushroomEnd(Fighter_GObj* a0) { (void) a0; Report("fighter.unpo
 bool Fighter_SuperMushroomApply(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_SuperMushroomApply"); return (bool) 0; }
 bool Fighter_PoisonMushroomEnd(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_PoisonMushroomEnd"); return (bool) 0; }
 bool Fighter_PoisonMushroomApply(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.Fighter_PoisonMushroomApply"); return (bool) 0; }
+
+/* Shield, dodge and special-fall dependencies. Item tosses and grabs out of
+ * shield stay unavailable until items/grabs are integrated; the Yoshi and
+ * Sheik branches are unreachable with the current Mario-only roster. */
+UNPORTED_BOOL(ftCo_8009515C, (Fighter_GObj* gobj))
+UNPORTED_BOOL(ftCo_8009563C, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftSs_SpecialLw_8012AEBC, (HSD_GObj* gobj))
+UNPORTED_VOID(ftSs_SpecialLw_8012AF38, (HSD_GObj* gobj))
+UNPORTED_VOID(ftYs_Init_8012B8A4, (HSD_GObj* gobj))
+UNPORTED_VOID(ftYs_Init_8012BDA0, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftYs_Init_8012BE3C, (HSD_GObj* gobj))
+UNPORTED_VOID(ftYs_Init_8012BECC, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftYs_Shield_8012C1D4, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftYs_Shield_8012C49C, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftYs_Shield_8012C600, (Fighter_GObj* gobj, bool arg))
+UNPORTED_VOID(ftYs_Shield_8012C850, (Fighter_GObj* gobj))
+UNPORTED_VOID(ftYs_Shield_8012C914, (Fighter_GObj* gobj))
+UNPORTED_BOOL(ftYs_Shield_8012CC1C, (Fighter_GObj* gobj))
+SILENT_VOID(efLib_SetParamAlpha, (HSD_GObj* gobj, u8 alpha))
+SILENT_VOID(pl_8003E0E8, (int slot, int sub))
+SILENT_VOID(pl_8003E114, (int slot, int sub, float health))
+u32 Player_GetUnk45(s32 slot) { (void) slot; return 0; }
+int un_80322598(int spawn_id, float y) { (void) spawn_id; (void) y; return 0; }
+UNPORTED_BOOL(ftCo_800D8B9C, (Fighter_GObj* gobj))

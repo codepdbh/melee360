@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Host stand-in for the XDK cl.exe used only to validate the gameplay/match
+build on Linux. It maps the MSVC flags used by tools/*.ps1 onto clang with a
+32-bit MSVC target so struct layout, bitfields and C dialect stay close to the
+XDK compiler. Objects are COFF and are only inspected with llvm-nm."""
+import os, subprocess, sys
+
+here = os.path.dirname(os.path.abspath(__file__))
+xedk = os.path.abspath(os.path.join(here, '..', '..'))
+args = ['clang', '--target=i686-pc-windows-msvc', '-nostdlibinc', '-fms-extensions',
+        '-fms-compatibility', '-std=gnu89', '-w', '-O0', '-c',
+        '-Wno-everything', '-fno-builtin'
+        ]
+lang_cpp = False
+out = None
+srcs = []
+for a in sys.argv[1:]:
+    if not a.startswith('/') or (os.path.isfile(a) and a.endswith(('.c', '.cpp'))):
+        srcs.append(a); continue
+    if a == '/TP':
+        lang_cpp = True
+    elif a.startswith('/D'):
+        args.append('-D' + a[2:])
+    elif a.startswith('/I'):
+        args.append('-I' + a[2:])
+    elif a.startswith('/FI'):
+        args += ['-include', a[3:]]
+    elif a.startswith('/Fo'):
+        out = a[3:]
+    # /c /TC /O2 /MT /GS- /W* /nologo and friends are ignored.
+if lang_cpp:
+    args = [x if x != '-std=gnu89' else '-std=gnu++14' for x in args] + ['-x', 'c++']
+for s in srcs:
+    cmd = args + ([ '-o', out ] if out else []) + [s]
+    r = subprocess.run(cmd)
+    print(os.path.basename(s))
+    if r.returncode != 0:
+        sys.exit(2)
