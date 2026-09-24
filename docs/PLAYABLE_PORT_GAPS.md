@@ -68,6 +68,34 @@ shield tilt (second animation skeleton), wall-bound ledge edge cases, moving
 ledges and non-Mario character hooks, which are traced as
 `fighter.unported.*`. A successful ledge grab traces `fighter.cliff.catch`.
 
+### Roster, select and respawn (2026-09-24)
+
+`fighter_glue_xdk.c` keeps per-kind state (`M360LoadedKind`) described by a
+roster table: archive names, costume models, motion-state table, OnLoad/
+OnDeath and the eight special entries per kind, taken from `ftdata.c` and each
+kind's strings. The roster has Mario, Luigi, Dr. Mario, Peach, Yoshi, Bowser,
+Donkey Kong, Captain Falcon, Ganondorf, Fox, Falco, Link, Young Link, Zelda,
+Sheik, Samus, Pikachu, Pichu, Jigglypuff (default costume only), Ness, Marth,
+Roy, Mewtwo and Mr. Game & Watch. Kirby (copy abilities load other kinds'
+data) and the Ice Climbers (Nana's partner AI) are not linked.
+
+`match_scene_xdk.c` starts each VS match with a native select phase: left/right
+chooses the fighter, X/Y the costume, A confirms, B steps back or returns to
+the menu. A second controller joins by pressing a button; otherwise P1 also
+picks the CPU. Classic/Adventure keep P1's pick and cycle the CPU through the
+roster. This is scaffolding, not the original character select screen.
+
+After a KO, `M360_FighterRebirth` places the fighter at the camera top above
+ground point 4 (offset per player) and runs the original rebirth states with
+the PlCo platform accessory. Fighter voice/SFX tracks (`ft_0881.c`) now reach
+the SSM player through a native `lbAudioAx_80023870`.
+
+Known gaps for the new characters: projectiles and held items (fireballs,
+blasters, arrows, bombs, turnips, eggs, PK fire/thunder, needles, Din's fire,
+shadow ball, G&W props, Bowser's flame, DK's floor walk) are traced stubs, so
+the moves play without their objects; Ness's up special needs PK Thunder;
+Zelda/Sheik transformation, costume hats and Kirby are unported.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`
@@ -94,10 +122,11 @@ the link is expected to resolve; it is not an XDK build and runs no code.
 - Verify an actual capsule/hurtbox contact in Xenia and check the new reaction
   trace events (`fighter.hit.reaction_motion`, `fighter.hitstun.frames`); the
   current saved runtime trace predates this change and contains no hit event.
-- Match setup is fixed to two Mario fighters on Battlefield with four stocks.
-  VS rules, fighter selection, stage selection, configurable stocks/time and
-  persistent results flow are not integrated. P2 uses a connected second
-  controller when available; otherwise a basic approach-and-attack CPU is used.
+- Match setup is fixed to Battlefield with four stocks; fighters come from the
+  native select phase. VS rules, the original character/stage select screens,
+  configurable time and persistent results flow are not integrated. P2 uses a
+  connected second controller when available; otherwise a basic CPU that
+  approaches, attacks, shields, grabs and recovers is used.
 - Stage collision now supports floor/wall checks, downward platform drop-through,
   a basic ceiling crossing stop, ledge grabs and edge teeter. ECB-based
   collision, ledge slips (MissFoot), platform one-way edge cases, moving
