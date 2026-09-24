@@ -1808,6 +1808,29 @@ bool ft_80082978(HSD_GObj* gobj, ftCollisionBox* arg1)
     return GroundStep(gobj, 1) != 0;
 }
 
+bool ft_80082638(Fighter_GObj* gobj, ftCollisionBox* box)
+{
+    (void) box;
+    return AirCollide(gobj) != 0;
+}
+
+void ft_80083E64(Fighter_GObj* gobj, ftCollisionBox* ecb, HSD_GObjEvent cb)
+{
+    (void) ecb;
+    if (AirCollide(gobj))
+        cb(gobj);
+}
+
+void ft_80084CB0(Fighter* fp, ftCollisionBox* box)
+{
+    box->top = fp->coll_data.ecb.top.y;
+    box->bottom = fp->coll_data.ecb.bottom.y;
+    box->right.x = fp->coll_data.ecb.right.x;
+    box->right.y = fp->coll_data.ecb.right.y;
+    box->left.x = fp->coll_data.ecb.left.x;
+    box->left.y = fp->coll_data.ecb.left.y;
+}
+
 bool ft_800821DC(Fighter_GObj* gobj)
 {
     return AirCollide(gobj) != 0;
