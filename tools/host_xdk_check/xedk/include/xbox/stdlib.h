@@ -5,4 +5,5 @@ void* malloc(size_t); void free(void*); void* calloc(size_t, size_t); void* real
 int abs(int); long labs(long); int atoi(const char*); double atof(const char*);
 int rand(void); void srand(unsigned); void abort(void); void exit(int);
 void qsort(void*, size_t, size_t, int (*)(const void*, const void*));
+char* getenv(const char*); long strtol(const char*, char**, int); double strtod(const char*, char**);
 #endif
