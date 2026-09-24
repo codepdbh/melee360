@@ -120,8 +120,9 @@ level (LB in the select phase, default 3). Its stage model is native:
 lines on each stage build, and the `mpCheck*` raycasts test the matching
 native lines. Stage-specific AI hooks (hazards, teams) are stubs.
 
-The select phase also picks the stage (D-pad up/down) and stocks (RB). Six
-stages load from the map GObj ids their original OnInit creates; moving
+The select phase also picks the stage (D-pad up/down) and stocks (RB). Nine
+stages (the first six plus Hyrule Temple, Kongo Jungle 64 and Jungle Japes;
+stage collision holds up to 512 lines) load from the map GObj ids their original OnInit creates; moving
 platforms, Randall and hazards are not simulated and collision uses the
 authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
 complete the roster. Popo now spawns with Nana as the slot's sub entity (a

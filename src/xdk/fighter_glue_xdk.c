@@ -1841,7 +1841,7 @@ bool mpCheckMultiple(float x0, float y0, float x1, float y1, Vec3* pos_out, int*
 
 enum { kMaxIslands = 64 };
 static mp_UnkStruct0 s_islands[kMaxIslands];
-static int s_islandOfLine[128];
+static int s_islandOfLine[M360_MAX_STAGE_LINES];
 struct mpIsland_80458E88_t mpIsland_80458E88;
 
 static int LineEndsJoin(const M360StageLine* a, const M360StageLine* b)
@@ -1859,7 +1859,7 @@ void M360_FighterBuildIslands(void)
     unsigned used = 0, i, j;
     memset(&mpIsland_80458E88, 0, sizeof(mpIsland_80458E88));
     memset(s_islands, 0, sizeof(s_islands));
-    for (i = 0; i < 128; ++i)
+    for (i = 0; i < M360_MAX_STAGE_LINES; ++i)
         s_islandOfLine[i] = -1;
     for (i = 0; i < st->lineCount && used < kMaxIslands; ++i) {
         mp_UnkStruct0* isl;
@@ -1905,7 +1905,7 @@ void M360_FighterBuildIslands(void)
 
 mp_UnkStruct0* mpIsland_8005AB54(int line_idx)
 {
-    if (line_idx < 0 || line_idx >= 128 || s_islandOfLine[line_idx] < 0)
+    if (line_idx < 0 || line_idx >= M360_MAX_STAGE_LINES || s_islandOfLine[line_idx] < 0)
         return NULL;
     return &s_islands[s_islandOfLine[line_idx]];
 }
@@ -2479,8 +2479,8 @@ static int LineEndsMeet(const M360StageLine* a, const M360StageLine* b)
 bool mpLinesConnected(int start_id, int target_id)
 {
     const M360MatchStage* st = M360_MatchStageData();
-    unsigned char seen[128];
-    int queue[128];
+    unsigned char seen[M360_MAX_STAGE_LINES];
+    int queue[M360_MAX_STAGE_LINES];
     int head = 0, tail = 0;
     unsigned i;
     if (!mpLib_80054ED8(start_id) || !mpLib_80054ED8(target_id))

@@ -23,6 +23,8 @@ enum {
     M360_MATCH_NEXT_ROUND = 2
 };
 
+enum { M360_MAX_STAGE_LINES = 512 };
+
 typedef struct M360StageLine {
     float x0, y0, x1, y1;
     unsigned kind;
@@ -30,7 +32,7 @@ typedef struct M360StageLine {
 } M360StageLine;
 
 typedef struct M360MatchStage {
-    M360StageLine lines[128];
+    M360StageLine lines[M360_MAX_STAGE_LINES];
     unsigned lineCount;
     float blastLeft, blastRight, blastTop, blastBottom;
     float camLeft, camRight, camTop, camBottom, camX, camY;
