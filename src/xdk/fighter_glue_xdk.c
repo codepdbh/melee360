@@ -41,6 +41,13 @@
 #include <melee/ft/kinds/ftLuigi/ftluigispecialhi.h>
 #include <melee/ft/kinds/ftLuigi/ftluigispeciallw.h>
 #include <melee/ft/kinds/ftDrMario/ftdrmario.h>
+#include <melee/ft/kinds/ftPopo/ftpopo.h>
+#include <melee/ft/kinds/ftPopo/ftpopospecialhi.h>
+#include <melee/ft/kinds/ftPopo/ftpopospeciallw.h>
+#include <melee/ft/kinds/ftPopo/ftpopospecialn.h>
+#include <melee/ft/kinds/ftPopo/ftpopospecials.h>
+#include <melee/ft/kinds/ftNana/ftnana.h>
+#include <melee/ft/kinds/ftNana/ftnanaspecialhi.h>
 #include <melee/ft/kinds/ftKirby/ftKb_Init.static.h>
 #include <melee/ft/kinds/ftKirby/ftkirby.h>
 #include <melee/ft/kinds/ftKirby/ftkirbyattackdash.h>
@@ -441,6 +448,12 @@ static const M360KindDesc s_kinds[] = {
       { "PlyKirby5K_Share_matanim_joint", "PlyKirby5KYe_Share_matanim_joint", "PlyKirby5KBu_Share_matanim_joint", "PlyKirby5KRe_Share_matanim_joint", "PlyKirby5KGr_Share_matanim_joint", "PlyKirby5KWh_Share_matanim_joint" },
       ftKb_Init_MotionStateTable, sizeof(ftKb_Init_MotionStateTable) / sizeof(MotionState), ftKb_Init_OnLoad, ftKb_Init_OnDeath,
       { ftKb_SpecialN_Enter, ftKb_SpecialS_Enter, ftKb_SpecialHi_Enter, ftKb_SpecialLw_Enter, ftKb_SpecialAirN_Enter, ftKb_SpecialAirS_Enter, ftKb_SpecialAirHi_Enter, ftKb_SpecialAirLw_Enter } },
+    { Ft_Kind_Popo, "POPO", "PlPp.dat", "ftDataPopo", "PlPpAJ.dat",
+      { "PlPpNr.dat", "PlPpGr.dat", "PlPpOr.dat", "PlPpRe.dat", NULL, NULL },
+      { "PlyPopo5K_Share_joint", "PlyPopo5KGr_Share_joint", "PlyPopo5KOr_Share_joint", "PlyPopo5KRe_Share_joint", NULL, NULL },
+      { "PlyPopo5K_Share_matanim_joint", "PlyPopo5KGr_Share_matanim_joint", "PlyPopo5KOr_Share_matanim_joint", "PlyPopo5KRe_Share_matanim_joint", NULL, NULL },
+      ftPp_Init_MotionStateTable, sizeof(ftPp_Init_MotionStateTable) / sizeof(MotionState), ftPp_Init_OnLoad, ftPp_Init_OnDeath,
+      { ftPp_SpecialN_Enter, ftPp_SpecialS_Enter, ftPp_SpecialHi_Enter, ftPp_SpecialLw_Enter, ftPp_SpecialAirN_Enter, ftPp_SpecialAirS_Enter, ftPp_SpecialAirHi_Enter, ftPp_SpecialAirLw_Enter } },
 };
 
 enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]) };
