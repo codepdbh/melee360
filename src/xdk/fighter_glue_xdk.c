@@ -40,6 +40,48 @@
 #include <melee/ft/kinds/ftLuigi/ftluigispecialhi.h>
 #include <melee/ft/kinds/ftLuigi/ftluigispeciallw.h>
 #include <melee/ft/kinds/ftDrMario/ftdrmario.h>
+#include <melee/ft/kinds/ftFox/ftfox.h>
+#include <melee/ft/kinds/ftFox/ftfoxappeals.h>
+#include <melee/ft/kinds/ftFox/ftfoxspecialhi.h>
+#include <melee/ft/kinds/ftFox/ftfoxspeciallw.h>
+#include <melee/ft/kinds/ftFox/ftfoxspecialn.h>
+#include <melee/ft/kinds/ftFox/ftfoxspecials.h>
+#include <melee/ft/kinds/ftFalco/ftfalco.h>
+#include <melee/ft/kinds/ftLink/ftlink.h>
+#include <melee/ft/kinds/ftLink/ftlinkattackair.h>
+#include <melee/ft/kinds/ftLink/ftlinkspecialhi.h>
+#include <melee/ft/kinds/ftLink/ftlinkspeciallw.h>
+#include <melee/ft/kinds/ftLink/ftlinkspecialn.h>
+#include <melee/ft/kinds/ftLink/ftlinkspecials.h>
+#include <melee/ft/kinds/ftCLink/ftclink.h>
+#include <melee/ft/kinds/ftCLink/ftclinkappeals.h>
+#include <melee/ft/kinds/ftSamus/ftsamus.h>
+#include <melee/ft/kinds/ftSamus/ftsamusspecialhi.h>
+#include <melee/ft/kinds/ftSamus/ftsamusspeciallw0.h>
+#include <melee/ft/kinds/ftSamus/ftsamusspeciallw1.h>
+#include <melee/ft/kinds/ftSamus/ftsamusspecialn.h>
+#include <melee/ft/kinds/ftSamus/ftsamusspecials.h>
+#include <melee/ft/kinds/ftPikachu/ftpikachu.h>
+#include <melee/ft/kinds/ftPikachu/ftpikachuspecialhi.h>
+#include <melee/ft/kinds/ftPikachu/ftpikachuspeciallw.h>
+#include <melee/ft/kinds/ftPikachu/ftpikachuspecialn.h>
+#include <melee/ft/kinds/ftPikachu/ftpikachuspecials.h>
+#include <melee/ft/kinds/ftPichu/ftpichu.h>
+#include <melee/ft/kinds/ftZelda/ftzelda.h>
+#include <melee/ft/kinds/ftZelda/ftzeldaspecialhi.h>
+#include <melee/ft/kinds/ftZelda/ftzeldaspeciallw.h>
+#include <melee/ft/kinds/ftZelda/ftzeldaspecialn.h>
+#include <melee/ft/kinds/ftZelda/ftzeldaspecials.h>
+#include <melee/ft/kinds/ftSeak/ftseak.h>
+#include <melee/ft/kinds/ftSeak/ftseakspecialhi.h>
+#include <melee/ft/kinds/ftSeak/ftseakspeciallw.h>
+#include <melee/ft/kinds/ftSeak/ftseakspecialn.h>
+#include <melee/ft/kinds/ftSeak/ftseakspecials.h>
+#include <melee/ft/kinds/ftMewtwo/ftmewtwo.h>
+#include <melee/ft/kinds/ftMewtwo/ftmewtwospecialhi.h>
+#include <melee/ft/kinds/ftMewtwo/ftmewtwospeciallw.h>
+#include <melee/ft/kinds/ftMewtwo/ftmewtwospecialn.h>
+#include <melee/ft/kinds/ftMewtwo/ftmewtwospecials.h>
 #include <melee/ft/kinds/ftCaptain/ftcaptain.h>
 #include <melee/ft/kinds/ftCaptain/ftcaptainspecialhi.h>
 #include <melee/ft/kinds/ftCaptain/ftcaptainspeciallw.h>
@@ -224,6 +266,18 @@ static const M360KindDesc s_kinds[] = {
       { NULL, NULL, NULL, NULL, NULL, NULL },
       ftGn_Init_MotionStateTable, sizeof(ftGn_Init_MotionStateTable) / sizeof(MotionState), ftGn_Init_OnLoad, ftGn_Init_OnDeath,
       { ftCa_SpecialN_Enter, ftCa_SpecialS_Enter, ftCa_SpecialHi_Enter, ftCa_SpecialLw_Enter, ftCa_SpecialAirN_Enter, ftCa_SpecialAirS_Enter, ftCa_SpecialAirHi_Enter, ftCa_SpecialAirLw_Enter } },
+    { Ft_Kind_Fox, "FOX", "PlFx.dat", "ftDataFox", "PlFxAJ.dat",
+      { "PlFxNr.dat", "PlFxOr.dat", "PlFxLa.dat", "PlFxGr.dat", NULL, NULL },
+      { "PlyFox5K_Share_joint", "PlyFox5KOr_Share_joint", "PlyFox5KLa_Share_joint", "PlyFox5KGr_Share_joint", NULL, NULL },
+      { "PlyFox5K_Share_matanim_joint", "PlyFox5KOr_Share_matanim_joint", "PlyFox5KLa_Share_matanim_joint", "PlyFox5KGr_Share_matanim_joint", NULL, NULL },
+      ftFx_Init_MotionStateTable, sizeof(ftFx_Init_MotionStateTable) / sizeof(MotionState), ftFx_Init_OnLoad, ftFx_Init_OnDeath,
+      { ftFx_SpecialN_Enter, ftFx_SpecialSStart_Enter, ftFx_SpecialHi_Enter, ftFx_SpecialLw_Enter, ftFx_SpecialAirN_Enter, ftFx_SpecialAirSStart_Enter, ftFx_SpecialAirHiStart_Enter, ftFx_SpecialAirLw_Enter } },
+    { Ft_Kind_Falco, "FALCO", "PlFc.dat", "ftDataFalco", "PlFcAJ.dat",
+      { "PlFcNr.dat", "PlFcRe.dat", "PlFcBu.dat", "PlFcGr.dat", NULL, NULL },
+      { "PlyFalco5K_Share_joint", "PlyFalco5KRe_Share_joint", "PlyFalco5KBu_Share_joint", "PlyFalco5KGr_Share_joint", NULL, NULL },
+      { "PlyFalco5K_Share_matanim_joint", "PlyFalco5KRe_Share_matanim_joint", "PlyFalco5KBu_Share_matanim_joint", "PlyFalco5KGr_Share_matanim_joint", NULL, NULL },
+      ftFc_Init_MotionStateTable, sizeof(ftFc_Init_MotionStateTable) / sizeof(MotionState), ftFc_Init_OnLoad, ftFc_Init_OnDeath,
+      { ftFx_SpecialN_Enter, ftFx_SpecialSStart_Enter, ftFx_SpecialHi_Enter, ftFx_SpecialLw_Enter, ftFx_SpecialAirN_Enter, ftFx_SpecialAirSStart_Enter, ftFx_SpecialAirHiStart_Enter, ftFx_SpecialAirLw_Enter } },
     { Ft_Kind_Mars, "MARTH", "PlMs.dat", "ftDataMars", "PlMsAJ.dat",
       { "PlMsNr.dat", "PlMsRe.dat", "PlMsGr.dat", "PlMsBk.dat", "PlMsWh.dat", NULL },
       { "PlyMars5K_Share_joint", "PlyMars5KRe_Share_joint", "PlyMars5KGr_Share_joint", "PlyMars5KBk_Share_joint", "PlyMars5KWh_Share_joint", NULL },
@@ -236,6 +290,54 @@ static const M360KindDesc s_kinds[] = {
       { "PlyEmblem5K_Share_matanim_joint", "PlyEmblem5KRe_Share_matanim_joint", "PlyEmblem5KBu_Share_matanim_joint", "PlyEmblem5KGr_Share_matanim_joint", "PlyEmblem5KYe_Share_matanim_joint", NULL },
       ftFe_Init_MotionStateTable, sizeof(ftFe_Init_MotionStateTable) / sizeof(MotionState), ftFe_Init_OnLoad, ftFe_Init_OnDeath,
       { ftMs_SpecialN_Enter, ftMs_SpecialS_Enter, ftMs_SpecialHi_Enter, ftMs_SpecialLw_Enter, ftMs_SpecialAirN_Enter, ftMs_SpecialAirS_Enter, ftMs_SpecialAirHi_Enter, ftMs_SpecialAirLw_Enter } },
+    { Ft_Kind_Link, "LINK", "PlLk.dat", "ftDataLink", "PlLkAJ.dat",
+      { "PlLkNr.dat", "PlLkRe.dat", "PlLkBu.dat", "PlLkBk.dat", "PlLkWh.dat", NULL },
+      { "PlyLink5K_Share_joint", "PlyLink5KRe_Share_joint", "PlyLink5KBu_Share_joint", "PlyLink5KBk_Share_joint", "PlyLink5KWh_Share_joint", NULL },
+      { "PlyLink5K_Share_matanim_joint", "PlyLink5KRe_Share_matanim_joint", "PlyLink5KBu_Share_matanim_joint", "PlyLink5KBk_Share_matanim_joint", "PlyLink5KWh_Share_matanim_joint", NULL },
+      ftLk_Init_MotionStateTable, sizeof(ftLk_Init_MotionStateTable) / sizeof(MotionState), ftLk_Init_OnLoad, ftLk_Init_OnDeath,
+      { ftLk_SpecialN_Enter, ftLk_SpecialS_Enter, ftLk_SpecialHi_Enter, ftLk_SpecialLw_Enter, ftLk_SpecialAirN_Enter, ftLk_SpecialAirS_Enter, ftLk_SpecialAirHi_Enter, ftLk_SpecialAirLw_Enter } },
+    { Ft_Kind_CLink, "YOUNG LINK", "PlCl.dat", "ftDataClink", "PlClAJ.dat",
+      { "PlClNr.dat", "PlClRe.dat", "PlClBu.dat", "PlClWh.dat", "PlClBk.dat", NULL },
+      { "PlyClink5K_Share_joint", "PlyClink5KRe_Share_joint", "PlyClink5KBu_Share_joint", "PlyClink5KWh_Share_joint", "PlyClink5KBk_Share_joint", NULL },
+      { "PlyClink5K_Share_matanim_joint", "PlyClink5KRe_Share_matanim_joint", "PlyClink5KBu_Share_matanim_joint", "PlyClink5KWh_Share_matanim_joint", "PlyClink5KBk_Share_matanim_joint", NULL },
+      ftCl_Init_MotionStateTable, sizeof(ftCl_Init_MotionStateTable) / sizeof(MotionState), ftCl_Init_OnLoad, ftCl_Init_OnDeath,
+      { ftLk_SpecialN_Enter, ftLk_SpecialS_Enter, ftLk_SpecialHi_Enter, ftLk_SpecialLw_Enter, ftLk_SpecialAirN_Enter, ftLk_SpecialAirS_Enter, ftLk_SpecialAirHi_Enter, ftLk_SpecialAirLw_Enter } },
+    { Ft_Kind_Samus, "SAMUS", "PlSs.dat", "ftDataSamus", "PlSsAJ.dat",
+      { "PlSsNr.dat", "PlSsPi.dat", "PlSsBk.dat", "PlSsGr.dat", "PlSsLa.dat", NULL },
+      { "PlySamus5K_Share_joint", "PlySamus5KPi_Share_joint", "PlySamus5KBk_Share_joint", "PlySamus5KGr_Share_joint", "PlySamus5KLa_Share_joint", NULL },
+      { NULL, NULL, NULL, NULL, NULL, NULL },
+      ftSs_Init_MotionStateTable, sizeof(ftSs_Init_MotionStateTable) / sizeof(MotionState), ftSs_Init_OnLoad, ftSs_Init_OnDeath,
+      { ftSs_SpecialN_Enter, ftSs_SpecialS_Enter, ftSs_SpecialHi_Enter, ftSs_SpecialLw_Enter, ftSs_SpecialAirN_Enter, ftSs_SpecialAirS_Enter, ftSs_SpecialAirHi_Enter, ftSs_SpecialAirLw_Enter } },
+    { Ft_Kind_Pikachu, "PIKACHU", "PlPk.dat", "ftDataPikachu", "PlPkAJ.dat",
+      { "PlPkNr.dat", "PlPkRe.dat", "PlPkBu.dat", "PlPkGr.dat", NULL, NULL },
+      { "PlyPikachu5K_Share_joint", "PlyPikachu5KRe_Share_joint", "PlyPikachu5KBu_Share_joint", "PlyPikachu5KGr_Share_joint", NULL, NULL },
+      { "PlyPikachu5K_Share_matanim_joint", "PlyPikachu5KRe_Share_matanim_joint", "PlyPikachu5KBu_Share_matanim_joint", "PlyPikachu5KGr_Share_matanim_joint", NULL, NULL },
+      ftPk_Init_MotionStateTable, sizeof(ftPk_Init_MotionStateTable) / sizeof(MotionState), ftPk_Init_OnLoad, ftPk_Init_OnDeath,
+      { ftPk_SpecialN_Enter, ftPk_SpecialS_Enter, ftPk_SpecialHi_Enter, ftPk_SpecialLw_Enter, ftPk_SpecialAirN_Enter, ftPk_SpecialAirS_Enter, ftPk_SpecialAirHi_Enter, ftPk_SpecialAirLw_Enter } },
+    { Ft_Kind_Pichu, "PICHU", "PlPc.dat", "ftDataPichu", "PlPcAJ.dat",
+      { "PlPcNr.dat", "PlPcRe.dat", "PlPcBu.dat", "PlPcGr.dat", NULL, NULL },
+      { "PlyPichu5K_Share_joint", "PlyPichu5KRe_Share_joint", "PlyPichu5KBu_Share_joint", "PlyPichu5KGr_Share_joint", NULL, NULL },
+      { "PlyPichu5K_Share_matanim_joint", "PlyPichu5KRe_Share_matanim_joint", "PlyPichu5KBu_Share_matanim_joint", "PlyPichu5KGr_Share_matanim_joint", NULL, NULL },
+      ftPc_Init_MotionStateTable, sizeof(ftPc_Init_MotionStateTable) / sizeof(MotionState), ftPc_Init_OnLoad, ftPc_Init_OnDeath,
+      { ftPk_SpecialN_Enter, ftPk_SpecialS_Enter, ftPk_SpecialHi_Enter, ftPk_SpecialLw_Enter, ftPk_SpecialAirN_Enter, ftPk_SpecialAirS_Enter, ftPk_SpecialAirHi_Enter, ftPk_SpecialAirLw_Enter } },
+    { Ft_Kind_Zelda, "ZELDA", "PlZd.dat", "ftDataZelda", "PlZdAJ.dat",
+      { "PlZdNr.dat", "PlZdRe.dat", "PlZdBu.dat", "PlZdGr.dat", "PlZdWh.dat", NULL },
+      { "PlyZelda5K_Share_joint", "PlyZelda5KRe_Share_joint", "PlyZelda5KBu_Share_joint", "PlyZelda5KGr_Share_joint", "PlyZelda5KWh_Share_joint", NULL },
+      { "PlyZelda5K_Share_matanim_joint", "PlyZelda5KRe_Share_matanim_joint", "PlyZelda5KBu_Share_matanim_joint", "PlyZelda5KGr_Share_matanim_joint", "PlyZelda5KWh_Share_matanim_joint", NULL },
+      ftZd_Init_MotionStateTable, sizeof(ftZd_Init_MotionStateTable) / sizeof(MotionState), ftZd_Init_OnLoad, ftZd_Init_OnDeath,
+      { ftZd_SpecialN_Enter, ftZd_SpecialS_Enter, ftZd_SpecialHi_Enter, ftZd_SpecialLw_Enter, ftZd_SpecialAirN_Enter, ftZd_SpecialAirS_Enter, ftZd_SpecialAirHi_Enter, ftZd_SpecialAirLw_Enter } },
+    { Ft_Kind_Seak, "SHEIK", "PlSk.dat", "ftDataSeak", "PlSkAJ.dat",
+      { "PlSkNr.dat", "PlSkRe.dat", "PlSkBu.dat", "PlSkGr.dat", "PlSkWh.dat", NULL },
+      { "PlySeak5K_Share_joint", "PlySeak5KRe_Share_joint", "PlySeak5KBu_Share_joint", "PlySeak5KGr_Share_joint", "PlySeak5KWh_Share_joint", NULL },
+      { "PlySeak5K_Share_matanim_joint", "PlySeak5KRe_Share_matanim_joint", "PlySeak5KBu_Share_matanim_joint", "PlySeak5KGr_Share_matanim_joint", "PlySeak5KWh_Share_matanim_joint", NULL },
+      ftSk_Init_MotionStateTable, sizeof(ftSk_Init_MotionStateTable) / sizeof(MotionState), ftSk_Init_OnLoad, ftSk_Init_OnDeath,
+      { ftSk_SpecialN_Enter, ftSk_SpecialS_Enter, ftSk_SpecialHi_Enter, ftSk_SpecialLw_Enter, ftSk_SpecialAirN_Enter, ftSk_SpecialAirS_Enter, ftSk_SpecialAirHi_Enter, ftSk_SpecialAirLw_Enter } },
+    { Ft_Kind_Mewtwo, "MEWTWO", "PlMt.dat", "ftDataMewtwo", "PlMtAJ.dat",
+      { "PlMtNr.dat", "PlMtRe.dat", "PlMtBu.dat", "PlMtGr.dat", NULL, NULL },
+      { "PlyMewtwo5K_Share_joint", "PlyMewtwo5KRe_Share_joint", "PlyMewtwo5KBu_Share_joint", "PlyMewtwo5KGr_Share_joint", NULL, NULL },
+      { "PlyMewtwo5K_Share_matanim_joint", "PlyMewtwo5KRe_Share_matanim_joint", "PlyMewtwo5KBu_Share_matanim_joint", "PlyMewtwo5KGr_Share_matanim_joint", NULL, NULL },
+      ftMt_Init_MotionStateTable, sizeof(ftMt_Init_MotionStateTable) / sizeof(MotionState), ftMt_Init_OnLoad, ftMt_Init_OnDeath,
+      { ftMt_SpecialN_Enter, ftMt_SpecialS_Enter, ftMt_SpecialHiStart_Enter, ftMt_SpecialLw_Enter, ftMt_SpecialAirN_Enter, ftMt_SpecialAirS_Enter, ftMt_SpecialAirHiStart_Enter, ftMt_SpecialAirLw_Enter } },
     { Ft_Kind_Donkey, "DONKEY KONG", "PlDk.dat", "ftDataDonkey", "PlDkAJ.dat",
       { "PlDkNr.dat", "PlDkBk.dat", "PlDkRe.dat", "PlDkBu.dat", "PlDkGr.dat", NULL },
       { "PlyDonkey5K_Share_joint", "PlyDonkey5KBk_Share_joint", "PlyDonkey5KRe_Share_joint", "PlyDonkey5KBu_Share_joint", "PlyDonkey5KGr_Share_joint", NULL },
@@ -699,6 +801,38 @@ void ftAnim_80070CC4(Fighter_GObj* gobj, int arg)
 void ftAnim_80070FB4(Fighter_GObj* gobj, s32 a, s32 b)
 {
     (void) gobj; (void) a; (void) b;
+}
+
+/* ftparts.c getters; the original ftPartGetRotZ reads the Y rotation. */
+f32 ftPartGetRotX(Fighter* fp, int part_idx)
+{
+    HSD_JObj* jobj = fp->parts ? fp->parts[(u8) part_idx].joint : NULL;
+    if (!jobj)
+        return 0.0f;
+    if (HSD_JObjGetFlags(jobj) & JOBJ_USE_QUATERNION) {
+        jobj = fp->parts[(u8) part_idx].x4_jobj2;
+        if (!jobj || (HSD_JObjGetFlags(jobj) & JOBJ_USE_QUATERNION))
+            return 0.0f;
+    }
+    return HSD_JObjGetRotationX(jobj);
+}
+
+f32 ftPartGetRotZ(Fighter* fp, int part_idx)
+{
+    HSD_JObj* jobj = fp->parts ? fp->parts[(u8) part_idx].joint : NULL;
+    if (!jobj)
+        return 0.0f;
+    if (HSD_JObjGetFlags(jobj) & JOBJ_USE_QUATERNION) {
+        jobj = fp->parts[(u8) part_idx].x4_jobj2;
+        if (!jobj || (HSD_JObjGetFlags(jobj) & JOBJ_USE_QUATERNION))
+            return 0.0f;
+    }
+    return HSD_JObjGetRotationY(jobj);
+}
+
+int ftParts_80074A74(Fighter_GObj* gobj, int model_idx)
+{
+    return GET_FIGHTER(gobj)->x5F4_arr[model_idx].prev;
 }
 
 /* The shield-tilt pose blends a second skeleton (x8AC_animSkeleton) that the
@@ -1189,6 +1323,27 @@ static int DetectLedge(Fighter* fp, int dir, int* ledge)
         return 1;
     }
     return 0;
+}
+
+/* mpColl_80044164/800443C4: CollData-level left/right ledge queries. */
+bool mpColl_80044164(CollData* cd, int* p_ledge_id)
+{
+    int ledge;
+    if (!FindLedge((Fighter*) ((char*) cd - offsetof(Fighter, coll_data)), 1, &ledge))
+        return false;
+    if (p_ledge_id)
+        *p_ledge_id = ledge;
+    return true;
+}
+
+bool mpColl_800443C4(CollData* cd, int* p_ledge_id)
+{
+    int ledge;
+    if (!FindLedge((Fighter*) ((char*) cd - offsetof(Fighter, coll_data)), 0, &ledge))
+        return false;
+    if (p_ledge_id)
+        *p_ledge_id = ledge;
+    return true;
 }
 
 static int TryCliff(HSD_GObj* gobj)
