@@ -230,6 +230,39 @@ void TraceStage(const char* stage, unsigned value)
     CloseHandle(file);
 }
 
+volatile unsigned g_loopFrame;
+
+extern "C" void M360_MatchHangInfo(unsigned* out);
+
+DWORD WINAPI Watchdog(LPVOID)
+{
+    unsigned last = 0, stalls = 0;
+    for (;;) {
+        Sleep(1000);
+        const unsigned now = g_loopFrame;
+        if (now != last) {
+            last = now;
+            stalls = 0;
+            continue;
+        }
+        if (++stalls != 3)
+            continue;
+        TraceStage("hang.frame", now);
+        for (int i = 0; i < 4; ++i) {
+            unsigned info[7];
+            M360_MatchHangInfo(info);
+            TraceStage("hang.fighter", info[4]);
+            TraceStage("hang.input_cb", info[5]);
+            TraceStage("hang.anim_cb", info[6]);
+            TraceStage("hang.crumb", info[0]);
+            TraceStage("hang.proc", info[1]);
+            TraceStage("hang.plink", info[2]);
+            TraceStage("hang.detail", info[3]);
+            Sleep(250);
+        }
+    }
+}
+
 void AddRect(RectBatch& batch, LONG x, LONG y, LONG width, LONG height)
 {
     if (batch.count >= kMaxRects || width <= 0 || height <= 0)
@@ -1000,7 +1033,9 @@ void __cdecl main()
     LARGE_INTEGER previousFrame;
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&previousFrame);
+    CreateThread(0, 0, Watchdog, 0, 0, 0);
     for (;;) {
+        g_loopFrame = frameCount;
         LARGE_INTEGER workStart;
         QueryPerformanceCounter(&workStart);
         M360_AudioUpdate(&audio);
