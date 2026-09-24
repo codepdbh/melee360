@@ -499,16 +499,16 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
     DrawRect(renderer, 18, 16, 452, 62, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
     g_dynamic.count = 0;
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
-    AddText(g_dynamic, 30, 22, "MOVE: LEFT STICK / DPAD   A: ATTACK   X/Y: JUMP", 1);
+    AddText(g_dynamic, 30, 22, "MOVE: STICK/DPAD  A: ATTACK  B: SPECIAL  X/Y: JUMP", 1);
+    AddText(g_dynamic, 30, 40, "LT/RT: SHIELD  RB: GRAB  START: PAUSE", 1);
     if (match.campaignRounds) {
-        AddText(g_dynamic, 30, 40,
+        AddText(g_dynamic, 30, 56,
                 match.gameMode == 3 ? "CLASSIC" : "ADVENTURE", 1);
-        AddText(g_dynamic, 148, 40, "ROUND", 1);
-        AddNumber(g_dynamic, 200, 40, match.campaignRound + 1, 1);
-        AddText(g_dynamic, 218, 40, "/ 5   A: NEXT   B: MENU", 1);
-        AddText(g_dynamic, 30, 56, "START: PAUSE", 1);
+        AddText(g_dynamic, 148, 56, "ROUND", 1);
+        AddNumber(g_dynamic, 200, 56, match.campaignRound + 1, 1);
+        AddText(g_dynamic, 218, 56, "/ 5   A: NEXT   B: MENU", 1);
     } else {
-        AddText(g_dynamic, 30, 40, "START: PAUSE   B: RETURN AFTER MATCH", 1);
+        AddText(g_dynamic, 30, 56, "B: RETURN AFTER MATCH", 1);
     }
     RenderBatch(renderer, g_dynamic);
     for (unsigned i = 0; i < match.fighters && i < 2; ++i) {

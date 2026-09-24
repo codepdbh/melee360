@@ -1523,6 +1523,27 @@ void ftCo_800B3900(Fighter_GObj* gobj)
             fp->cpu.lstick.x = fp->cur_pos.x > 0.0f ? -127 : 127;
             if (fp->self_vel.y < 0.0f && fp->x1968_jumpsUsed < fp->co_attrs.max_jumps && (t & 7) == 0)
                 fp->cpu.buttons |= HSD_PAD_X;
+            else if (fp->self_vel.y < 0.0f && fp->x1968_jumpsUsed >= fp->co_attrs.max_jumps &&
+                     fp->cur_pos.y < 0.0f && fp->motion_id < ftCo_MS_Count) {
+                /* Out of jumps below the stage: recover with up special. */
+                fp->cpu.lstick.y = 127;
+                fp->cpu.buttons |= HSD_PAD_B;
+            }
+            return;
+        }
+        if (fp->ground_or_air == GA_Ground && fabsf(dx) < 26.0f && fabsf(dy) < 20.0f &&
+            opponent->motion_id >= ftCo_MS_Attack11 && opponent->motion_id <= ftCo_MS_AttackAirLw &&
+            ((t >> 3) & 1)) {
+            fp->cpu.buttons |= HSD_PAD_R;
+            return;
+        }
+        if (fp->ground_or_air == GA_Ground && fabsf(dx) < 14.0f && fabsf(dy) < 10.0f && (t % 97u) == 0) {
+            fp->cpu.buttons |= HSD_PAD_Z;
+            return;
+        }
+        if (fabsf(dx) < 18.0f && fabsf(dy) < 16.0f && (t % 151u) == 0) {
+            fp->cpu.lstick.y = -127;
+            fp->cpu.buttons |= HSD_PAD_B;
             return;
         }
         if (fabsf(dx) > 12.0f || (fabsf(dy) > 20.0f && fabsf(dx) > 4.0f))
