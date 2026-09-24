@@ -51,8 +51,11 @@ enum {
     kStartingStocks = 4,
     kGameModeClassic = 3,
     kGameModeAdventure = 4,
-    kCampaignRounds = 5
+    kCampaignRounds = 5,
+    kMaxCostumes = 6
 };
+
+enum { kPhaseSelect, kPhaseFight };
 
 typedef struct CamGlobals {
     float x0, x4, x8, xC, x10, x14, x18, x1C, x20, x24, x28, x2C, x30, x34, x38, x3C, x40, x44;
@@ -114,6 +117,15 @@ static float s_tilt, s_pan, s_camX20, s_camX24, s_zoomRate, s_maxDepth;
 static float s_trackRatio, s_fixedZoom, s_trackSmooth;
 static HSD_WObjDesc s_eyeDesc, s_interestDesc;
 static HSD_CameraDescPerspective s_camDesc;
+static int s_phase;
+static unsigned s_selKind[kMaxFighters];
+static unsigned s_selCostume[kMaxFighters] = { 0, 3 };
+static unsigned s_selReady[kMaxFighters];
+static int s_selHuman[kMaxFighters];
+static float s_selPrevStick[kMaxFighters];
+
+static int IsCampaign(void);
+static void StartFight(void);
 
 static float DegToRad(float d) { return d * 0.017453292f; }
 
@@ -517,28 +529,21 @@ void M360_MatchEnter(void)
     CreateCamera();
     M360_MatchTrace("match.enter.step", 3);
     s_fighterCount = 0;
-    for (i = 0; i < kMaxFighters; ++i) {
-        const int campaign = s_gameMode == kGameModeClassic ||
-                             s_gameMode == kGameModeAdventure;
-        const int port = i == 0 ? 0 : -1;
-        (void) campaign;
-        s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
-                                          i ? -1.0f : 1.0f, port);
-        s_human[i] = port >= 0;
-        s_respawn[i] = 0;
-        s_stocksLost[i] = 0;
-        s_stocksRemaining[i] = kStartingStocks;
-        if (s_fighters[i])
-            s_fighterCount = i + 1;
-    }
+    memset(s_fighters, 0, sizeof(s_fighters));
     s_matchOver = 0;
     s_winner = 0;
     s_paused = 0;
     s_frame = 0;
     s_active = 1;
+    memset(s_selReady, 0, sizeof(s_selReady));
+    s_selHuman[0] = 1;
+    s_selHuman[1] = !IsCampaign() && M360_MatchControllerConnected(1);
+    s_phase = kPhaseSelect;
+    if (IsCampaign() && s_campaignRound > 0) {
+        s_selReady[0] = s_selReady[1] = 1;
+        StartFight();
+    }
     CamUpdate(1);
-    M360_MatchTrace("match.enter.fighters", s_fighterCount);
-    M360_MatchTrace("match.p2.human", s_human[1]);
     M360_MatchTrace("match.mode", s_gameMode);
     M360_MatchTrace("match.campaign.round", s_campaignRound + 1);
     M360_MatchTrace("match.enter.blast_left", (unsigned) (int) s_stage.blastLeft);
@@ -547,6 +552,109 @@ void M360_MatchEnter(void)
         M360_MatchTrace("match.enter.spawn_x", (unsigned) (int) s_stage.spawnX[i]);
         M360_MatchTrace("match.enter.spawn_y", (unsigned) (int) s_stage.spawnY[i]);
     }
+}
+
+static int IsCampaign(void)
+{
+    return s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure;
+}
+
+/* Campaign opponents cycle through the roster by round. */
+static void CampaignOpponent(void)
+{
+    const unsigned count = M360_FighterKindCount();
+    s_selKind[1] = count ? (s_selKind[0] + 1 + s_campaignRound) % count : 0;
+    s_selCostume[1] = 0;
+}
+
+static void StartFight(void)
+{
+    unsigned i;
+    if (IsCampaign())
+        CampaignOpponent();
+    if (s_selKind[1] == s_selKind[0] && s_selCostume[1] == s_selCostume[0])
+        s_selCostume[1] = (s_selCostume[0] + 1) % kMaxCostumes;
+    s_fighterCount = 0;
+    for (i = 0; i < kMaxFighters; ++i) {
+        const int port = i == 0 ? 0 : (s_selHuman[1] ? 1 : -1);
+        M360_FighterSelect((int) i, s_selKind[i], s_selCostume[i]);
+        s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
+                                          i ? -1.0f : 1.0f, port);
+        s_human[i] = port >= 0;
+        s_respawn[i] = 0;
+        s_stocksLost[i] = 0;
+        s_stocksRemaining[i] = kStartingStocks;
+        if (s_fighters[i])
+            s_fighterCount = i + 1;
+        M360_MatchTrace(i ? "match.select.p2.kind" : "match.select.p1.kind", s_selKind[i]);
+    }
+    s_phase = kPhaseFight;
+    s_frame = 0;
+    CamUpdate(1);
+    M360_MatchTrace("match.enter.fighters", s_fighterCount);
+    M360_MatchTrace("match.p2.human", s_human[1]);
+}
+
+/* Native character select before the fight: left/right picks the fighter,
+ * X/Y the costume, A confirms and B steps back. With one controller P1 also
+ * picks the CPU opponent after confirming its own fighter. */
+static int SelectInput(unsigned port, unsigned slot)
+{
+    const unsigned count = M360_FighterKindCount();
+    const unsigned trig = M360_MatchPadTriggeredPort(port);
+    const float x = M360_MatchPadStickXPort(port);
+    const int left = (trig & 0x1u) || (x < -0.7f && s_selPrevStick[port] >= -0.7f);
+    const int right = (trig & 0x2u) || (x > 0.7f && s_selPrevStick[port] <= 0.7f);
+    s_selPrevStick[port] = x;
+    if (s_selReady[slot]) {
+        if (trig & 0x200u) {
+            s_selReady[slot] = 0;
+            M360_MatchTrace("match.select.unready", slot);
+        }
+        return 0;
+    }
+    if (left && count)
+        s_selKind[slot] = (s_selKind[slot] + count - 1) % count;
+    if (right && count)
+        s_selKind[slot] = (s_selKind[slot] + 1) % count;
+    if (trig & 0x400u)
+        s_selCostume[slot] = (s_selCostume[slot] + 1) % kMaxCostumes;
+    if (trig & 0x800u)
+        s_selCostume[slot] = (s_selCostume[slot] + kMaxCostumes - 1) % kMaxCostumes;
+    if (trig & 0x100u) {
+        s_selReady[slot] = 1;
+        M360_MatchTrace("match.select.ready", slot);
+    } else if (trig & 0x200u) {
+        if (slot == 0)
+            return 1;
+        if (!s_selHuman[1])
+            s_selReady[0] = 0;
+    }
+    return 0;
+}
+
+static int SelectFrame(void)
+{
+    unsigned i;
+    if (!s_selHuman[1] && !IsCampaign() && M360_MatchControllerConnected(1) &&
+        (M360_MatchPadTriggeredPort(1) & 0x1F00u)) {
+        s_selHuman[1] = 1;
+        s_selReady[1] = 0;
+        M360_MatchTrace("match.select.p2.join", 1);
+        return M360_MATCH_CONTINUE;
+    }
+    if (SelectInput(0, s_selReady[0] && !s_selHuman[1] && !IsCampaign() ? 1 : 0))
+        return M360_MATCH_TO_MENU;
+    if (s_selHuman[1] && SelectInput(1, 1))
+        s_selReady[1] = 0;
+    for (i = 0; i < s_modelCount; ++i)
+        HSD_JObjAnimAll(s_models[i]);
+    if (s_lobj)
+        HSD_LObjAnimAll(s_lobj);
+    CamUpdate(0);
+    if (s_selReady[0] && (s_selReady[1] || IsCampaign()))
+        StartFight();
+    return M360_MATCH_CONTINUE;
 }
 
 static int OutsideBlastZone(float x, float y)
@@ -562,6 +670,8 @@ int M360_MatchFrame(void)
     const unsigned held = M360_MatchPadHeld();
     if (!s_active)
         return M360_MATCH_TO_MENU;
+    if (s_phase == kPhaseSelect)
+        return SelectFrame();
     if (s_matchOver) {
         if (buttons & 0x200u) {
             M360_MatchTrace("match.result.return_menu", s_winner);
@@ -702,6 +812,14 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->inputTriggered = M360_MatchPadTriggered();
     status->inputX = M360_MatchPadX();
     status->inputY = M360_MatchPadY();
+    status->selecting = s_active && s_phase == kPhaseSelect;
+    for (i = 0; i < kMaxFighters; ++i) {
+        status->selectKind[i] = s_selKind[i];
+        status->selectCostume[i] = s_selCostume[i];
+        status->selectReady[i] = s_selReady[i];
+        status->selectHuman[i] = (unsigned) s_selHuman[i];
+        status->fighterKind[i] = s_fighters[i] ? M360_FighterKindIndex(s_fighters[i]) : s_selKind[i];
+    }
     for (i = 0; i < s_fighterCount && i < 2; ++i) {
         float facing;
         if (!s_fighters[i])
