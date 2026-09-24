@@ -163,6 +163,17 @@ texture and alpha or additive blending. Not reproduced yet: particle forms
 other than billboards (lines, points, trails), environment colour/TEV modes
 and fog.
 
+### Part animations (2026-09-24)
+
+Hand poses and other sub-skeleton animations (`ftData` x1C, set by the
+command scripts and by Fox/Falco/Ganon/Yoshi code) now play:
+`ftAnim_ApplyPartAnim` adds the part's AnimJoint to the affected joints and
+marks them with `flags_b5`, which keeps them out of the motion-end queries.
+A motion change re-applies the motion tree to every joint; `ftAnim_80070F28`
+then ends transient part anims and `ftAnim_80070E74` restores persistent ones.
+The original animates a shadow skeleton and blends it in over a few frames;
+here the pose switches immediately.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`
