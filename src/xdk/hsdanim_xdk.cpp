@@ -340,6 +340,17 @@ void HSD_TObjReqAnimAllByFlags(HSD_TObj* tobj, f32 frame, u32 flags)
         HSD_AObjReqAnim(tobj->aobj, frame);
 }
 
+void HSD_TObjReqAnimAll(HSD_TObj* tobj, f32 frame)
+{
+    HSD_TObjReqAnimAllByFlags(tobj, frame, TOBJ_ANIM);
+}
+
+void HSD_TObjAnim(HSD_TObj* tobj)
+{
+    if (tobj)
+        HSD_AObjInterpretAnim(tobj->aobj, tobj, M360_TObjUpdate);
+}
+
 void HSD_TObjAnimAll(HSD_TObj* tobj)
 {
     for (; tobj; tobj = tobj->next)

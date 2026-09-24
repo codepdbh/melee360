@@ -336,6 +336,11 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ef/efalt.c') },
     @{ Path = (Join-Path $src 'melee/ef/efdata.c') },
     @{ Path = (Join-Path $src 'melee/ef/eflib.c') },
+    @{ Path = (Join-Path $src 'melee/if/ifall.c') },
+    @{ Path = (Join-Path $src 'melee/if/ifstock.c') },
+    @{ Path = (Join-Path $src 'melee/if/iftime.c') },
+    @{ Path = (Join-Path $src 'melee/if/if_2F6E.c') },
+    @{ Path = (Join-Path $src 'melee/if/if_2F72.c') },
     @{ Path = (Join-Path $src 'melee/ef/efsync.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0A01.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftcmdscript.c') },
@@ -696,8 +701,17 @@ $units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
 $units += New-Adapted 'melee/it/itzako.c' @{ '\bsin\b' = 'zako_sine'; '\bcos\b' = 'zako_cosine' } 'itzako'
 # MSVC rejects bitwise OR on pointers; keep the truth test explicit.
+# ifstatus.c declares its texture-anim locals mid-block; hoist them to the
+# top of the three functions for the C89 XDK frontend.
+$units += New-Adapted 'melee/if/ifstatus.c' (@{
+    '(static inline void ifStatus_InitDamageDigits\([^)]*\)\s*\{)' = '$1 HSD_AnimJoint* aj; HSD_TexAnim* digit_anim;'
+    '(void ifStatus_802F4EDC\(HSD_GObj\* gobj\)\s*\{)' = '$1 HSD_AnimJoint* aj; HSD_TexAnim* digit_anim;'
+    '(HSD_GObj\* ifStatus_802F5EC0\(IfDamageState\* state, s32 player_idx\)\s*\{)' = '$1 HSD_AnimJoint* aj;'
+    'HSD_AnimJoint\* aj = ' = 'aj = '
+    'HSD_TexAnim\* digit_anim = ' = 'digit_anim = '
+}) 'ifstatus'
 $units += New-Adapted 'melee/ef/efasync.c' @{ '(\w+)->ptcl_bank \| \1->tex_bank' = '($1->ptcl_bank || $1->tex_bank)' } 'efasync'
-$units += New-Slice 'melee/lb/lb_00B0.c' 'bool lb_8000B074(' @('bool lb_8000B074(', 'void lb_8000C1C0(', 'void lb_8000C228(', 'void lb_8000C290(', 'void lb_8000C2F8(', 'static inline HSD_RObj* robj_next(', 'void lb_8000C390(', 'bool lb_8000B09C(', 'bool lb_8000B134(', 'void lb_8000B804(', 'static void lb_8000B9D8(HSD_JObj* jobj', 'void lb_8000BA0C(', 'static HSD_JObj* lbFindJObjWithAObj(HSD_JObj* jobj)', 'float lbGetJObjCurrFrame(', 'float lbGetJObjEndFrame(', 'static s32 lbGetFreeColorRegImpl(s32 i0, HSD_TevDesc* tevdesc', 's32 lbGetFreeColorRegister(', 's32 lb_8000CC8C(', 's32 lb_8000CCA4(', 's32 lb_8000CD90(', 's32 lb_8000CDA8(', 'void lb_8000CE30(', 'void lb_8000CE40(') 'lb_00B0_constraint_slice'
+$units += New-Slice 'melee/lb/lb_00B0.c' 'bool lb_8000B074(' @('bool lb_8000B074(', 'void lb_8000C07C(', 'void lb_8000C0E8(', 'void memzero(', 'void lb_8000C1C0(', 'void lb_8000C228(', 'void lb_8000C290(', 'void lb_8000C2F8(', 'static inline HSD_RObj* robj_next(', 'void lb_8000C390(', 'bool lb_8000B09C(', 'bool lb_8000B134(', 'void lb_8000B804(', 'static void lb_8000B9D8(HSD_JObj* jobj', 'void lb_8000BA0C(', 'static HSD_JObj* lbFindJObjWithAObj(HSD_JObj* jobj)', 'float lbGetJObjCurrFrame(', 'float lbGetJObjEndFrame(', 'static s32 lbGetFreeColorRegImpl(s32 i0, HSD_TevDesc* tevdesc', 's32 lbGetFreeColorRegister(', 's32 lb_8000CC8C(', 's32 lb_8000CCA4(', 's32 lb_8000CD90(', 's32 lb_8000CDA8(', 'void lb_8000CE30(', 'void lb_8000CE40(') 'lb_00B0_constraint_slice'
 
 $objects = @()
 $base = @('/nologo','/c','/TC','/O2','/MT','/GS-','/D_XBOX','/DXBOX','/DNDEBUG',
@@ -740,7 +754,7 @@ $nativeBase = @('/nologo','/c','/TC','/O2','/MT','/GS-','/W4','/D_XBOX','/DXBOX'
     "/I$matchOverlay", "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
     "/I$src", "/I$(Join-Path $src 'sdk_include')",
     "/FI$(Join-Path $root 'src/xdk/fighter_glue_compat.h')")
-foreach ($native in @('fighter_glue_xdk.c', 'fighter_unported_xdk.c', 'particle_draw_xdk.c')) {
+foreach ($native in @('fighter_glue_xdk.c', 'fighter_unported_xdk.c', 'particle_draw_xdk.c', 'hud_xdk.c')) {
     $object = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($native) + '.obj')
     & $Compiler ($nativeBase + @("/Fo$object", (Join-Path $root "src/xdk/$native"))) | Write-Host
     if ($LASTEXITCODE -ne 0) { throw "Fighter glue failed: $native" }

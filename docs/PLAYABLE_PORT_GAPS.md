@@ -198,6 +198,20 @@ invincible) and active hit capsules in red, from their previous to current
 position. Use it in Xenia to check capsule contact against the
 `fighter.hit.*` trace events.
 
+### Original match HUD (2026-09-24)
+
+The in-match HUD now comes from the original interface code: `ifall.c`
+(IfAll archive, HUD camera and light), `ifstatus.c` (damage panels with the
+animated percent digits and their explosion on a KO), `ifstock.c` (stock
+icons), `iftime.c` (timer) and `if_2F6E.c`/`if_2F72.c` ("GO!" and panel
+graphics). `hud_xdk.c` fills a native VS scene controller from the port's
+rules (stock or time, time limit) and ticks its timer from the match frame;
+`Player_*` queries read the slot's active fighter (damage, character,
+costume, stocks). The HUD camera clears depth before drawing, and GX link 8
+(screen-space particles) moved from the stage camera to the HUD camera as
+in the original. Name tags, hazard arrows, coin counters, the offscreen
+magnifier bubbles and the "GAME!"/results sequence are not ported yet.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`
