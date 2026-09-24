@@ -67,6 +67,7 @@ typedef struct M360MatchStatus {
     unsigned fighterKind[2];
     unsigned stageIndex;
     unsigned stocks;
+    unsigned cpuLevel;
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);

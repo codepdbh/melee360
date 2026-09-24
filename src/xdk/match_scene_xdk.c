@@ -119,6 +119,7 @@ static M360StageArchive s_stageArchives[kStageCount];
 static unsigned s_stageIndex;
 static unsigned s_builtStage = ~0u;
 static unsigned s_stocks = 4;
+static unsigned s_cpuLevel = 3;
 static void* s_archive;
 static UnkStageDat* s_mapHead;
 static MapCollData* s_coll;
@@ -744,6 +745,11 @@ static int SelectInput(unsigned port, unsigned slot)
         if (BuildStage(next))
             M360_MatchTrace("match.select.stage", s_stageIndex);
     }
+    if (port == 0 && (trig & 0x40u)) {
+        s_cpuLevel = s_cpuLevel >= 9 ? 1 : s_cpuLevel + 1;
+        M360_FighterSetCpuLevel(s_cpuLevel);
+        M360_MatchTrace("match.select.cpu_level", s_cpuLevel);
+    }
     if (port == 0 && !IsCampaign() && (trig & 0x10u)) {
         s_stocks = s_stocks >= 9 ? 1 : s_stocks + 1;
         M360_MatchTrace("match.select.stocks", s_stocks);
@@ -935,6 +941,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->selecting = s_active && s_phase == kPhaseSelect;
     status->stageIndex = s_stageIndex;
     status->stocks = IsCampaign() ? kStartingStocks : s_stocks;
+    status->cpuLevel = s_cpuLevel;
     for (i = 0; i < kMaxFighters; ++i) {
         status->selectKind[i] = s_selKind[i];
         status->selectCostume[i] = s_selCostume[i];
