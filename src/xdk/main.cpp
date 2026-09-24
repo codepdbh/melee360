@@ -600,51 +600,8 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         RenderCharacterSelect(renderer, match);
         return;
     }
-    DrawRect(renderer, 18, 16, 452, 62, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
-    g_dynamic.count = 0;
-    g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
-    AddText(g_dynamic, 30, 22, "MOVE: STICK/DPAD  A: ATTACK  B: SPECIAL  X/Y: JUMP", 1);
-    AddText(g_dynamic, 30, 40, "LT/RT: SHIELD  RB: GRAB  START: PAUSE", 1);
-    if (match.campaignRounds) {
-        AddText(g_dynamic, 30, 56,
-                match.gameMode == 3 ? "CLASSIC" : "ADVENTURE", 1);
-        AddText(g_dynamic, 148, 56, "ROUND", 1);
-        AddNumber(g_dynamic, 200, 56, match.campaignRound + 1, 1);
-        AddText(g_dynamic, 218, 56, "/ 5   A: NEXT   B: MENU", 1);
-    } else {
-        AddText(g_dynamic, 30, 56, "B: RETURN AFTER MATCH", 1);
-    }
-    RenderBatch(renderer, g_dynamic);
-    const unsigned fighters = match.fighters < 4 ? match.fighters : 4;
-    const LONG spacing = fighters > 2 ? 250 : 340;
-    const LONG firstX = fighters > 2 ? 170 : 380;
-    for (unsigned i = 0; i < fighters; ++i) {
-        const LONG x = firstX + static_cast<LONG>(i) * spacing;
-        char name[48];
-        DrawRect(renderer, x - 12, 606, 236, 96, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
-        g_dynamic.count = 0;
-        g_dynamic.color = kPlayerColors[i];
-        _snprintf(name, sizeof(name), "%s %s", M360_FighterKindName(match.fighterKind[i]),
-                  PlayerTag(i, match.human[i] != 0));
-        name[sizeof(name) - 1] = '\0';
-        AddText(g_dynamic, x, 614, name, fighters > 2 ? 1 : 2);
-        RenderBatch(renderer, g_dynamic);
-        g_dynamic.count = 0;
-        g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
-        AddUnsigned(g_dynamic, x + 10, 640, match.damage[i], 6);
-        AddText(g_dynamic, x + 150, 662, "%", 3);
-        if (match.timeMinutes) {
-            char score[16];
-            _snprintf(score, sizeof(score), "%d", match.score[i]);
-            score[sizeof(score) - 1] = '\0';
-            AddText(g_dynamic, x + 12, 682, "SCORE", 1);
-            AddText(g_dynamic, x + 92, 681, score, 3);
-        } else {
-            AddText(g_dynamic, x + 12, 682, "STOCKS", 1);
-            AddUnsigned(g_dynamic, x + 92, 681, match.stocksRemaining[i], 3);
-        }
-        RenderBatch(renderer, g_dynamic);
-    }
+    /* Damage panels, stock icons and the timer come from the original IfAll
+     * HUD (hud_xdk.c); the controls reminder only shows while paused. */
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
     if (match.suddenDeath && !match.matchOver) {
         DrawRect(renderer, 470, 16, 340, 54, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
@@ -653,15 +610,6 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         AddText(g_dynamic, 484, 24, "SUDDEN DEATH", 4);
         RenderBatch(renderer, g_dynamic);
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
-    }
-    if (match.timeMinutes) {
-        char clock[16];
-        _snprintf(clock, sizeof(clock), "%u:%02u", match.timeLeft / 60, match.timeLeft % 60);
-        clock[sizeof(clock) - 1] = '\0';
-        DrawRect(renderer, 560, 16, 160, 54, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
-        g_dynamic.count = 0;
-        AddText(g_dynamic, 580, 24, clock, 5);
-        RenderBatch(renderer, g_dynamic);
     }
     if (match.matchOver) {
         char line[32];
@@ -685,6 +633,8 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.35f);
         g_dynamic.count = 0;
         AddText(g_dynamic, 540, 300, "PAUSE", 6);
+        AddText(g_dynamic, 300, 460, "MOVE: STICK/DPAD  A: ATTACK  B: SPECIAL  X/Y: JUMP", 2);
+        AddText(g_dynamic, 300, 490, "LT/RT: SHIELD  RB: GRAB  START: PAUSE", 2);
         AddText(g_dynamic, 420, 380, "START: RESUME   B: MAIN MENU", 2);
         AddText(g_dynamic, 420, 410, match.debugHitboxes ? "X: HIDE HITBOXES" : "X: SHOW HITBOXES", 2);
         RenderBatch(renderer, g_dynamic);

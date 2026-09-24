@@ -32,7 +32,7 @@ grep -wFf "$OUT/new-undefined.names" "$OUT/undefined.txt" || true
 # The XDK C front end is C89: flag late declarations and implicit calls in
 # the native glue, which clang's gnu89 mode otherwise accepts silently.
 S="$ROOT/upstream/melee-pc/src"
-for f in fighter_glue_xdk fighter_unported_xdk particle_draw_xdk; do
+for f in fighter_glue_xdk fighter_unported_xdk particle_draw_xdk hud_xdk; do
     clang --target=i686-pc-windows-msvc -nostdlibinc -fms-extensions -fms-compatibility -std=gnu89 \
         -fsyntax-only -Wimplicit-function-declaration -Wincompatible-pointer-types -Wreturn-type \
         -Wdeclaration-after-statement -D_XBOX -DXBOX -DNDEBUG -I"$OUT/match/include" \

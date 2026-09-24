@@ -1674,6 +1674,57 @@ typedef struct M360CachedArchive {
 static M360CachedArchive s_archiveCache[64];
 static unsigned s_archiveCacheCount;
 
+/* lbarchive.c: load a whole archive by stem. Localized archives such as
+ * IfAll exist as .usd on US discs and .dat on Japanese ones. */
+bool lbArchive_80016F80(HSD_Archive** out, const char* filename)
+{
+    static const char* const kExt[3] = { "", ".usd", ".dat" };
+    char name[64];
+    HSD_Archive* archive = NULL;
+    bool preloaded = false;
+    unsigned i, e;
+    for (i = 0; i < s_archiveCacheCount; ++i)
+        if (strcmp(s_archiveCache[i].name, filename) == 0) {
+            archive = s_archiveCache[i].archive;
+            preloaded = true;
+            break;
+        }
+    for (e = 0; !archive && e < 3; ++e) {
+        unsigned size = 0;
+        unsigned char* image;
+        if (strlen(filename) + 5 > sizeof(name))
+            break;
+        strcpy(name, filename);
+        strcat(name, kExt[e]);
+        image = M360_ReadDiscFile(name, &size);
+        if (image)
+            archive = (HSD_Archive*) M360_ArchiveOpen(image, size);
+        M360_MatchTrace(name, size);
+    }
+    if (archive && !preloaded && s_archiveCacheCount < 64) {
+        s_archiveCache[s_archiveCacheCount].name = filename;
+        s_archiveCache[s_archiveCacheCount].archive = archive;
+        ++s_archiveCacheCount;
+    }
+    if (out)
+        *out = archive;
+    return preloaded;
+}
+
+void lbArchive_LoadSections(HSD_Archive* archive, void** symbol, ...)
+{
+    va_list args;
+    va_start(args, symbol);
+    while (symbol) {
+        const char* name = va_arg(args, const char*);
+        *symbol = archive ? M360_ArchiveFind(archive, name) : NULL;
+        if (!*symbol)
+            M360_MatchTrace("archive.missing_symbol", 0);
+        symbol = va_arg(args, void**);
+    }
+    va_end(args);
+}
+
 bool lbArchive_80017040(HSD_Archive** dst, const char* filename, void* symbols, ...)
 {
     HSD_Archive* archive = NULL;
@@ -3114,10 +3165,85 @@ void ftCamera_80076018(UnkFloat6_Camera* in, UnkFloat6_Camera* out, float mul)
     out->xC.z = in->xC.z * mul;
 }
 
+/* pl/player.c queries over the port's slot table (used by the HUD). */
+static Fighter* SlotFighter(s32 slot)
+{
+    HSD_GObj* gobj = slot >= 0 && slot < kMaxFighters ? Player_GetEntity(slot) : NULL;
+    return gobj ? GET_FIGHTER(gobj) : NULL;
+}
+
 s32 Player_GetDamage(s32 slot)
+{
+    Fighter* fp = SlotFighter(slot);
+    return fp ? (s32) fp->dmg.x1830_percent : 0;
+}
+
+Gm_PKind Player_GetPlayerSlotType(s32 slot)
+{
+    if (!SlotFighter(slot))
+        return Gm_PKind_NA;
+    return (Gm_PKind) s_playerCpu[slot];
+}
+
+/* ftMapping_list (player.c) inverted: FighterKind -> CharacterKind. */
+CharacterKind Player_GetPlayerCharacter(int slot)
+{
+    static const s8 kCKind[Ft_Kind_Max] = {
+        CKind_Mario, CKind_Fox, CKind_Captain, CKind_Donkey, CKind_Kirby, CKind_Koopa,
+        CKind_Link, CKind_Seak, CKind_Ness, CKind_Peach, CKind_PopoNana, CKind_PopoNana,
+        CKind_Pikachu, CKind_Samus, CKind_Yoshi, CKind_Purin, CKind_Mewtwo, CKind_Luigi,
+        CKind_Mars, CKind_Zelda, CKind_CLink, CKind_DrMario, CKind_Falco, CKind_Pichu,
+        CKind_GameWatch, CKind_Ganon, CKind_Emblem, CKind_MasterH, CKind_CrezyH,
+        CKind_Boy, CKind_Girl, CKind_GKoops, ChKind_Sandbag
+    };
+    Fighter* fp = SlotFighter(slot);
+    return fp && (unsigned) fp->kind < Ft_Kind_Max ? (CharacterKind) kCKind[fp->kind]
+                                                    : CKind_Mario;
+}
+
+FighterKind Player_80036394(s32 slot)
+{
+    Fighter* fp = SlotFighter(slot);
+    return fp ? fp->kind : Ft_Kind_Mario;
+}
+
+u32 Player_GetCostumeId(int slot)
+{
+    Fighter* fp = SlotFighter(slot);
+    return fp ? fp->x619_costume_id : 0;
+}
+
+int Player_GetPlayerId(int slot)
+{
+    return slot;
+}
+
+int Player_GetTeam(int slot)
+{
+    return slot;
+}
+
+int Player_GetRemainingHP(s32 slot)
 {
     (void) slot;
     return 0;
+}
+
+bool Player_GetMoreFlagsBit2(s32 slot)
+{
+    (void) slot;
+    return false;
+}
+
+s32 Player_GetStocks(int slot)
+{
+    return (s32) M360_MatchSlotStocks((unsigned) slot);
+}
+
+s32 Player_80036428(s32 slot)
+{
+    HSD_GObj* gobj = slot >= 0 && slot < kMaxFighters ? Player_GetEntity(slot) : NULL;
+    return gobj ? GET_FIGHTER(gobj)->dmg.x18c4_source_ply : 6;
 }
 
 void Player_LoadPlayerCoords(s32 slot, Vec3* out_vec)
