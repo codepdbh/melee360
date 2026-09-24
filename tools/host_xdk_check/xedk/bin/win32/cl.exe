@@ -13,7 +13,7 @@ args = ['clang', '--target=i686-pc-windows-msvc', '-nostdlibinc', '-fms-extensio
         # The XDK C frontend is strict C89: mixed declarations and non-constant
         # static initializers are hard errors there.
         '-Werror=declaration-after-statement', '-Werror=gnu-folding-constant',
-        '-Werror=implicit-function-declaration'
+        '-Werror=implicit-function-declaration', '-Werror=c99-designator'
         ]
 lang_cpp = False
 out = None
