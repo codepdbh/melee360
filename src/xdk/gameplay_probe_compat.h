@@ -29,6 +29,10 @@
 #define SDATA
 #endif
 #define F32_MAX FLT_MAX
+#ifndef U32_TO_F32
+#define U32_TO_F32 4503599627370496.0
+#define S32_TO_F32 4503601774854144.0
+#endif
 #ifndef SIGNF
 #define SIGNF(x) ((x) > 0.0f ? 1.0f : -1.0f)
 #endif
@@ -67,6 +71,15 @@ static __inline int M360_ClassifyFloat(float value)
 #define STATIC_ASSERT(condition) typedef char M360_JOIN(m360_assert_, __LINE__)[(condition) ? 1 : -1]
 #endif
 typedef int BOOL;
+/* Volatile scalar aliases from dolphin/types.h, which the compat chain skips. */
+typedef volatile unsigned char vu8;
+typedef volatile unsigned short vu16;
+typedef volatile unsigned int vu32;
+typedef volatile signed char vs8;
+typedef volatile signed short vs16;
+typedef volatile signed int vs32;
+typedef volatile float vf32;
+typedef volatile double vf64;
 #define RETURN_IF(cond) do { if ((cond)) { return; } } while (0)
 typedef bool (*Predicate)(void);
 typedef struct OSCalendarTime {
