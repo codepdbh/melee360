@@ -803,3 +803,17 @@ HSD_GObj* it_802C837C(Item_GObj* a0, Vec3* a1, enum_t a2, u32 a3, float a4) { (v
 void it_802F2BFC(Item_GObj* gobj, Fighter_GObj* owner_gobj) { (void) gobj; (void) owner_gobj; Report("fighter.unported.it_802F2BFC"); }
 void it_802F2CE0(Item_GObj* gobj, bool clear_destroy_type) { (void) gobj; (void) clear_destroy_type; Report("fighter.unported.it_802F2CE0"); }
 void it_802F2F34(HSD_GObj* a0, itYoshiEggLay_DatAttrs* a1) { (void) a0; (void) a1; Report("fighter.unported.it_802F2F34"); }
+
+/* Jigglypuff costume hats and ground/game hooks; the roster only offers her
+ * default costume, which has no hat. */
+void ftCo_8009DC54(Fighter* fp) { (void) fp; Report("fighter.unported.ftCo_8009DC54"); }
+void ftParts_8007487C(FtPartsDesc* a0, FtPartsVis* a1, u32 costume_id, DObjList* a3, DObjList* a4) { (void) a0; (void) a1; (void) costume_id; (void) a3; (void) a4; Report("fighter.unported.ftParts_8007487C"); }
+void ftParts_80074CA0(FtPartsVis* a0, int a1, DObjList* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftParts_80074CA0"); }
+void ftParts_80074D7C(FtPartsVis* a0, int a1, DObjList* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftParts_80074D7C"); }
+void ftParts_80075650(Fighter_GObj* a0, HSD_JObj* a1, struct DObjList* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftParts_80075650"); }
+bool gm_8016B1D8(void) {  Report("fighter.unported.gm_8016B1D8"); return (bool) 0; }
+bool grStadium_801D4FF8(int pl_slot) { (void) pl_slot; Report("fighter.unported.grStadium_801D4FF8"); return (bool) 0; }
+/* ftdata.c costume archive table; the native loader keeps costumes itself, so
+ * it stays empty and only Jigglypuff's hat path (never taken with her default
+ * costume) reads it. */
+struct UnkCostumeList CostumeListsForeachCharacter[Ft_Kind_Max];

@@ -40,6 +40,11 @@
 #include <melee/ft/kinds/ftLuigi/ftluigispecialhi.h>
 #include <melee/ft/kinds/ftLuigi/ftluigispeciallw.h>
 #include <melee/ft/kinds/ftDrMario/ftdrmario.h>
+#include <melee/ft/kinds/ftPurin/ftpurin.h>
+#include <melee/ft/kinds/ftPurin/ftpurinspecialhi.h>
+#include <melee/ft/kinds/ftPurin/ftpurinspeciallw.h>
+#include <melee/ft/kinds/ftPurin/ftpurinspecialn.h>
+#include <melee/ft/kinds/ftPurin/ftpurinspecials.h>
 #include <melee/ft/kinds/ftPeach/ftpeach.h>
 #include <melee/ft/kinds/ftPeach/ftpeachattacks4.h>
 #include <melee/ft/kinds/ftPeach/ftpeachfloat.h>
@@ -378,6 +383,12 @@ static const M360KindDesc s_kinds[] = {
       { "PlyPichu5K_Share_matanim_joint", "PlyPichu5KRe_Share_matanim_joint", "PlyPichu5KBu_Share_matanim_joint", "PlyPichu5KGr_Share_matanim_joint", NULL, NULL },
       ftPc_Init_MotionStateTable, sizeof(ftPc_Init_MotionStateTable) / sizeof(MotionState), ftPc_Init_OnLoad, ftPc_Init_OnDeath,
       { ftPk_SpecialN_Enter, ftPk_SpecialS_Enter, ftPk_SpecialHi_Enter, ftPk_SpecialLw_Enter, ftPk_SpecialAirN_Enter, ftPk_SpecialAirS_Enter, ftPk_SpecialAirHi_Enter, ftPk_SpecialAirLw_Enter } },
+    { Ft_Kind_Purin, "JIGGLYPUFF", "PlPr.dat", "ftDataPurin", "PlPrAJ.dat",
+      { "PlPrNr.dat", NULL, NULL, NULL, NULL, NULL },
+      { "PlyPurin5K_Share_joint", NULL, NULL, NULL, NULL, NULL },
+      { "PlyPurin5K_Share_matanim_joint", NULL, NULL, NULL, NULL, NULL },
+      ftPr_Init_MotionStateTable, sizeof(ftPr_Init_MotionStateTable) / sizeof(MotionState), ftPr_Init_OnLoad, ftPr_Init_OnDeath,
+      { ftPr_SpecialN_Enter, ftPr_SpecialS_Enter, ftPr_SpecialHi_Enter, ftPr_SpecialLw_Enter, ftPr_SpecialAirN_Enter, ftPr_SpecialAirS_Enter, ftPr_SpecialAirHi_Enter, ftPr_SpecialAirLw_Enter } },
     { Ft_Kind_Ness, "NESS", "PlNs.dat", "ftDataNess", "PlNsAJ.dat",
       { "PlNsNr.dat", "PlNsYe.dat", "PlNsBu.dat", "PlNsGr.dat", NULL, NULL },
       { "PlyNess5K_Share_joint", "PlyNess5KYe_Share_joint", "PlyNess5KBu_Share_joint", "PlyNess5KGr_Share_joint", NULL, NULL },
