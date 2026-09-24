@@ -29,6 +29,9 @@
 #define SDATA
 #endif
 #define F32_MAX FLT_MAX
+#ifndef M_PI_3
+#define M_PI_3 (3.14159265358979323846 / 3.0)
+#endif
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #endif

@@ -154,8 +154,6 @@ UNPORTED_VOID(ftCo_Attack_800CCF58, (Fighter_GObj* gobj, enum_t arg))
 UNPORTED_VOID(ftCo_Attack_800CDD14, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_HammerLanding_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_ItemScrew_Enter, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_SpecialAir_CheckInput, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_SpecialS_CheckInput, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftFx_AppealS_CheckInput, (HSD_GObj* gobj))
 UNPORTED_VOID(ftGw_Attack11_Enter, (HSD_GObj* gobj))
 UNPORTED_VOID(ftLk_AttackAir_800EB3BC, (HSD_GObj* gobj))
@@ -295,6 +293,10 @@ HSD_GObjEvent ftData_SpecialN[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialHi[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialLw[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialAirHi[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialS[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialAirN[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialAirS[Ft_Kind_Max];
+HSD_GObjEvent ftData_SpecialAirLw[Ft_Kind_Max];
 
 UNPORTED_VOID(ftCo_800CDDA0, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftGw_AttackLw3_Enter, (HSD_GObj* gobj))
@@ -489,7 +491,6 @@ void ftKb_SpecialN_800F5BA4(Fighter* a0) { (void) a0; Report("fighter.unported.f
 void ftKb_SpecialN_800F1D24(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftKb_SpecialN_800F1D24");  }
 bool ftFx_AppealS_CheckIfUsed(Fighter* a0) { (void) a0; Report("fighter.unported.ftFx_AppealS_CheckIfUsed"); return (bool) 0; }
 void ftDk_MS_349_800E06D8(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftDk_MS_349_800E06D8");  }
-bool ftCo_SpecialS_HasInput(Fighter* a0) { (void) a0; Report("fighter.unported.ftCo_SpecialS_HasInput"); return (bool) 0; }
 void ftCo_HammerWait_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerWait_IASA");  }
 void ftCo_HammerFall_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerFall_IASA");  }
 void ftCo_DamageIce_Init(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_Init");  }
@@ -606,5 +607,24 @@ Item_GObj* it_802B7C18(Fighter_GObj* gobj, Vec3* pos, float facing)
 {
     (void) gobj; (void) pos; (void) facing;
     Report("fighter.unported.it_802B7C18");
+    return NULL;
+}
+
+/* Mario special-move items: fireball, Dr. Mario pill and cape. The moves
+ * run their original motion states; the projectiles/cape objects wait for
+ * the item system. */
+SILENT_VOID(it_8026B3F8, (Article* article, s32 kind))
+UNPORTED_VOID(it_8029B6F8, (Item_GObj* gobj, Vec3* pos, ItemKind kind, f32 facing))
+UNPORTED_VOID(itDrMarioPill_Spawn, (Item_GObj* gobj, Vec3* pos, s32 arg, ItemKind kind, f32 facing))
+UNPORTED_VOID(it_802B2674, (Item_GObj* gobj))
+UNPORTED_VOID(it_802B26C0, (Item_GObj* gobj))
+UNPORTED_VOID(it_802B26E0, (Item_GObj* gobj))
+SILENT_VOID(lb_800119DC, (Vec3* pos, int arg, float a, float b, float c))
+SILENT_VOID(ftCo_800C7158, (Fighter_GObj* gobj))
+SILENT_VOID(ftCo_800C7200, (Fighter_GObj* gobj))
+Item_GObj* it_802B2560(Fighter_GObj* gobj, float facing_dir, Vec3* pos, Fighter_Part part, ItemKind kind)
+{
+    (void) gobj; (void) facing_dir; (void) pos; (void) part; (void) kind;
+    Report("fighter.unported.it_802B2560");
     return NULL;
 }
