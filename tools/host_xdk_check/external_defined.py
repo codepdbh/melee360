@@ -13,7 +13,7 @@ files = [os.path.join(base, n) for n in (
     'controller.c memory.c archive.c').split()]
 files += [os.path.join(root, 'upstream/melee-pc/src/melee', n) for n in (
     'lb/lb_00CE.c', 'lb/lbtime.c', 'gm/gm_1A36.c', 'mn/mnmain.c', 'mn/mn_22EC.c')]
-skip = {'fighter_glue_xdk.c', 'fighter_unported_xdk.c'}
+skip = {'fighter_glue_xdk.c', 'fighter_unported_xdk.c', 'particle_draw_xdk.c'}
 for n in sorted(os.listdir(os.path.join(root, 'src/xdk'))):
     if n.endswith(('.c', '.cpp')) and n not in skip:
         files.append(os.path.join(root, 'src/xdk', n))
