@@ -128,3 +128,79 @@ void psDispParticles(u32 target_link, u32 sw)
         }
     }
 }
+
+/* Debug capsule overlay (hitbox/hurtbox view): a camera-facing disc at each
+ * end and a band between them, drawn without depth test (blend mode 2). */
+static void DebugTri(const float* a, const float* b, const float* c, const float* rgba)
+{
+    M360ParticleVertex v[4];
+    const float* p[4];
+    int i;
+    p[0] = a;
+    p[1] = b;
+    p[2] = c;
+    p[3] = c;
+    for (i = 0; i < 4; ++i) {
+        v[i].x = p[i][0];
+        v[i].y = p[i][1];
+        v[i].z = p[i][2];
+        v[i].r = rgba[0];
+        v[i].g = rgba[1];
+        v[i].b = rgba[2];
+        v[i].a = rgba[3];
+        v[i].u = v[i].v = 0.0f;
+    }
+    M360_HsdDrawParticle(v, NULL, 2, 0);
+}
+
+static void DebugDisc(const float* c, float radius, const float* rgba)
+{
+    enum { kSides = 12 };
+    float prev[3], cur[3];
+    int i;
+    prev[0] = c[0] + radius;
+    prev[1] = c[1];
+    prev[2] = c[2];
+    for (i = 1; i <= kSides; ++i) {
+        const float t = 6.2831853f * (float) i / kSides;
+        cur[0] = c[0] + radius * (float) cos(t);
+        cur[1] = c[1] + radius * (float) sin(t);
+        cur[2] = c[2];
+        DebugTri(c, prev, cur, rgba);
+        prev[0] = cur[0];
+        prev[1] = cur[1];
+    }
+}
+
+void M360_DrawDebugCapsule(const Vec3* a, const Vec3* b, float radius, float r, float g,
+                           float bl, float alpha)
+{
+    HSD_CObj* cobj = HSD_CObjGetCurrent();
+    Mtx vmtx;
+    float va[3], vb[3], rgba[4], dx, dy, len, nx, ny;
+    if (!cobj || radius <= 0.0f)
+        return;
+    HSD_CObjGetViewingMtx(cobj, vmtx);
+    ToView(vmtx, a, va);
+    ToView(vmtx, b, vb);
+    rgba[0] = r;
+    rgba[1] = g;
+    rgba[2] = bl;
+    rgba[3] = alpha;
+    DebugDisc(va, radius, rgba);
+    dx = vb[0] - va[0];
+    dy = vb[1] - va[1];
+    len = (float) sqrt(dx * dx + dy * dy);
+    if (len > 0.01f) {
+        float q[4][3];
+        nx = -dy / len * radius;
+        ny = dx / len * radius;
+        q[0][0] = va[0] + nx; q[0][1] = va[1] + ny; q[0][2] = va[2];
+        q[1][0] = vb[0] + nx; q[1][1] = vb[1] + ny; q[1][2] = vb[2];
+        q[2][0] = vb[0] - nx; q[2][1] = vb[1] - ny; q[2][2] = vb[2];
+        q[3][0] = va[0] - nx; q[3][1] = va[1] - ny; q[3][2] = va[2];
+        DebugTri(q[0], q[1], q[2], rgba);
+        DebugTri(q[0], q[2], q[3], rgba);
+        DebugDisc(vb, radius, rgba);
+    }
+}

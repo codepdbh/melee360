@@ -686,6 +686,7 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         g_dynamic.count = 0;
         AddText(g_dynamic, 540, 300, "PAUSE", 6);
         AddText(g_dynamic, 420, 380, "START: RESUME   B: MAIN MENU", 2);
+        AddText(g_dynamic, 420, 410, match.debugHitboxes ? "X: HIDE HITBOXES" : "X: SHOW HITBOXES", 2);
         RenderBatch(renderer, g_dynamic);
     }
 }

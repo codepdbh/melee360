@@ -221,6 +221,18 @@ static int s_selProbeP2;
 
 static int IsCampaign(void);
 static void StartFight(void);
+void M360_FighterDrawHitboxes(void);
+
+/* Hitbox/hurtbox overlay, toggled with X while paused; drawn last on the
+ * effect link so it sits over the scene. */
+static int s_debugHitboxes;
+
+static void DebugRender(HSD_GObj* gobj, int pass)
+{
+    (void) gobj;
+    if (s_debugHitboxes && pass == 2)
+        M360_FighterDrawHitboxes();
+}
 
 static unsigned TimeMinutes(void)
 {
@@ -1044,6 +1056,11 @@ static void StartFight(void)
     s_draw = 0;
     /* gmvs.c: start the random item spawner once the fighters exist. */
     it_8026D018();
+    {
+        HSD_GObj* debug = GObj_Create(HSD_GOBJ_CLASS_STAGE, 5, 0);
+        if (debug)
+            GObj_SetupGXLink(debug, DebugRender, 8, 255);
+    }
     CamUpdate(1);
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
     TraceHeap("match.heap.used", "match.heap.largest_free");
@@ -1235,6 +1252,10 @@ int M360_MatchFrame(void)
     }
     s_holdTraced = 0;
     if (s_paused) {
+        if (buttons & 0x400u) {
+            s_debugHitboxes = !s_debugHitboxes;
+            M360_MatchTrace("match.debug.hitboxes", (unsigned) s_debugHitboxes);
+        }
         if ((buttons & 0x200u) || ((held & 0x160u) == 0x160u && (buttons & 0x100u))) {
             M360_MatchTrace("match.exit.menu", s_frame);
             return M360_MATCH_TO_MENU;
@@ -1428,6 +1449,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     }
     status->draw = (unsigned) s_draw;
     status->suddenDeath = (unsigned) s_suddenDeath;
+    status->debugHitboxes = (unsigned) s_debugHitboxes;
     for (i = 0; i < kMaxFighters; ++i) {
         status->selectKind[i] = s_selKind[i];
         status->selectCostume[i] = s_selCostume[i];

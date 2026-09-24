@@ -79,6 +79,7 @@ typedef struct M360MatchStatus {
     int score[4];
     unsigned draw;
     unsigned suddenDeath;
+    unsigned debugHitboxes;
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
