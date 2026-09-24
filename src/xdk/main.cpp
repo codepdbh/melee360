@@ -492,10 +492,49 @@ void RenderMenuPlaceholder(SpriteRenderer& renderer, const MeleeFlow& flow)
     RenderBatch(renderer, g_dynamic);
 }
 
+void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& match)
+{
+    static const D3DCOLOR colors[2] = { D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255) };
+    DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.55f);
+    g_dynamic.count = 0;
+    g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    AddText(g_dynamic, 400, 120, "CHOOSE YOUR FIGHTER", 4);
+    RenderBatch(renderer, g_dynamic);
+    for (unsigned i = 0; i < 2; ++i) {
+        const LONG x = 250 + static_cast<LONG>(i) * 420;
+        const bool campaignCpu = i == 1 && match.campaignRounds;
+        char line[48];
+        DrawRect(renderer, x - 20, 230, 380, 250, D3DCOLOR_XRGB(0, 0, 0), 0.5f);
+        g_dynamic.count = 0;
+        g_dynamic.color = colors[i];
+        AddText(g_dynamic, x, 250, i == 0 ? "P1" : (match.selectHuman[1] ? "P2" : "CPU"), 3);
+        RenderBatch(renderer, g_dynamic);
+        g_dynamic.count = 0;
+        g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+        AddText(g_dynamic, x, 310, campaignCpu ? "RANDOM" : M360_FighterKindName(match.selectKind[i]), 3);
+        if (!campaignCpu) {
+            _snprintf(line, sizeof(line), "COLOR %u", match.selectCostume[i] + 1);
+            line[sizeof(line) - 1] = '\0';
+            AddText(g_dynamic, x, 360, line, 2);
+        }
+        AddText(g_dynamic, x, 420, match.selectReady[i] || campaignCpu ? "READY" : "CHOOSING", 2);
+        RenderBatch(renderer, g_dynamic);
+    }
+    g_dynamic.count = 0;
+    g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    AddText(g_dynamic, 300, 530, "LEFT/RIGHT: FIGHTER   X/Y: COLOR   A: CONFIRM   B: BACK", 2);
+    if (!match.selectHuman[1] && !match.campaignRounds)
+        AddText(g_dynamic, 300, 570, "P1 PICKS THE CPU AFTER CONFIRMING. P2: PRESS A BUTTON TO JOIN", 2);
+    RenderBatch(renderer, g_dynamic);
+}
+
 void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
 {
-    static const char* const names[2] = { "MARIO P1", "MARIO P2" };
     static const D3DCOLOR colors[2] = { D3DCOLOR_XRGB(240, 70, 60), D3DCOLOR_XRGB(90, 140, 255) };
+    if (match.selecting) {
+        RenderCharacterSelect(renderer, match);
+        return;
+    }
     DrawRect(renderer, 18, 16, 452, 62, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
     g_dynamic.count = 0;
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
@@ -516,8 +555,11 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         DrawRect(renderer, x - 12, 606, 250, 96, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
         g_dynamic.count = 0;
         g_dynamic.color = colors[i];
-        AddText(g_dynamic, x, 614,
-                i == 1 && !match.human[1] ? "MARIO CPU" : names[i], 2);
+        char name[48];
+        _snprintf(name, sizeof(name), "%s %s", M360_FighterKindName(match.fighterKind[i]),
+                  i == 0 ? "P1" : (match.human[1] ? "P2" : "CPU"));
+        name[sizeof(name) - 1] = '\0';
+        AddText(g_dynamic, x, 614, name, 2);
         RenderBatch(renderer, g_dynamic);
         g_dynamic.count = 0;
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);

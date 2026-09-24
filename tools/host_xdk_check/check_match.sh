@@ -35,3 +35,9 @@ for f in fighter_glue_xdk fighter_unported_xdk; do
         -I"$S/sdk_include" -include "$ROOT/src/xdk/fighter_glue_compat.h" "$ROOT/src/xdk/$f.c" 2>&1 |
         grep -E "warning|error" | grep -v "pragma\|unknown warning" || true
 done
+S2="$ROOT/upstream/melee-pc/src"
+clang --target=i686-pc-windows-msvc -nostdlibinc -fms-extensions -fms-compatibility -std=gnu89 \
+    -fsyntax-only -Wimplicit-function-declaration -Wdeclaration-after-statement -D_XBOX -DXBOX -DNDEBUG \
+    -I"$ROOT/build-x360/gameplay-probe/include" -I"$ROOT/src/xdk" -include "$ROOT/src/xdk/hsd_scene_compat.h" \
+    -I"$S2" -I"$S2/sdk_include" -I"$XEDK/include/xbox" "$ROOT/src/xdk/match_scene_xdk.c" 2>&1 |
+    grep -E "warning|error" | grep -v "pragma\|unknown warning" || true

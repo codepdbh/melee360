@@ -59,6 +59,12 @@ typedef struct M360MatchStatus {
     unsigned inputButtons;
     unsigned inputTriggered;
     float inputX, inputY;
+    unsigned selecting;
+    unsigned selectKind[2];
+    unsigned selectCostume[2];
+    unsigned selectReady[2];
+    unsigned selectHuman[2];
+    unsigned fighterKind[2];
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
@@ -82,6 +88,7 @@ void M360_FighterSetPort(void* gobj, int port);
 unsigned M360_MatchPadHeld(void);
 float M360_MatchPadX(void);
 float M360_MatchPadY(void);
+float M360_MatchPadStickXPort(unsigned port);
 int M360_MatchControllerConnected(unsigned port);
 int M360_MatchGroundBelow(float x, float y, float depth, float* groundY,
                           unsigned* line);
@@ -90,6 +97,7 @@ int M360_FighterLoad(void);
 unsigned M360_FighterKindCount(void);
 const char* M360_FighterKindName(unsigned index);
 void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume);
+unsigned M360_FighterKindIndex(void* gobj);
 void M360_FighterResetMatch(void);
 void* M360_FighterSpawn(int slot, float x, float y, float facing, int port);
 void M360_FighterRespawn(void* gobj, float x, float y);
