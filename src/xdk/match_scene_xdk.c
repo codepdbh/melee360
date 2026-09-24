@@ -91,23 +91,34 @@ typedef struct CamBounds {
  * grstory.c, grizumi.c, groldyoshi.c, grshrine.c, groldkongo.c,
  * grgarden.c). Moving platforms and hazards (Kongo's barrel, Japes' water
  * and Klaptraps) are not simulated: collision uses the lines as authored. */
+typedef struct M360GrJoint {
+    short group, mapId, joint;
+} M360GrJoint;
+
+/* Compiled-in StageData::joints tables (collision group, map GObj, joint). */
+static const M360GrJoint kLastJoints[] = { { 0, 3, 0 } };
+static const M360GrJoint kIzumiJoints[] = { { 0, 3, 1 }, { 1, 3, 2 }, { 2, 3, 3 } };
+static const M360GrJoint kOldKongoJoints[] = { { 0, 3, 1 }, { 1, 3, 2 } };
+
 typedef struct M360StageDesc {
     const char* name;
     const char* file;
     int gobjs[9];
     int hidden;
+    const M360GrJoint* joints;
+    int jointCount;
 } M360StageDesc;
 
 static const M360StageDesc s_stages[] = {
-    { "BATTLEFIELD", "GrNBa.dat", { 0, 3, 1, 6, -1 }, 3 },
-    { "FINAL DESTINATION", "GrNLa.dat", { 0, 1, 2, 3, -1 }, -1 },
-    { "DREAM LAND", "GrOp.dat", { 0, 3, 7, 5, 4, 6, 1, 8, -1 }, -1 },
-    { "YOSHIS STORY", "GrSt.dat", { 0, 1, 3, 2, -1 }, -1 },
-    { "FOUNTAIN OF DREAMS", "GrIz.dat", { 0, 1, 3, -1 }, -1 },
-    { "YOSHIS ISLAND 64", "GrOy.dat", { 0, 1, 4, 5, 2, 3, -1 }, -1 },
-    { "HYRULE TEMPLE", "GrSh.dat", { 0, 1, 2, -1 }, -1 },
-    { "KONGO JUNGLE 64", "GrOk.dat", { 0, 3, 1, 2, -1 }, -1 },
-    { "JUNGLE JAPES", "GrGd.dat", { 0, 4, 5, 6, 1, 3, 2, -1 }, -1 },
+    { "BATTLEFIELD", "GrNBa.dat", { 0, 3, 1, 6, -1 }, 3, NULL, 0 },
+    { "FINAL DESTINATION", "GrNLa.dat", { 0, 1, 2, 3, -1 }, -1, kLastJoints, 1 },
+    { "DREAM LAND", "GrOp.dat", { 0, 3, 7, 5, 4, 6, 1, 8, -1 }, -1, NULL, 0 },
+    { "YOSHIS STORY", "GrSt.dat", { 0, 1, 3, 2, -1 }, -1, NULL, 0 },
+    { "FOUNTAIN OF DREAMS", "GrIz.dat", { 0, 1, 3, -1 }, -1, kIzumiJoints, 3 },
+    { "YOSHIS ISLAND 64", "GrOy.dat", { 0, 1, 4, 5, 2, 3, -1 }, -1, NULL, 0 },
+    { "HYRULE TEMPLE", "GrSh.dat", { 0, 1, 2, -1 }, -1, NULL, 0 },
+    { "KONGO JUNGLE 64", "GrOk.dat", { 0, 3, 1, 2, -1 }, -1, kOldKongoJoints, 2 },
+    { "JUNGLE JAPES", "GrGd.dat", { 0, 4, 5, 6, 1, 3, 2, -1 }, -1, NULL, 0 },
 };
 
 enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
@@ -232,7 +243,114 @@ static int PointPosition(int slot, Vec3* out)
     return 1;
 }
 
-static HSD_JObj* CreateMapGObj(int id)
+/* Collision groups bound to animated map joints (Ground_InitMapColl,
+ * mpLib_800552B0/80055E9C): each frame the group's vertices are moved by the
+ * joint's world matrix and the native lines are rebuilt from them. */
+enum { kMaxCollBinds = 32, kMaxCollVerts = 2048 };
+typedef struct M360CollBind {
+    int group;
+    HSD_JObj* jobj;
+} M360CollBind;
+static M360CollBind s_collBinds[kMaxCollBinds];
+static unsigned s_collBindCount;
+static float s_vtxX[kMaxCollVerts], s_vtxY[kMaxCollVerts];
+
+/* Depth-first joint walk of mpLib_800552B0: index 0 is the first child and
+ * instance joints are not descended into. */
+static HSD_JObj* FindCollJoint(HSD_JObj* root, int z)
+{
+    HSD_JObj* j = root ? root->child : NULL;
+    int i = 0;
+    while (j && i != z) {
+        ++i;
+        if (!(j->flags & JOBJ_INSTANCE) && j->child) {
+            j = j->child;
+            continue;
+        }
+        if (j->next) {
+            j = j->next;
+            continue;
+        }
+        for (;;) {
+            if (!j->parent) {
+                j = NULL;
+            } else if (j->parent->next) {
+                j = j->parent->next;
+            } else {
+                j = j->parent;
+                continue;
+            }
+            break;
+        }
+    }
+    return j;
+}
+
+static void AddCollBind(int group, HSD_JObj* model, int z)
+{
+    HSD_JObj* j = FindCollJoint(model, z);
+    if (!j || group < 0 || group >= s_coll->joint_count || s_collBindCount >= kMaxCollBinds)
+        return;
+    s_collBinds[s_collBindCount].group = group;
+    s_collBinds[s_collBindCount++].jobj = j;
+    M360_MatchTrace("match.stage.coll_bind", (unsigned) group);
+}
+
+static void BindMapColl(const M360StageDesc* stage, int id, HSD_JObj* model)
+{
+    struct UnkStageDat_x8_t* desc = MAP_GOBJ_DESC(s_mapHead, id);
+    GrJoint* g = desc->unk20;
+    int i;
+    for (i = 0; g && i < desc->unk24; ++i)
+        AddCollBind(g[i].x, model, g[i].z);
+    for (i = 0; i < stage->jointCount; ++i)
+        if (stage->joints[i].mapId == id)
+            AddCollBind(stage->joints[i].group, model, stage->joints[i].joint);
+}
+
+static void SetupMatrixChain(HSD_JObj* jobj)
+{
+    HSD_JObj* chain[32];
+    int n = 0;
+    while (jobj && n < 32) {
+        chain[n++] = jobj;
+        jobj = jobj->parent;
+    }
+    while (n > 0)
+        HSD_JObjSetupMatrix(chain[--n]);
+}
+
+static void UpdateMapColl(void)
+{
+    const MapJoint* groups = s_coll->joints;
+    unsigned b, i;
+    if (!s_collBindCount || (unsigned) s_coll->vert_count > kMaxCollVerts)
+        return;
+    for (b = 0; b < s_collBindCount; ++b) {
+        const MapJoint* mj = &groups[s_collBinds[b].group];
+        HSD_JObj* j = s_collBinds[b].jobj;
+        MtxPtr m;
+        int v;
+        if (HSD_JObjGetFlags(j) & JOBJ_HIDDEN)
+            continue;
+        SetupMatrixChain(j);
+        m = HSD_JObjGetMtxPtr(j);
+        for (v = mj->vtx_start; v < mj->vtx_start + mj->vtx_count && v < s_coll->vert_count; ++v) {
+            const float x = s_coll->verts[v].x, y = s_coll->verts[v].y;
+            s_vtxX[v] = m[0][0] * x + m[0][1] * y + m[0][3];
+            s_vtxY[v] = m[1][0] * x + m[1][1] * y + m[1][3];
+        }
+    }
+    for (i = 0; i < s_stage.lineCount; ++i) {
+        M360StageLine* l = &s_stage.lines[i];
+        l->x0 = s_vtxX[l->v0];
+        l->y0 = s_vtxY[l->v0];
+        l->x1 = s_vtxX[l->v1];
+        l->y1 = s_vtxY[l->v1];
+    }
+}
+
+static HSD_JObj* CreateMapGObj(const M360StageDesc* stage, int id)
 {
     struct UnkStageDat_x8_t* desc;
     HSD_Joint* joint;
@@ -265,6 +383,7 @@ static HSD_JObj* CreateMapGObj(int id)
     if (loop && loop[0])
         HSD_ForeachAnim(model, JOBJ_TYPE, 0x77A4, AnimCallback((void (*)(void)) HSD_AObjSetFlags), AOBJ_ARG_AU, AOBJ_LOOP);
     HSD_JObjAnimAll(model);
+    BindMapColl(stage, id, model);
     gobj = GObj_Create(HSD_GOBJ_CLASS_STAGE, 5, 0);
     HSD_GObjObject_80390A70(gobj, HSD_GObj_JObjKind, root);
     GObj_SetupGXLink(gobj, HSD_GObj_JObjCallback, kLinkStage, 0);
@@ -286,7 +405,14 @@ static void LoadCollision(void)
         out->y1 = verts[lines[i].v1_idx].y * s_scale;
         out->kind = lines[i].hi_flags;
         out->flags = lines[i].lo_flags;
+        out->v0 = lines[i].v0_idx;
+        out->v1 = lines[i].v1_idx;
     }
+    for (i = 0; i < s_coll->vert_count && i < kMaxCollVerts; ++i) {
+        s_vtxX[i] = verts[i].x * s_scale;
+        s_vtxY[i] = verts[i].y * s_scale;
+    }
+    s_collBindCount = 0;
 }
 
 static void LoadBounds(void)
@@ -744,10 +870,11 @@ static int BuildStage(unsigned index)
     s_modelCount = 0;
     CreateLights();
     for (i = 0; i < 9 && desc->gobjs[i] >= 0; ++i) {
-        HSD_JObj* root = CreateMapGObj(desc->gobjs[i]);
+        HSD_JObj* root = CreateMapGObj(desc, desc->gobjs[i]);
         if (root && desc->gobjs[i] == desc->hidden)
             HSD_JObjSetFlagsAll(root, JOBJ_HIDDEN);
     }
+    UpdateMapColl();
     LoadBounds();
     LoadItemTable();
     M360_FighterBuildIslands();
@@ -996,6 +1123,7 @@ static int SelectFrame(void)
             SelectInput(i, i);
     for (i = 0; i < s_modelCount; ++i)
         HSD_JObjAnimAll(s_models[i]);
+    UpdateMapColl();
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
     CamUpdate(0);
@@ -1070,6 +1198,7 @@ int M360_MatchFrame(void)
     ++s_frame;
     for (i = 0; i < s_modelCount; ++i)
         HSD_JObjAnimAll(s_models[i]);
+    UpdateMapColl();
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
     for (i = 1; i < s_fighterCount && !IsCampaign(); ++i) {
