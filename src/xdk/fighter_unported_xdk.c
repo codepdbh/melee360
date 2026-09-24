@@ -246,6 +246,7 @@ f32 gm_8016B248(void)
     return 1.0f;
 }
 
+#undef sqrtf_accurate
 float sqrtf_accurate(float x)
 {
     return sqrtf(x);
