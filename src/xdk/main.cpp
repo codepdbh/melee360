@@ -517,7 +517,10 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 200, 190, line, 2);
         static const char* const itemNames[6] = { "OFF", "VERY LOW", "LOW", "MEDIUM", "HIGH", "VERY HIGH" };
-        _snprintf(line, sizeof(line), "STOCKS: %u   CPU LV: %u", match.stocks, match.cpuLevel);
+        if (match.timeMinutes)
+            _snprintf(line, sizeof(line), "TIME: %u MIN   CPU LV: %u", match.timeMinutes, match.cpuLevel);
+        else
+            _snprintf(line, sizeof(line), "STOCKS: %u   CPU LV: %u", match.stocks, match.cpuLevel);
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 760, 190, line, 2);
         if (!match.campaignRounds) {
@@ -553,6 +556,7 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     if (!match.campaignRounds) {
         AddText(g_dynamic, 250, 570, "P1 PICKS THE CPUS. OTHER PADS: PRESS A BUTTON TO JOIN", 2);
         AddText(g_dynamic, 250, 610, "DPAD UP/DOWN: STAGE  RB: STOCKS  LB: CPU LV  RT: PLAYERS  START: ITEMS", 2);
+        AddText(g_dynamic, 250, 640, "RIGHT STICK UP/DOWN: STOCK OR TIME MATCH", 2);
     }
     RenderBatch(renderer, g_dynamic);
 }
@@ -596,16 +600,38 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
         AddUnsigned(g_dynamic, x + 10, 640, match.damage[i], 6);
         AddText(g_dynamic, x + 150, 662, "%", 3);
-        AddText(g_dynamic, x + 12, 682, "STOCKS", 1);
-        AddUnsigned(g_dynamic, x + 92, 681, match.stocksRemaining[i], 3);
+        if (match.timeMinutes) {
+            char score[16];
+            _snprintf(score, sizeof(score), "%d", match.score[i]);
+            score[sizeof(score) - 1] = '\0';
+            AddText(g_dynamic, x + 12, 682, "SCORE", 1);
+            AddText(g_dynamic, x + 92, 681, score, 3);
+        } else {
+            AddText(g_dynamic, x + 12, 682, "STOCKS", 1);
+            AddUnsigned(g_dynamic, x + 92, 681, match.stocksRemaining[i], 3);
+        }
         RenderBatch(renderer, g_dynamic);
     }
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    if (match.timeMinutes) {
+        char clock[16];
+        _snprintf(clock, sizeof(clock), "%u:%02u", match.timeLeft / 60, match.timeLeft % 60);
+        clock[sizeof(clock) - 1] = '\0';
+        DrawRect(renderer, 560, 16, 160, 54, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
+        g_dynamic.count = 0;
+        AddText(g_dynamic, 580, 24, clock, 5);
+        RenderBatch(renderer, g_dynamic);
+    }
     if (match.matchOver) {
         char line[32];
         DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.48f);
         g_dynamic.count = 0;
-        _snprintf(line, sizeof(line), "%s WINS", PlayerTag(match.winner, match.human[match.winner & 3] != 0));
+        if (match.timeMinutes)
+            AddText(g_dynamic, 588, 230, "TIME", 5);
+        if (match.draw)
+            _snprintf(line, sizeof(line), "DRAW");
+        else
+            _snprintf(line, sizeof(line), "%s WINS", PlayerTag(match.winner, match.human[match.winner & 3] != 0));
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 548, 300, line, 6);
         AddText(g_dynamic, 400, 382,

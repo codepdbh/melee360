@@ -126,6 +126,13 @@ platforms, Randall and hazards are not simulated and collision uses the
 authored lines. Kirby (copy-ability hats are stubs) and Popo (without Nana)
 complete the roster; Zelda/Sheik transformation and Nana are missing.
 
+The right stick (up/down) switches the rule between stock and a timed match
+(2, 3, 4, 5 or 8 minutes). Timed matches give unlimited lives, credit a KO to
+the last fighter that hit the victim (`dmg.x18c4_source_ply`, cleared on
+landing as in the original) and subtract one point per fall; the HUD shows a
+countdown and each player's score. A tie at time-out is reported as a draw;
+sudden death is not implemented.
+
 ### Effects (2026-09-24)
 
 The effect system links from the original sources (`melee/ef/*.c`, with
@@ -170,9 +177,9 @@ the link is expected to resolve; it is not an XDK build and runs no code.
 - Verify an actual capsule/hurtbox contact in Xenia and check the new reaction
   trace events (`fighter.hit.reaction_motion`, `fighter.hitstun.frames`); the
   current saved runtime trace predates this change and contains no hit event.
-- Match setup is fixed to Battlefield with four stocks; fighters come from the
-  native select phase. VS rules, the original character/stage select screens,
-  configurable time and persistent results flow are not integrated. P2 uses a
+- Match rules (stage, stocks or time, items, CPU level, player count) come from
+  the native select phase. The original character/stage select screens, sudden
+  death and the persistent results flow are not integrated. P2 uses a
   connected second controller when available; otherwise a basic CPU that
   approaches, attacks, shields, grabs and recovers is used.
 - Stage collision now supports floor/wall checks, downward platform drop-through,
@@ -180,10 +187,9 @@ the link is expected to resolve; it is not an XDK build and runs no code.
   collision, ledge slips (MissFoot), platform one-way edge cases, moving
   geometry, hazards, items and the original full collision flags remain
   incomplete.
-- Quick match now uses four stocks, reports a winner and returns to the menu
-  with B; a connected second XInput controller can control P2. The stock count
-  is fixed, there is no match timer, and VS setup still bypasses character/stage
-  select and results persistence.
+- Quick match reports a winner (or a draw after time-out) and returns to the
+  menu with B; connected XInput controllers join as P2-P4. VS setup still
+  bypasses the original character/stage select and results persistence.
 - Fighter model visibility/parts, material animation, effects, lighting and
   hitboxes need visual and behavioral validation against the original scene.
 - Menu leaf screens use bridges for unsupported scenes; they do not implement
