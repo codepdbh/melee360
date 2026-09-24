@@ -662,4 +662,3 @@ void lbColl_80009DD4(Vec3* v0, Vec3* v1, GXColor* clr) { (void) v0; (void) v1; (
 void HSD_StateSetColorUpdate(int a0) { (void) a0; Report("fighter.unported.HSD_StateSetColorUpdate"); }
 void grLib_801C99C0(s32 a0, s32 a1, HSD_JObj* a2, s32 a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.grLib_801C99C0"); }
 void lb_80011C18(HSD_JObj* jobj, u32 flags) { (void) jobj; (void) flags; Report("fighter.unported.lb_80011C18"); }
-void psDispParticles(u32 target_link, u32 sw) { (void) target_link; (void) sw; Report("fighter.unported.psDispParticles"); }

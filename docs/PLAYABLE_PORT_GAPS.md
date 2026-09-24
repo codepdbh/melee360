@@ -135,9 +135,14 @@ common banks (0 and 0x1F), and each fighter loads its bank from
 `ftData_UnkBytePerCharacter` at spawn; the match camera draws links 7 and 8.
 `lbArchive_80017040` keeps a per-file cache and reports reloads as preloaded,
 like the original lbDvd cache, so banks are not relocated twice. JObj-based
-effects render through the HSD path; particle drawing (`psDispParticles`,
-GX immediate mode) is still a traced stub, so particle effects are
-simulated but not drawn.
+effects render through the HSD path. Particles are drawn by a native
+`psDispParticles` (`src/xdk/particle_draw_xdk.c`): each particle becomes a
+view-space quad (appsrt matrix or position, rotation, size, primary colour
+and texture from its texture group, C4/C8 palettes included) submitted to
+`M360_HsdDrawParticle`, which reuses the HSD shaders with vertex colour times
+texture and alpha or additive blending. Not reproduced yet: particle forms
+other than billboards (lines, points, trails), environment colour/TEV modes
+and fog.
 
 ### Host link check
 
