@@ -483,6 +483,7 @@ static M360Fighter s_fighters[kMaxFighters * 2];
 static HSD_GObj* s_entities[kMaxFighters][2];
 static u8 s_transformed[kMaxFighters][2];
 static int s_nanaCpu[kMaxFighters];
+static s32 s_playerDamage[kMaxFighters];
 static StaleMoveTable s_staleTables[6];
 static unsigned s_hitCount;
 static unsigned s_cpuLevel = 3;
@@ -2725,6 +2726,8 @@ static void ProcFinish(HSD_GObj* gobj)
 {
     Fighter* fp = GET_FIGHTER(gobj);
     M360Fighter* f = Owner(gobj);
+    if (fp->player_id < kMaxFighters && !f->dead && s_entities[fp->player_id][s_transformed[fp->player_id][0]] == gobj)
+        s_playerDamage[fp->player_id] = (s32) fp->dmg.x1830_percent;
     if (f->port == 0 && f->traceMotion != (int) fp->motion_id) {
         f->traceMotion = (int) fp->motion_id;
         M360_MatchTrace("fighter.p1.motion", (unsigned) fp->motion_id);
@@ -2879,6 +2882,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     }
     s_entities[slot][0] = s_entities[slot][1] = NULL;
     s_nanaCpu[slot] = 0;
+    s_playerDamage[slot] = 0;
     s_transformed[slot][0] = 0;
     s_transformed[slot][1] = 1;
     gobj = CreateFighter(slot, 0, s_selectKind[slot], s_selectCostume[slot], x, y, facing, port);
@@ -2939,6 +2943,8 @@ void M360_FighterSetDead(void* handle)
     Fighter* fp = GET_FIGHTER(gobj);
     Owner(gobj)->dead = 1;
     fp->x221F_b3 = true;
+    if (fp->player_id < kMaxFighters && Player_GetEntity(fp->player_id) == gobj)
+        s_playerDamage[fp->player_id] = 0;
     ftColl_8007AFF8(gobj);
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
@@ -3172,10 +3178,12 @@ static Fighter* SlotFighter(s32 slot)
     return gobj ? GET_FIGHTER(gobj) : NULL;
 }
 
+/* Player-side damage (player.c staminas): follows the active fighter each
+ * frame and returns to 0 on a KO, so Fighter_UnkInitReset_80067C98 starts a
+ * respawned fighter at 0% while the HUD reads the live value. */
 s32 Player_GetDamage(s32 slot)
 {
-    Fighter* fp = SlotFighter(slot);
-    return fp ? (s32) fp->dmg.x1830_percent : 0;
+    return slot >= 0 && slot < kMaxFighters ? s_playerDamage[slot] : 0;
 }
 
 Gm_PKind Player_GetPlayerSlotType(s32 slot)
