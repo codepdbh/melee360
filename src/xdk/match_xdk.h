@@ -65,6 +65,8 @@ typedef struct M360MatchStatus {
     unsigned selectReady[2];
     unsigned selectHuman[2];
     unsigned fighterKind[2];
+    unsigned stageIndex;
+    unsigned stocks;
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
@@ -81,6 +83,8 @@ void M360_MatchLeave(void);
 void M360_MatchSetMode(unsigned gameMode, unsigned round);
 void M360_MatchGetStatus(M360MatchStatus* status);
 const M360MatchStage* M360_MatchStageData(void);
+unsigned M360_MatchStageCount(void);
+const char* M360_MatchStageName(unsigned index);
 float M360_MatchFixedZoom(void);
 unsigned M360_MatchPadTriggered(void);
 unsigned M360_MatchPadTriggeredPort(unsigned port);
