@@ -2122,6 +2122,11 @@ float M360_MatchPadX(void)
     return HSD_PadGameStatus[0].nml_stickX;
 }
 
+float M360_MatchPadStickXPort(unsigned port)
+{
+    return port < 4 ? HSD_PadGameStatus[port].nml_stickX : 0.0f;
+}
+
 float M360_MatchPadY(void)
 {
     return HSD_PadGameStatus[0].nml_stickY;
@@ -2130,6 +2135,16 @@ float M360_MatchPadY(void)
 int M360_MatchControllerConnected(unsigned port)
 {
     return port < 4 && HSD_PadGameStatus[port].err >= 0;
+}
+
+unsigned M360_FighterKindIndex(void* handle)
+{
+    const FighterKind kind = GET_FIGHTER((HSD_GObj*) handle)->kind;
+    unsigned i;
+    for (i = 0; i < kKindCount; ++i)
+        if (s_kinds[i].kind == kind)
+            return i;
+    return 0;
 }
 
 void M360_FighterGetState(void* handle, float* x, float* y, float* facing,
