@@ -9,6 +9,7 @@
 #include <melee/ft/ft_081B.h>
 #include <melee/ft/ftaction.h>
 #include <melee/ft/ftanim.h>
+#include <melee/ft/ftcolanim.h>
 #include <melee/ft/ftcamera.h>
 #include <melee/ft/ftcoll.h>
 #include <melee/ft/ftcommon.h>
@@ -468,7 +469,12 @@ static M360LoadedKind s_loaded[kKindCount];
 ftData* gFtDataList[Ft_Kind_Max];
 static unsigned s_selectKind[kMaxFighters];
 static unsigned s_selectCostume[kMaxFighters] = { 0, 3, 1, 2 };
-static M360Fighter s_fighters[kMaxFighters];
+/* Slot fighters, then the transformation partners (Zelda/Sheik) sleeping at
+ * slot + kMaxFighters. */
+static M360Fighter s_fighters[kMaxFighters * 2];
+/* pl/player.c entity table: [slot][transformed[0]] is the active fighter. */
+static HSD_GObj* s_entities[kMaxFighters][2];
+static u8 s_transformed[kMaxFighters][2];
 static StaleMoveTable s_staleTables[6];
 static unsigned s_hitCount;
 static unsigned s_cpuLevel = 3;
@@ -665,6 +671,7 @@ void M360_FighterResetMatch(void)
     s_itemsReady = 1;
     s_hitCount = 0;
     memset(s_fighters, 0, sizeof(s_fighters));
+    memset(s_entities, 0, sizeof(s_entities));
 }
 
 static FigaTree* LoadTree(M360LoadedKind* k, int anim)
@@ -732,7 +739,7 @@ static void SetVisGroup(M360Fighter* f, int idx, int showIndex)
 static void FighterRender(HSD_GObj* gobj, int pass)
 {
     M360Fighter* f = Owner(gobj);
-    if (f->dead)
+    if (f->dead || f->fighter.invisible)
         return;
     SetVisGroup(f, 1, -1);
     SetVisGroup(f, 4, -1);
@@ -1621,6 +1628,40 @@ static bool CollGround(CollData* coll)
     SetFloorColl(coll, line);
     coll->env_flags |= Collide_FloorHug;
     return true;
+}
+
+/* mpcoll.c: transformations hand the ground state to the partner fighter. */
+void mpCopyCollData(CollData* src, CollData* dst, int arg2)
+{
+    (void) arg2;
+    dst->cur_pos = src->cur_pos;
+    dst->prev_pos = src->prev_pos;
+    dst->last_pos = src->last_pos;
+    dst->x34_flags.b0 = src->x34_flags.b0;
+    dst->x34_flags.b1234 = src->x34_flags.b1234;
+    dst->x34_flags.b5 = src->x34_flags.b5;
+    dst->x34_flags.b6 = src->x34_flags.b6;
+    dst->facing_dir = src->facing_dir;
+    dst->x38 = src->x38;
+    dst->floor_skip = src->floor_skip;
+    dst->ledge_id_left = src->ledge_id_left;
+    dst->ledge_id_right = src->ledge_id_right;
+    dst->joint_id_skip = src->joint_id_skip;
+    dst->lstick_x = src->lstick_x;
+    dst->x64_ecb = src->x64_ecb;
+    dst->desired_ecb = src->desired_ecb;
+    dst->ecb = src->ecb;
+    dst->prev_ecb = src->prev_ecb;
+    dst->xE4_ecb = src->xE4_ecb;
+    dst->x130_flags = src->x130_flags;
+    dst->env_flags = src->env_flags;
+    dst->prev_env_flags = src->prev_env_flags;
+    dst->x13C = src->x13C;
+    dst->contact = src->contact;
+    dst->floor = src->floor;
+    dst->left_facing_wall = src->left_facing_wall;
+    dst->right_facing_wall = src->right_facing_wall;
+    dst->ceiling = src->ceiling;
 }
 
 bool mpColl_80048844(CollData* coll) { return CollGround(coll); }
@@ -2521,30 +2562,21 @@ static void RemoveUserData(void* data)
     (void) data;
 }
 
-void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
+static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned costumeSel,
+                               float x, float y, float facing, int port)
 {
     M360Fighter* f;
     Fighter* fp;
     HSD_GObj* gobj;
     HSD_JObj* root;
     Vec3 scale;
-    const M360KindDesc* desc;
-    M360LoadedKind* kind;
-    int costume;
+    const M360KindDesc* desc = &s_kinds[kindIndex];
+    M360LoadedKind* kind = LoadKind(kindIndex);
+    const int costume = kind ? LoadCostume(kind, desc, costumeSel) : -1;
     int i;
-    if (slot < 0 || slot >= kMaxFighters)
-        return NULL;
-    kind = LoadKind(s_selectKind[slot]);
-    if (!kind) {
-        M360_MatchTrace("fighter.kind.fallback", s_selectKind[slot]);
-        s_selectKind[slot] = 0;
-        kind = LoadKind(0);
-    }
-    desc = &s_kinds[s_selectKind[slot]];
-    costume = kind ? LoadCostume(kind, desc, s_selectCostume[slot]) : -1;
     if (costume < 0)
         return NULL;
-    f = &s_fighters[slot];
+    f = &s_fighters[slot + (sub ? kMaxFighters : 0)];
     memset(f, 0, sizeof(*f));
     fp = &f->fighter;
     gobj = GObj_Create(HSD_GOBJ_CLASS_FIGHTER, 8, 0);
@@ -2578,6 +2610,7 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     fp->x597_bits = desc->kind;
     fp->x619_costume_id = (u8) costume;
     fp->player_id = (u8) slot;
+    fp->is_sub_fighter = sub != 0;
     fp->x618_player_id = (u8) (port < 0 ? 0 : port);
     fp->x61A_controller_index = (u8) slot;
     fp->team = (u8) slot;
@@ -2629,6 +2662,83 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     M360_MatchTrace("fighter.spawn.joints", f->jointCount);
     M360_MatchTrace("fighter.spawn.dobjs", f->dobjCount);
     return gobj;
+}
+
+/* Roster index of the fighter a kind transforms into, or -1. */
+static int PartnerIndex(FighterKind kind)
+{
+    FighterKind partner;
+    unsigned i;
+    if (kind == Ft_Kind_Zelda)
+        partner = Ft_Kind_Seak;
+    else if (kind == Ft_Kind_Seak)
+        partner = Ft_Kind_Zelda;
+    else
+        return -1;
+    for (i = 0; i < kKindCount; ++i)
+        if (s_kinds[i].kind == partner)
+            return (int) i;
+    return -1;
+}
+
+void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
+{
+    HSD_GObj* gobj;
+    HSD_GObj* partner = NULL;
+    int partnerIndex;
+    if (slot < 0 || slot >= kMaxFighters)
+        return NULL;
+    if (!LoadKind(s_selectKind[slot])) {
+        M360_MatchTrace("fighter.kind.fallback", s_selectKind[slot]);
+        s_selectKind[slot] = 0;
+    }
+    s_entities[slot][0] = s_entities[slot][1] = NULL;
+    s_transformed[slot][0] = 0;
+    s_transformed[slot][1] = 1;
+    gobj = CreateFighter(slot, 0, s_selectKind[slot], s_selectCostume[slot], x, y, facing, port);
+    if (!gobj)
+        return NULL;
+    s_entities[slot][0] = gobj;
+    /* Zelda and Sheik load together; the partner sleeps (ftcolanim.c Sleep)
+     * until ftCommon_8007EFC8 swaps them on down special. */
+    partnerIndex = PartnerIndex(GET_FIGHTER(gobj)->kind);
+    if (partnerIndex >= 0)
+        partner = CreateFighter(slot, 1, (unsigned) partnerIndex, s_selectCostume[slot],
+                                x, y, facing, port);
+    if (partner) {
+        s_entities[slot][1] = partner;
+        ftCo_800BFD04(partner);
+        M360_MatchTrace("fighter.spawn.partner", (unsigned) partnerIndex);
+    }
+    return gobj;
+}
+
+HSD_GObj* Player_GetEntityAtIndex(int slot, int index)
+{
+    if (slot < 0 || slot >= kMaxFighters || index < 0 || index > 1)
+        return NULL;
+    return s_entities[slot][s_transformed[slot][index]];
+}
+
+HSD_GObj* Player_GetEntity(s32 slot)
+{
+    return Player_GetEntityAtIndex(slot, 0);
+}
+
+void Player_SwapTransformedStates(s32 slot, s32 arg1, s32 arg2)
+{
+    u8 tmp;
+    if (slot < 0 || slot >= kMaxFighters || arg1 < 0 || arg1 > 1 || arg2 < 0 || arg2 > 1)
+        return;
+    tmp = s_transformed[slot][arg1];
+    s_transformed[slot][arg1] = s_transformed[slot][arg2];
+    s_transformed[slot][arg2] = tmp;
+    M360_MatchTrace("fighter.transform.player", (unsigned) slot);
+}
+
+void* M360_FighterActive(int slot)
+{
+    return Player_GetEntity(slot);
 }
 
 void M360_FighterSetDead(void* handle)
@@ -2806,9 +2916,18 @@ unsigned M360_MatchPadTriggeredPort(unsigned port)
 void M360_FighterSetPort(void* handle, int port)
 {
     Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    const int slot = fp->player_id;
+    int i;
     Owner((HSD_GObj*) handle)->port = port;
     fp->x618_player_id = (u8) (port < 0 ? 0 : port);
-    s_playerCpu[fp->player_id] = port < 0 ? Gm_PKind_Cpu : Gm_PKind_Human;
+    s_playerCpu[slot] = port < 0 ? Gm_PKind_Cpu : Gm_PKind_Human;
+    for (i = 0; i < 2 && slot < kMaxFighters; ++i) {
+        HSD_GObj* other = s_entities[slot][i];
+        if (other && other != (HSD_GObj*) handle) {
+            Owner(other)->port = port;
+            GET_FIGHTER(other)->x618_player_id = fp->x618_player_id;
+        }
+    }
 }
 
 unsigned M360_MatchPadHeld(void)

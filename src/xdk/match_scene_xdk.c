@@ -1021,6 +1021,9 @@ int M360_MatchFrame(void)
         unsigned motion, damage;
         if (!s_fighters[i])
             continue;
+        /* Zelda/Sheik swap the slot's active fighter (Player_GetEntity). */
+        if (M360_FighterActive((int) i))
+            s_fighters[i] = M360_FighterActive((int) i);
         if (s_respawn[i]) {
             if (--s_respawn[i] == 0 && (s_stocksRemaining[i] || TimeMinutes()))
                 M360_FighterRebirth(s_fighters[i]);

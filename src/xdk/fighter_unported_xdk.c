@@ -147,8 +147,6 @@ UNPORTED_VOID(ftMh_MS_389_80151018, (HSD_GObj* gobj))
 UNPORTED_VOID(ftCh_GrabUnk1_8015BC88, (HSD_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8540, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
-UNPORTED_VOID(ft_80081C88, (Fighter_GObj* gobj, float scl_y))
-UNPORTED_VOID(ft_800849EC, (Fighter* a, Fighter* b))
 UNPORTED_BOOL(ft_80084BFC, (Fighter_GObj* gobj, int* a, int* b, int* c))
 UNPORTED_BOOL(ft_80084C38, (Fighter_GObj* gobj, int* a, int* b, int* c))
 UNPORTED_VOID(ftAnim_ApplyPartAnim, (Fighter_GObj* gobj, s32 a, s32 b, float c))
@@ -170,12 +168,9 @@ SILENT_VOID(pl_800402D0, (int slot, int a, int b))
 SILENT_VOID(pl_80040460, (int slot, int a))
 SILENT_VOID(Player_SetHPByIndex, (s32 slot, s32 a, s32 b))
 SILENT_VOID(Player_SetUnk98, (s32 slot, s32 a))
-SILENT_VOID(Player_SwapTransformedStates, (s32 slot, s32 a, s32 b))
 SILENT_VOID(Player_UpdateJoystickCountByIndex, (s32 slot, s32 index))
 SILENT_VOID(un_80322314, (void))
 
-HSD_GObj* Player_GetEntity(s32 slot) { (void) slot; return NULL; }
-HSD_GObj* Player_GetEntityAtIndex(int slot, int index) { (void) slot; (void) index; return NULL; }
 s32 Player_GetUnk98(s32 slot) { (void) slot; return 0; }
 bool gm_8016B0B4(void) { return false; }
 bool un_803224DC(s32 spawn_id, f32 pos_x, f32 kb_mag) { (void) spawn_id; (void) pos_x; (void) kb_mag; return false; }
