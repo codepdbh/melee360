@@ -247,6 +247,14 @@ static void LoadBounds(void)
             s_stage.spawnX[i] = (i & 1 ? 1.0f : -1.0f) * 30.0f;
             s_stage.spawnY[i] = 20.0f;
         }
+        /* Rebirth platform points are ground points 4-7 (Stage_80224E38). */
+        if (PointPosition(4 + i, &a)) {
+            s_stage.rebirthX[i] = a.x;
+            s_stage.rebirthY[i] = a.y;
+        } else {
+            s_stage.rebirthX[i] = 0.0f;
+            s_stage.rebirthY[i] = s_stage.spawnY[i] + 30.0f;
+        }
     }
 }
 
@@ -618,7 +626,7 @@ int M360_MatchFrame(void)
             continue;
         if (s_respawn[i]) {
             if (--s_respawn[i] == 0 && s_stocksRemaining[i])
-                M360_FighterRespawn(s_fighters[i], s_stage.spawnX[i], s_stage.spawnY[i]);
+                M360_FighterRebirth(s_fighters[i]);
             continue;
         }
         M360_FighterGetState(s_fighters[i], &x, &y, &facing, &motion, &damage);
