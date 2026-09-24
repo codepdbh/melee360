@@ -87,6 +87,9 @@ int M360_MatchGroundBelow(float x, float y, float depth, float* groundY,
                           unsigned* line);
 
 int M360_FighterLoad(void);
+unsigned M360_FighterKindCount(void);
+const char* M360_FighterKindName(unsigned index);
+void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume);
 void M360_FighterResetMatch(void);
 void* M360_FighterSpawn(int slot, float x, float y, float facing, int port);
 void M360_FighterRespawn(void* gobj, float x, float y);

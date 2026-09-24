@@ -148,8 +148,6 @@ UNPORTED_VOID(ftCo_800C5500, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800C5A50, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C5D34, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800CEE70, (Fighter_GObj* gobj))
-UNPORTED_BOOL(ftCo_800D730C, (Fighter_GObj* gobj, bool arg))
-UNPORTED_VOID(ftCo_Attack_800CCF58, (Fighter_GObj* gobj, enum_t arg))
 UNPORTED_VOID(ftCo_Attack_800CDD14, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_HammerLanding_Enter, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_ItemScrew_Enter, (Fighter_GObj* gobj))
@@ -474,7 +472,6 @@ void ftKb_SpecialN_800F5C34(Fighter* a0) { (void) a0; Report("fighter.unported.f
 void ftKb_SpecialN_800F5BA4(Fighter* a0) { (void) a0; Report("fighter.unported.ftKb_SpecialN_800F5BA4");  }
 void ftKb_SpecialN_800F1D24(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftKb_SpecialN_800F1D24");  }
 bool ftFx_AppealS_CheckIfUsed(Fighter* a0) { (void) a0; Report("fighter.unported.ftFx_AppealS_CheckIfUsed"); return (bool) 0; }
-void ftDk_MS_349_800E06D8(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftDk_MS_349_800E06D8");  }
 void ftCo_HammerWait_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerWait_IASA");  }
 void ftCo_HammerFall_IASA(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_HammerFall_IASA");  }
 void ftCo_DamageIce_Init(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_DamageIce_Init");  }
@@ -552,7 +549,6 @@ UNPORTED_BOOL(ftCo_80095254, (Fighter_GObj* gobj))
 UNPORTED_BOOL(ftCo_800952DC, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftpickupitem_80094694, (Fighter_GObj* gobj, FtMotionId msid, bool arg))
 UNPORTED_VOID(ftpickupitem_800948A8, (Fighter_GObj* gobj, Item_GObj* item))
-UNPORTED_VOID(ftCo_8009B56C, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftSs_Init_CreateThrowGrappleBeam, (HSD_GObj* gobj, s32 motion_state, float anim_speed))
 UNPORTED_VOID(Fighter_UpdateModelScale, (Fighter_GObj* gobj))
 UNPORTED_VOID(it_802A7840, (HSD_GObj* gobj))
@@ -620,7 +616,6 @@ SILENT_VOID(pl_8003FFDC, (int a, int b, int c, int d, int e))
 SILENT_VOID(pl_80040048, (int slot, int sub))
 /* Taunt hooks for other characters and the taunt statistic. */
 UNPORTED_VOID(ftCl_Init_80149318, (Fighter_GObj* gobj))
-UNPORTED_VOID(ftDr_Init_80149910, (HSD_GObj* gobj))
 UNPORTED_VOID(ftKb_SpecialN_800F5D04, (Fighter_GObj* gobj, bool arg))
 UNPORTED_VOID(ftPe_Init_8011B93C, (HSD_GObj* gobj))
 UNPORTED_VOID(ftZd_Init_801395C8, (HSD_GObj* gobj))
@@ -637,3 +632,53 @@ float Stage_GetCamBoundsTopOffset(void)
     const M360MatchStage* st = M360_MatchStageData();
     return st->camTop + st->camY;
 }
+/* Luigi fireball and Dr. Mario pill items. */
+UNPORTED_VOID(it_802C01AC, (Item_GObj* gobj, Vec3* pos, ItemKind kind, float facing_dir))
+UNPORTED_VOID(itDrMarioPill_802C0DBC, (Item_GObj* gobj))
+Item_GObj* itDrMarioPill_Appeal_Spawn(Item_GObj* gobj, Vec3* pos, s32 arg, ItemKind kind, f32 facing)
+{
+    (void) gobj; (void) pos; (void) arg; (void) kind; (void) facing;
+    Report("fighter.unported.itDrMarioPill_Appeal_Spawn");
+    return NULL;
+}
+
+/* Item swing states referenced by some characters' motion tables
+ * (ft_0CD3.c, ftstarrodswing.c, ftlipstickswing.c). They are entered only
+ * while holding a battering item, which the quick match never spawns. */
+#define ITEM_SWING_STATE(name)                                              \
+    void ftCo_##name##_Anim(Fighter_GObj* gobj) { Report("fighter.unported.ftCo_" #name); } \
+    void ftCo_##name##_IASA(Fighter_GObj* gobj) { (void) gobj; }          \
+    void ftCo_##name##_Phys(Fighter_GObj* gobj) { (void) gobj; }          \
+    void ftCo_##name##_Coll(Fighter_GObj* gobj) { (void) gobj; }
+ITEM_SWING_STATE(SwordSwing)
+ITEM_SWING_STATE(BatSwing)
+ITEM_SWING_STATE(ParasolSwing)
+ITEM_SWING_STATE(HarisenSwing)
+ITEM_SWING_STATE(StarRodSwing)
+ITEM_SWING_STATE(LipstickSwing)
+
+/* Item hooks of the added characters (Bowser's flame, item throws). */
+UNPORTED_BOOL(ftCo_80094EA4, (Fighter_GObj* gobj))
+u32 Item_8026AE60(void) { Report("fighter.unported.Item_8026AE60"); return 0; }
+Item_GObj* itKoopaFlame_Spawn(Fighter_GObj* parent, Vec3* pos, f32 facing_dir, u32 unk, s32 gfx,
+                              s32 base_speed, s32 scale, s32 kind)
+{
+    (void) parent; (void) pos; (void) facing_dir; (void) unk; (void) gfx;
+    (void) base_speed; (void) scale; (void) kind;
+    Report("fighter.unported.itKoopaFlame_Spawn");
+    return NULL;
+}
+bool mpLib_80056C54(int line_id, Vec3* pos, int* line_id_out, Vec3* vec_out, u32* flags_out,
+                    Vec3* normal_out, float a, float b)
+{
+    (void) line_id; (void) pos; (void) line_id_out; (void) vec_out; (void) flags_out;
+    (void) normal_out; (void) a; (void) b;
+    Report("fighter.unported.mpLib_80056C54");
+    return false;
+}
+UNPORTED_VOID(ftCo_800CD350, (Fighter_GObj* gobj, int a, int b, float c))
+UNPORTED_VOID(ftCo_800CD418, (Fighter_GObj* gobj, int a, int b, float c))
+UNPORTED_VOID(ftCo_800CD4E0, (Fighter_GObj* gobj, int a, int b, float c))
+UNPORTED_VOID(ftCo_800CD5A8, (Fighter_GObj* gobj, int a, int b, float c))
+UNPORTED_VOID(ftCo_800CD82C, (Fighter_GObj* gobj, int a, int b, float c))
+UNPORTED_VOID(ftCo_800CDAB4, (Fighter_GObj* gobj, int a, int b, float c))
