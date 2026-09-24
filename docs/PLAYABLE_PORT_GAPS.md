@@ -174,6 +174,14 @@ then ends transient part anims and `ftAnim_80070E74` restores persistent ones.
 The original animates a shadow skeleton and blends it in over a few frames;
 here the pose switches immediately.
 
+### Camera shake (2026-09-24)
+
+`Camera_RequestQuake`/`Camera_StopQuake` are native in the match scene: each
+quake kind (loop, small, medium, large) runs for the original frame count
+(10 or 22) and offsets the eye and interest by a decaying jitter. The original
+drives the offset from a stage quake GObj animation (`grLib_801C9CEC`), so the
+exact motion differs.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`
