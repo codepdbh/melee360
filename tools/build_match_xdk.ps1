@@ -674,7 +674,7 @@ $nativeBase = @('/nologo','/c','/TC','/O2','/MT','/GS-','/W4','/D_XBOX','/DXBOX'
     "/I$matchOverlay", "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
     "/I$src", "/I$(Join-Path $src 'sdk_include')",
     "/FI$(Join-Path $root 'src/xdk/fighter_glue_compat.h')")
-foreach ($native in @('fighter_glue_xdk.c', 'fighter_unported_xdk.c')) {
+foreach ($native in @('fighter_glue_xdk.c', 'fighter_unported_xdk.c', 'particle_draw_xdk.c')) {
     $object = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($native) + '.obj')
     & $Compiler ($nativeBase + @("/Fo$object", (Join-Path $root "src/xdk/$native"))) | Write-Host
     if ($LASTEXITCODE -ne 0) { throw "Fighter glue failed: $native" }

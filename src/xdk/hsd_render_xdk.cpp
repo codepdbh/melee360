@@ -23,6 +23,7 @@ extern "C" {
 
 #include "hsd_render_xdk.h"
 #include "hsd_texture_xdk.h"
+#include "hsd_particle_xdk.h"
 #include "hsd_ps.h"
 #include "hsd_vs.h"
 
@@ -1303,6 +1304,117 @@ bool M360_HsdDecodeImage(const void* imageHandle, const void* tobjHandle,
         return false;
     }
     return true;
+}
+
+/* Native particle quads (see particle_draw_xdk.c). Textures are cached like
+ * material textures, keyed by image and palette. */
+static IDirect3DTexture9* ResolveParticleTexture(const M360ParticleTexture* tex)
+{
+    if (!tex || !tex->image || !tex->width || !tex->height ||
+        tex->width > 1024 || tex->height > 1024)
+        return NULL;
+    for (unsigned i = 0; i < s_textureCount; ++i)
+        if (s_textures[i].image == tex->image && s_textures[i].palette == tex->palette)
+            return s_textures[i].texture;
+    IDirect3DTexture9* texture = NULL;
+    unsigned* pixels = static_cast<unsigned*>(malloc(tex->width * tex->height * sizeof(unsigned)));
+    if (pixels) {
+        memset(pixels, 0, tex->width * tex->height * sizeof(unsigned));
+        if (M360_DecodeGxTexture(static_cast<const unsigned char*>(tex->image), tex->width,
+                                 tex->height, tex->format,
+                                 static_cast<const unsigned char*>(tex->palette),
+                                 tex->paletteFormat, tex->paletteEntries, pixels) &&
+            SUCCEEDED(s_device->CreateTexture(tex->width, tex->height, 1, 0,
+                D3DFMT_LIN_A8R8G8B8, D3DPOOL_MANAGED, &texture, NULL))) {
+            D3DLOCKED_RECT locked;
+            if (SUCCEEDED(texture->LockRect(0, &locked, NULL, 0))) {
+                for (unsigned y = 0; y < tex->height; ++y)
+                    memcpy(static_cast<BYTE*>(locked.pBits) + y * locked.Pitch,
+                           pixels + y * tex->width, tex->width * sizeof(unsigned));
+                texture->UnlockRect(0);
+            } else {
+                texture->Release();
+                texture = NULL;
+            }
+        }
+        free(pixels);
+    }
+    if (!texture && s_stats.decodeFailures++ < 16)
+        M360_Trace("hsd.particle.decode_failed", tex->format);
+    if (s_textureCount < kMaxTextures) {
+        s_textures[s_textureCount].image = tex->image;
+        s_textures[s_textureCount].palette = tex->palette;
+        s_textures[s_textureCount++].texture = texture;
+    }
+    return texture;
+}
+
+void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleTexture* tex,
+                          unsigned blend, int depthWrite)
+{
+    if (!s_device || !corners)
+        return;
+    float vs[64 * 4];
+    memset(vs, 0, sizeof(vs));
+    memcpy(vs, s_gx.projection, sizeof(s_gx.projection));
+    vs[7 * 4 + 0] = 1.0f;               /* channel colour = vertex colour */
+    vs[5 * 4 + 3] = 0.0f;
+    vs[6 * 4 + 0] = vs[6 * 4 + 1] = vs[6 * 4 + 2] = vs[6 * 4 + 3] = 1.0f;
+    vs[8 * 4 + 0] = 1.0f;               /* identity texture matrix, uv0 */
+    vs[9 * 4 + 1] = 1.0f;
+
+    float ps[54 * 4];
+    memset(ps, 0, sizeof(ps));
+    /* Stage 12 (slot 0 pre-lighting): colour = prev * tex, alpha = prev * tex. */
+    TevStage* stage = reinterpret_cast<TevStage*>(ps + 12 * 4);
+    ClearStage(stage);
+    stage->w[1][0] = 1.0f;              /* in1 = prev */
+    stage->w[2][1] = 1.0f;              /* in2 = texture */
+    stage->wa[0][1] = 1.0f;             /* alpha in1 = prev.a */
+    stage->wa[1][2] = 1.0f;             /* alpha in2 = texture.a */
+    ps[48 * 4 + 0] = ps[48 * 4 + 1] = ps[48 * 4 + 2] = ps[48 * 4 + 3] = 1.0f;
+    BOOL flags[11];
+    memset(flags, 0, sizeof(flags));
+    flags[0] = TRUE;                    /* slot0Pre */
+    flags[6] = TRUE;                    /* vertexBase */
+
+    IDirect3DTexture9* texture = ResolveParticleTexture(tex);
+    s_device->SetVertexShader(s_vertexShader);
+    s_device->SetPixelShader(s_pixelShader);
+    s_device->SetVertexDeclaration(s_declaration);
+    s_device->SetVertexShaderConstantF(0, vs, 64);
+    s_device->SetPixelShaderConstantF(0, ps, 54);
+    s_device->SetPixelShaderConstantB(0, flags, 11);
+    s_device->SetTexture(0, texture ? texture : s_white);
+    s_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    s_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    s_device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+    s_device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+    s_device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+    s_device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    s_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+    s_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    s_device->SetRenderState(D3DRS_DESTBLEND, blend == 1 ? D3DBLEND_ONE : D3DBLEND_INVSRCALPHA);
+    s_device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+    s_device->SetRenderState(D3DRS_ZWRITEENABLE, depthWrite ? TRUE : FALSE);
+    s_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+    s_device->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALL);
+    s_device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+    s_device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+
+    HsdVertex quad[6];
+    static const int order[6] = { 0, 1, 2, 0, 2, 3 };
+    for (int i = 0; i < 6; ++i) {
+        const M360ParticleVertex& c = corners[order[i]];
+        HsdVertex& v = quad[i];
+        v.px = c.x; v.py = c.y; v.pz = c.z;
+        v.nx = 0.0f; v.ny = 0.0f; v.nz = 1.0f;
+        v.r = c.r; v.g = c.g; v.b = c.b; v.a = c.a;
+        v.u0 = c.u; v.v0 = c.v; v.u1 = c.u; v.v1 = c.v;
+    }
+    s_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(HsdVertex));
+    ++s_stats.drawCalls;
+    s_stats.triangles += 2;
 }
 
 bool M360_HsdDecodeTexture(const void* tobjHandle, unsigned** pixels,
