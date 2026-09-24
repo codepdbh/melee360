@@ -24,3 +24,14 @@ sort -u "$OUT/baseline.names" "$OUT/external.names" > "$OUT/resolved.names"
 comm -23 "$OUT/undefined.names" "$OUT/resolved.names" > "$OUT/new-undefined.names"
 echo "match objects: $(ls "$OUT"/match/*.obj | wc -l); undefined: $(wc -l < "$OUT/undefined.names"); new vs baseline: $(wc -l < "$OUT/new-undefined.names")"
 grep -wFf "$OUT/new-undefined.names" "$OUT/undefined.txt" || true
+# The XDK C front end is C89: flag late declarations and implicit calls in
+# the native glue, which clang's gnu89 mode otherwise accepts silently.
+S="$ROOT/upstream/melee-pc/src"
+for f in fighter_glue_xdk fighter_unported_xdk; do
+    clang --target=i686-pc-windows-msvc -nostdlibinc -fms-extensions -fms-compatibility -std=gnu89 \
+        -fsyntax-only -Wimplicit-function-declaration -Wincompatible-pointer-types -Wreturn-type \
+        -Wdeclaration-after-statement -D_XBOX -DXBOX -DNDEBUG -I"$OUT/match/include" \
+        -I"$ROOT/build-x360/gameplay-probe/include" -I"$XEDK/include/xbox" -I"$ROOT/src/xdk" -I"$S" \
+        -I"$S/sdk_include" -include "$ROOT/src/xdk/fighter_glue_compat.h" "$ROOT/src/xdk/$f.c" 2>&1 |
+        grep -E "warning|error" | grep -v "pragma\|unknown warning" || true
+done

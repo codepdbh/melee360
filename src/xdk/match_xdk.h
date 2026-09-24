@@ -35,6 +35,7 @@ typedef struct M360MatchStage {
     float blastLeft, blastRight, blastTop, blastBottom;
     float camLeft, camRight, camTop, camBottom, camX, camY;
     float spawnX[4], spawnY[4];
+    float rebirthX[4], rebirthY[4];
 } M360MatchStage;
 
 typedef struct M360MatchStatus {
@@ -89,6 +90,7 @@ int M360_FighterLoad(void);
 void M360_FighterResetMatch(void);
 void* M360_FighterSpawn(int slot, float x, float y, float facing, int port);
 void M360_FighterRespawn(void* gobj, float x, float y);
+void M360_FighterRebirth(void* gobj);
 void M360_FighterSetDead(void* gobj);
 void M360_FighterGetState(void* gobj, float* x, float* y, float* facing,
                           unsigned* motion, unsigned* damage);

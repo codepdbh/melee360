@@ -421,7 +421,6 @@ void pl_80037C60(Fighter_GObj* a0, volatile s32 a1) { (void) a0; (void) a1; Repo
 s32 it_8026B588(void) {  Report("fighter.unported.it_8026B588"); return (s32) 0; }
 bool gm_8016B1C4(void) {  Report("fighter.unported.gm_8016B1C4"); return (bool) 0; }
 void ft_800C80A4(Fighter* a0) { (void) a0; Report("fighter.unported.ft_800C80A4");  }
-void ftCo_800D4F24(Fighter_GObj* a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.ftCo_800D4F24");  }
 bool ftCo_800C7CA0(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C7CA0"); return (bool) 0; }
 void* efSync_Spawn(s32 a0, HSD_GObj* a1, ...) { (void) a0; (void) a1; Report("fighter.unported.efSync_Spawn"); return NULL; }
 void un_8032233C(u32 a0, u32 a1) { (void) a0; (void) a1; Report("fighter.unported.un_8032233C");  }
@@ -640,3 +639,15 @@ UNPORTED_VOID(ftKb_SpecialN_800F5D04, (Fighter_GObj* gobj, bool arg))
 UNPORTED_VOID(ftPe_Init_8011B93C, (HSD_GObj* gobj))
 UNPORTED_VOID(ftZd_Init_801395C8, (HSD_GObj* gobj))
 SILENT_VOID(pl_80040120, (int slot, int sub))
+/* Rebirth/death bookkeeping: coin modes, dead-state entry and camera
+ * helpers not used by the quick match. */
+UNPORTED_VOID(ftCo_800D331C, (Fighter_GObj* gobj))
+SILENT_VOID(ftCamera_80076320, (HSD_GObj* gobj))
+SILENT_VOID(pl_80040374, (int slot, int sub))
+s32 Player_GetUnk9C(s32 slot) { (void) slot; return 0; }
+SILENT_VOID(Player_SetUnk9C, (s32 slot, s32 value))
+float Stage_GetCamBoundsTopOffset(void)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    return st->camTop + st->camY;
+}

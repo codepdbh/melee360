@@ -25,6 +25,7 @@
 #include <melee/ft/kinds/ftCommon/types.h>
 #include <melee/ft/ftcliffcommon.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Ottotto.h>
+#include <melee/ft/ft_0D4D.h>
 #include <melee/cm/types.h>
 #include <melee/ft/kinds/ftMario/ftmario.h>
 #include <melee/ft/kinds/ftMario/ftmariospecialhi.h>
@@ -138,6 +139,7 @@ static unsigned s_cpuLevel = 1;
 static MotionState s_commonStates[ftCo_MS_Count];
 static MotionState s_fighterStates[0x80];
 static Vec3 s_playerPos[6];
+static Vec3 s_rebirthOffset[6];
 static float s_playerFacing[6];
 static int s_playerCpu[6];
 static unsigned s_unported[64];
@@ -296,6 +298,9 @@ static void FighterRender(HSD_GObj* gobj, int pass)
     SetVisGroup(f, 4, -1);
     SetVisGroup(f, 0, f->modelIdx);
     HSD_JObjDispAll(gobj->hsd_obj, NULL, HSD_GObj_80390EB8(pass), 0);
+    /* ftdrawcommon.c: accessories such as the rebirth platform. */
+    if (f->fighter.x20A0_accessory)
+        HSD_JObjDispAll(f->fighter.x20A0_accessory, NULL, HSD_GObj_80390EB8(pass), 0);
 }
 
 static void ResetJoints(M360Fighter* f)
@@ -1144,6 +1149,23 @@ void ft_80083B68(Fighter_GObj* gobj)
     AirCollide(gobj);
 }
 
+void ft_80083844(Fighter_GObj* gobj, HSD_GObjEvent cb)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    bool landed;
+    fp->coll_data.last_pos = fp->coll_data.cur_pos;
+    fp->coll_data.cur_pos = fp->cur_pos;
+    landed = mpColl_80048654(&fp->coll_data);
+    fp->cur_pos = fp->coll_data.cur_pos;
+    if (landed)
+        cb(gobj);
+}
+
+void ft_80083DCC(Fighter_GObj* gobj)
+{
+    AirCollide(gobj);
+}
+
 bool ft_800821DC(Fighter_GObj* gobj)
 {
     return AirCollide(gobj) != 0;
@@ -1658,6 +1680,97 @@ void M360_FighterRespawn(void* handle, float x, float y)
     fp->coll_data.floor.index = -1;
     fp->coll_data.floor_skip = -1;
     ftCo_Fall_Enter(gobj);
+}
+
+/* Reduced Fighter_UnkProcessDeath_80068354: the per-life reset the rebirth
+ * path needs, without CPU, item, stale-move or transformation state. */
+void Fighter_UnkProcessDeath_80068354(Fighter_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    Fighter_UnkInitReset_80067C98(fp);
+    HSD_JObjSetTranslate(GET_JOBJ(gobj), &fp->cur_pos);
+    ftCommon_8007D5D4(fp);
+    fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
+    fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
+    fp->gr_vel = 0.0f;
+    fp->coll_data.cur_pos = fp->cur_pos;
+    fp->coll_data.last_pos = fp->cur_pos;
+    fp->coll_data.floor.index = -1;
+    fp->coll_data.floor_skip = -1;
+    ftColl_8007AFF8(gobj);
+    ftColl_8007B0C0(gobj, HurtCapsule_Enabled);
+    ftMr_Init_OnDeath(gobj);
+}
+
+/* fn_8016719C: rebirth above the stage's first rebirth point, offset 16
+ * units per player, entering from the camera top on the original platform. */
+void M360_FighterRebirth(void* handle)
+{
+    static const float kOffset[6] = { 0.0f, 1.0f, -1.0f, 2.0f, 0.0f, 0.0f };
+    HSD_GObj* gobj = handle;
+    Fighter* fp = GET_FIGHTER(gobj);
+    const M360MatchStage* st = M360_MatchStageData();
+    const int slot = fp->player_id < 6 ? fp->player_id : 0;
+    M360Fighter* f = Owner(gobj);
+    f->dead = 0;
+    fp->x221F_b3 = false;
+    if (fp->x20A0_accessory) {
+        HSD_JObjRemoveAll(fp->x20A0_accessory);
+        fp->x20A0_accessory = NULL;
+    }
+    s_rebirthOffset[slot].x = 16.0f * kOffset[slot];
+    s_rebirthOffset[slot].y = s_rebirthOffset[slot].z = 0.0f;
+    s_playerPos[slot].x = st->rebirthX[0] + s_rebirthOffset[slot].x;
+    s_playerPos[slot].y = st->camTop + st->camY;
+    s_playerPos[slot].z = 0.0f;
+    s_playerFacing[slot] = s_playerPos[slot].x >= 0.0f ? -1.0f : 1.0f;
+    fp->facing_dir = s_playerFacing[slot];
+    Fighter_ResetInputData_80068854(gobj);
+    fp->x1968_jumpsUsed = 1;
+    ftCo_800D4FF4(gobj);
+    M360_MatchTrace("fighter.rebirth.player", fp->player_id);
+}
+
+s32 Player_80032F30(s32 slot)
+{
+    (void) slot;
+    return 0;
+}
+
+void Stage_80224E38(Vec3* out, s32 index)
+{
+    const M360MatchStage* st = M360_MatchStageData();
+    const int i = index >= 0 && index < 4 ? index : 0;
+    out->x = st->rebirthX[i];
+    out->y = st->rebirthY[i];
+    out->z = 0.0f;
+}
+
+void Player_GetSomePos(s32 slot, Vec3* out)
+{
+    *out = s_rebirthOffset[slot < 6 && slot >= 0 ? slot : 0];
+}
+
+void Player_GetSpawnPlatformPos(s32 slot, Vec3* out)
+{
+    Stage_80224E38(out, 0);
+    out->x += s_rebirthOffset[slot < 6 && slot >= 0 ? slot : 0].x;
+}
+
+bool ftLib_800873CC(HSD_GObj* gobj)
+{
+    const FtMotionId msid = GET_FIGHTER(gobj)->motion_id;
+    return msid >= ftCo_MS_Rebirth && msid <= ftCo_MS_RebirthWait;
+}
+
+void ftCamera_80076018(UnkFloat6_Camera* in, UnkFloat6_Camera* out, float mul)
+{
+    out->x0.x = in->x0.x * mul;
+    out->x0.y = in->x0.y * mul;
+    out->x0.z = in->x0.z * mul;
+    out->xC.x = in->xC.x * mul;
+    out->xC.y = in->xC.y * mul;
+    out->xC.z = in->xC.z * mul;
 }
 
 s32 Player_GetDamage(s32 slot)
