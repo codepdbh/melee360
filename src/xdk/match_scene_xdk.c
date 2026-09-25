@@ -952,6 +952,12 @@ void M360_MatchCameraVectors(float* interest, float* eye)
     eye[2] = s_cam.position.z;
 }
 
+/* camera.c: the gameplay camera GObj (world-to-screen for the HUD tags). */
+HSD_GObj* Camera_80030A50(void)
+{
+    return s_cameraGObj;
+}
+
 unsigned M360_MatchSlotStocks(unsigned slot)
 {
     return slot < kMaxFighters && s_fighters[slot] ? s_stocksRemaining[slot] : 0;
