@@ -222,10 +222,6 @@ static int s_selProbeP2;
 static int IsCampaign(void);
 static void StartFight(void);
 void M360_FighterDrawHitboxes(void);
-void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds);
-void M360_HudFrame(unsigned frame);
-void M360_HudStockLost(unsigned slot);
-void M360_HudStop(void);
 
 /* Hitbox/hurtbox overlay, toggled with X while paused; drawn last on the
  * world effect link so it sits over the scene. */
@@ -1226,6 +1222,16 @@ int M360_MatchFrame(void)
         return M360_MATCH_TO_MENU;
     if (s_phase == kPhaseSelect)
         return SelectFrame();
+    if (s_matchOver && !M360_HudGameEndDone()) {
+        /* "GAME!"/"TIME!" plays with the fighters frozen before the result. */
+        ++s_frame;
+        M360_HudFrame(s_frame);
+        for (i = 0; i < s_modelCount; ++i)
+            HSD_JObjAnimAll(s_models[i]);
+        HSD_GObj_RunProcs();
+        CamUpdate(0);
+        return M360_MATCH_CONTINUE;
+    }
     if (s_matchOver) {
         if (buttons & 0x200u) {
             M360_MatchTrace("match.result.return_menu", s_winner);
@@ -1348,6 +1354,7 @@ int M360_MatchFrame(void)
                     continue;
                 s_matchOver = 1;
                 s_winner = last;
+                M360_HudGameEnd(0);
                 M360_MatchTrace("match.result.winner", s_winner);
                 if (s_winner == 0 &&
                     (s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure) &&
@@ -1356,7 +1363,7 @@ int M360_MatchFrame(void)
             }
         }
     }
-    if (TimeMinutes() && s_frame >= TimeMinutes() * 60u * 60u) {
+    if (TimeMinutes() && M360_HudFightFrames() >= TimeMinutes() * 60u * 60u) {
         unsigned best = 0;
         s_draw = 0;
         for (i = 1; i < s_fighterCount; ++i) {
@@ -1395,6 +1402,7 @@ int M360_MatchFrame(void)
         } else {
             s_matchOver = 1;
             s_winner = best;
+            M360_HudGameEnd(1);
             M360_MatchTrace("match.result.winner", s_winner);
         }
     }
@@ -1441,7 +1449,8 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->frame = s_frame;
     status->fighters = s_fighterCount;
     status->hits = M360_FighterHitCount();
-    status->matchOver = (unsigned) s_matchOver;
+    /* The result shows once "GAME!"/"TIME!" has finished. */
+    status->matchOver = (unsigned) (s_matchOver && M360_HudGameEndDone());
     status->winner = s_winner;
     status->gameMode = s_gameMode;
     status->campaignRound = s_campaignRound;
@@ -1460,7 +1469,8 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->timeMinutes = TimeMinutes();
     if (status->timeMinutes && s_phase != kPhaseSelect) {
         const unsigned total = status->timeMinutes * 3600u;
-        status->timeLeft = s_frame < total ? (total - s_frame + 59u) / 60u : 0;
+        const unsigned played = M360_HudFightFrames();
+        status->timeLeft = played < total ? (total - played + 59u) / 60u : 0;
     } else {
         status->timeLeft = status->timeMinutes * 60u;
     }

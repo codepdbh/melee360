@@ -25,9 +25,19 @@
 void ifStatus_802F6EA4(int arg0, int arg1, int arg2, int arg3, Event arg4, Event arg5);
 void ifStatus_802F6D10(s32 player_idx);
 
+void ftLib_80086824(void);
+void ftLib_800868A4(void);
+
 static VsSceneController s_controller;
 static int s_hudActive;
 static unsigned s_hudTotalFrames;
+/* Countdown/"GO!" and "GAME!"/"TIME!" sequencing (gmvs.c fn_8016B7F8,
+ * fn_8016B784, ifStatus_802F7034). */
+static int s_fightStarted;
+static unsigned s_fightStartFrame;
+static unsigned s_lastFrame;
+static int s_endShown;
+static int s_endDone;
 
 StartMeleeRules* gm_GetStartMeleeRules(void)
 {
@@ -237,6 +247,31 @@ static void HudCameraRender(HSD_GObj* gobj, int pass)
     }
 }
 
+/* End of "GO!" (fn_8016B784). */
+static void HudGoDone(int idx)
+{
+    (void) idx;
+    s_controller.state.hud_enabled = 1;
+}
+
+/* End of the "3, 2, 1" countdown (fn_8016B7F8): release the fighters and
+ * show "GO!". */
+static void HudCountdownDone(int idx)
+{
+    (void) idx;
+    ftLib_800868A4();
+    s_fightStarted = 1;
+    s_fightStartFrame = s_lastFrame;
+    ifStatus_802F6EA4(4, -1, -1, 0, NULL, (Event) HudGoDone);
+    M360_MatchTrace("hud.go", s_lastFrame);
+}
+
+static void HudEndDone(int idx)
+{
+    (void) idx;
+    s_endDone = 1;
+}
+
 /* gmvs.c match start (fn_8016E730 + gm_Scene_Vs_OnEnter): load IfAll, build
  * the HUD camera/light and panels, show "GO!", create the timer and one
  * damage/stock panel per slot. */
@@ -260,7 +295,14 @@ void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds)
     ifAll_802F390C();
     if (ifAll_GetHUDGObj())
         ifAll_GetHUDGObj()->render_cb = HudCameraRender;
-    ifStatus_802F6EA4(3, -1, -1, 0, NULL, NULL);
+    s_fightStarted = 0;
+    s_fightStartFrame = 0;
+    s_lastFrame = 0;
+    s_endShown = 0;
+    s_endDone = 0;
+    /* Fighters ignore input until the countdown ends (ftLib_80086824). */
+    ftLib_80086824();
+    ifStatus_802F6EA4(3, -1, -1, 0, NULL, (Event) HudCountdownDone);
     ifTime_CreateTimers();
     ifStatus_802F665C(4);
     s_hudActive = 1;
@@ -269,14 +311,51 @@ void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds)
 
 void M360_HudFrame(unsigned frame)
 {
+    unsigned elapsed;
     if (!s_hudActive)
         return;
+    s_lastFrame = frame;
     s_controller.state.frame_count = frame;
+    elapsed = M360_HudFightFrames();
     if (s_hudTotalFrames) {
-        const unsigned left = frame < s_hudTotalFrames ? s_hudTotalFrames - frame : 0;
+        const unsigned left = elapsed < s_hudTotalFrames ? s_hudTotalFrames - elapsed : 0;
         s_controller.state.timer_seconds = left / 60u;
-        s_controller.state.unk_2C = (u16) (left ? frame % 60u : 0);
+        s_controller.state.unk_2C = (u16) (left ? elapsed % 60u : 0);
     }
+}
+
+/* Frames of play since "GO!" (0 while the countdown runs, or always the
+ * match frame when the HUD is not active). */
+unsigned M360_HudFightFrames(void)
+{
+    if (!s_hudActive)
+        return s_lastFrame;
+    return s_fightStarted && s_lastFrame >= s_fightStartFrame ? s_lastFrame - s_fightStartFrame : 0;
+}
+
+int M360_HudFightStarted(void)
+{
+    return !s_hudActive || s_fightStarted;
+}
+
+/* Match end (ifStatus_802F7034): "TIME!" on a time-out, "GAME!" otherwise;
+ * the fighters stop taking input. */
+void M360_HudGameEnd(int timeout)
+{
+    if (!s_hudActive || s_endShown) {
+        s_endDone = 1;
+        return;
+    }
+    s_endShown = 1;
+    s_controller.state.match_result = timeout ? OUTCOME_TIMEOUT : 0;
+    ftLib_80086824();
+    ifStatus_802F6EA4(timeout ? 0 : 5, -1, -1, 0, NULL, (Event) HudEndDone);
+    M360_MatchTrace("hud.game_end", (unsigned) timeout);
+}
+
+int M360_HudGameEndDone(void)
+{
+    return !s_hudActive || s_endDone;
 }
 
 /* A lost stock: the original gm_80167320 path explodes the percent and
