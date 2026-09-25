@@ -341,6 +341,7 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/if/iftime.c') },
     @{ Path = (Join-Path $src 'melee/if/if_2F6E.c') },
     @{ Path = (Join-Path $src 'melee/if/if_2F72.c') },
+    @{ Path = (Join-Path $src 'melee/gm/gmpause.c') },
     @{ Path = (Join-Path $src 'melee/ef/efsync.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0A01.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftcmdscript.c') },

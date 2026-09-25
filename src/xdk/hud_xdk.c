@@ -35,6 +35,9 @@ void ifStatus_802F6EA4(int arg0, int arg1, int arg2, int arg3, Event arg4, Event
 void ifStatus_802F6D10(s32 player_idx);
 
 void ftLib_80086824(void);
+void fn_801A1134(void);
+void gm_801A0FEC(s32 slot, u8 flag);
+void gm_801A10FC(int slot);
 void ftLib_800868A4(void);
 
 static VsSceneController s_controller;
@@ -452,6 +455,8 @@ void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds)
     ifStatus_802F6EA4(3, -1, -1, 0, NULL, (Event) HudCountdownDone);
     ifTime_CreateTimers();
     ifStatus_802F665C(4);
+    /* gmvs.c fn_8016E730: the GmPause panel, hidden until a pause. */
+    fn_801A1134();
     s_hudActive = 1;
     M360_MatchTrace("hud.start", timeSeconds);
 }
@@ -498,6 +503,22 @@ void M360_HudGameEnd(int timeout)
     ftLib_80086824();
     ifStatus_802F6EA4(timeout ? 0 : 5, -1, -1, 0, NULL, (Event) HudEndDone);
     M360_MatchTrace("hud.game_end", (unsigned) timeout);
+}
+
+/* gm_DoPauseChecksAndRoutine / gm_DoUnpauseChecksAndRoutine: hide the
+ * percent digits and timers and show the GmPause panel for the pauser with
+ * its L+R+A+START, Z and stick hints. */
+void M360_HudPause(int paused, int slot)
+{
+    if (!s_hudActive)
+        return;
+    if (paused) {
+        ifAll_802F3394();
+        gm_801A0FEC(slot, 1 | 2 | 4);
+    } else {
+        ifAll_802F33CC();
+        gm_801A10FC(slot);
+    }
 }
 
 int M360_HudGameEndDone(void)

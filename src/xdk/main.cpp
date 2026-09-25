@@ -630,13 +630,14 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         RenderBatch(renderer, g_dynamic);
     }
     if (match.paused) {
-        DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.35f);
+        /* The original GmPause panel shows the pauser and the L+R+A+START,
+         * Z and stick hints; the port adds its own shortcuts underneath. */
+        DrawRect(renderer, 300, 668, 680, 30, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
         g_dynamic.count = 0;
-        AddText(g_dynamic, 540, 300, "PAUSE", 6);
-        AddText(g_dynamic, 300, 460, "MOVE: STICK/DPAD  A: ATTACK  B: SPECIAL  X/Y: JUMP", 2);
-        AddText(g_dynamic, 300, 490, "LT/RT: SHIELD  RB: GRAB  START: PAUSE", 2);
-        AddText(g_dynamic, 420, 380, "START: RESUME   B: MAIN MENU", 2);
-        AddText(g_dynamic, 420, 410, match.debugHitboxes ? "X: HIDE HITBOXES" : "X: SHOW HITBOXES", 2);
+        g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+        AddText(g_dynamic, 312, 676,
+                match.debugHitboxes ? "START: RESUME   B: MAIN MENU   X: HIDE HITBOXES"
+                                    : "START: RESUME   B: MAIN MENU   X: SHOW HITBOXES", 2);
         RenderBatch(renderer, g_dynamic);
     }
 }

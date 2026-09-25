@@ -1712,10 +1712,8 @@ bool lbArchive_80016F80(HSD_Archive** out, const char* filename)
     return preloaded;
 }
 
-void lbArchive_LoadSections(HSD_Archive* archive, void** symbol, ...)
+static void LoadSectionsV(HSD_Archive* archive, void** symbol, va_list args)
 {
-    va_list args;
-    va_start(args, symbol);
     while (symbol) {
         const char* name = va_arg(args, const char*);
         *symbol = archive ? M360_ArchiveFind(archive, name) : NULL;
@@ -1723,7 +1721,26 @@ void lbArchive_LoadSections(HSD_Archive* archive, void** symbol, ...)
             M360_MatchTrace("archive.missing_symbol", 0);
         symbol = va_arg(args, void**);
     }
+}
+
+void lbArchive_LoadSections(HSD_Archive* archive, void** symbol, ...)
+{
+    va_list args;
+    va_start(args, symbol);
+    LoadSectionsV(archive, symbol, args);
     va_end(args);
+}
+
+/* lbarchive.c: load an archive by stem and resolve sections in one call. */
+HSD_Archive* lbArchive_80016DBC(const char* filename, void* symbols, ...)
+{
+    HSD_Archive* archive = NULL;
+    va_list args;
+    lbArchive_80016F80(&archive, filename);
+    va_start(args, symbols);
+    LoadSectionsV(archive, (void**) symbols, args);
+    va_end(args);
+    return archive;
 }
 
 bool lbArchive_80017040(HSD_Archive** dst, const char* filename, void* symbols, ...)

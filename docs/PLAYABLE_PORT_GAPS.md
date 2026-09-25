@@ -209,8 +209,18 @@ rules (stock or time, time limit) and ticks its timer from the match frame;
 `Player_*` queries read the slot's active fighter (damage, character,
 costume, stocks). The HUD camera clears depth before drawing, and GX link 8
 (screen-space particles) moved from the stage camera to the HUD camera as
-in the original. Name tags, hazard arrows, coin counters, the offscreen
-magnifier bubbles and the "GAME!"/results sequence are not ported yet.
+in the original.
+
+The match now follows gmvs.c's sequence: the ScInfCnt countdown runs with
+fighter input locked (`ftLib_80086824`), its end releases the fighters and
+shows "GO!", the timer counts from there, and a stock-out or time-out plays
+"GAME!"/"TIME!" with the scene still animating before the port's winner
+overlay. Player pointers (1P-4P/CP) come from ScInfPnm through a native
+version of ifnametag.c without SisLib name text. Pausing hides the percent
+digits and timer (`ifAll_802F3394`) and shows the original GmPause panel
+(`gmpause.c`). Not ported: hazard arrows, coin counters, the offscreen
+magnifier bubbles (they need an EFB-to-texture copy) and the results
+screen.
 
 ### Host link check
 

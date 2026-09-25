@@ -106,6 +106,7 @@ unsigned M360_HudFightFrames(void);
 int M360_HudFightStarted(void);
 void M360_HudGameEnd(int timeout);
 int M360_HudGameEndDone(void);
+void M360_HudPause(int paused, int slot);
 float M360_MatchStageScale(void);
 void M360_MatchCameraVectors(float* interest, float* eye);
 const char* M360_MatchStageName(unsigned index);
