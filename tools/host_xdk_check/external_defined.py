@@ -21,7 +21,7 @@ pat = re.compile(r'^(?!static\b)[A-Za-z_][\w \*]*?[\s\*](\w+)\s*\([^;]*$')
 # One-line definitions: "type name(args) { ...; }".
 one = re.compile(r'^(?!static\b)[A-Za-z_][\w \*]*?[\s\*](\w+)\s*\([^;{)]*\)\s*\{')
 # CRT names the XEX links through /MT.
-names = set(['strcpy', 'strcat', 'lb_8000B1CC', 'lb_80011AC4', 'lb_80011E24', 'lb_8001204C', 'HSD_GObj_CameraKind', 'HSD_GObj_LightKind', 'OSPanic', 'tan', 'atoi', 'sscanf', 'HSD_GObj_804D7814', 'malloc', 'free', 'calloc', 'realloc', 'memcpy', 'memset',
+names = set(['HSD_PadMasterStatus', 'strcpy', 'strcat', 'lb_8000B1CC', 'lb_80011AC4', 'lb_80011E24', 'lb_8001204C', 'HSD_GObj_CameraKind', 'HSD_GObj_LightKind', 'OSPanic', 'tan', 'atoi', 'sscanf', 'HSD_GObj_804D7814', 'malloc', 'free', 'calloc', 'realloc', 'memcpy', 'memset',
              'memmove', 'sprintf', 'strlen', 'strcmp', 'sqrt', 'sin', 'cos', 'atan2', 'fabs', 'pow'])
 for f in files:
     for line in open(f, encoding='latin-1'):

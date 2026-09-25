@@ -1248,8 +1248,9 @@ int M360_MatchFrame(void)
             return M360_MATCH_NEXT_ROUND;
         return M360_MATCH_CONTINUE;
     }
-    if (buttons & 0x1000u) {
+    if ((buttons & 0x1000u) && M360_HudFightStarted()) {
         s_paused = !s_paused;
+        M360_HudPause(s_paused, 0);
         M360_MatchTrace("match.pause", s_paused);
     }
     if (M360_InputScriptHolding()) {
