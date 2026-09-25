@@ -18,7 +18,16 @@
 #include <sysdolphin/baselib/archive.h>
 #include <sysdolphin/baselib/cobj.h>
 #include <sysdolphin/baselib/gobj.h>
+#include <sysdolphin/baselib/gobjgxlink.h>
+#include <sysdolphin/baselib/gobjobject.h>
+#include <sysdolphin/baselib/gobjproc.h>
+#include <sysdolphin/baselib/gobjuserdata.h>
+#include <sysdolphin/baselib/gobjplink.h>
+#include <melee/lb/lbarchive.h>
 #include <sysdolphin/baselib/jobj.h>
+#include <sysdolphin/baselib/wobj.h>
+#include <melee/ft/types.h>
+#include <melee/ft/inlines.h>
 
 #include "match_xdk.h"
 
@@ -209,10 +218,146 @@ HSD_CObj* lb_80013B14(HSD_CameraDescPerspective* desc)
 
 /* Name tags, hazard arrows, coin/bonus counters and the offscreen magnifier
  * are not ported; their show/hide/init hooks from ifall.c are no-ops. */
-void un_802FD450(void) {}
-void un_802FD45C(void) {}
-void un_802FD468(void) {}
-void un_802FD4C8(void) {}
+/* ---- Player pointers (ifnametag.c without the SisLib name text) ----
+ * ScInfPnm_scene_models frames: 0-15 are 1P-4P in four colours, 16-19 CP.
+ * The pointer shows during the countdown and whenever ftLib_80086F4C says
+ * the fighter asks for it, at name_tag_height above the fighter. */
+static const float kTagFrame[4] = { 0.0f, 5.0f, 10.0f, 15.0f };
+static HSD_WObjDesc s_tagEye = { 0, { 0.0f, 0.0f, 300.0f }, 0 };
+static HSD_WObjDesc s_tagInterest = { 0, { 0.0f, 0.0f, 0.0f }, 0 };
+static HSD_CameraDescFrustum s_tagCamDesc;
+static HSD_GObj* s_tagCamera;
+static HSD_GObj* s_tags[GM_MAX_PLAYERS];
+static u8 s_tagSlot[GM_MAX_PLAYERS];
+static int s_tagsForced;
+static int s_tagsHidden;
+
+HSD_GObj* Camera_80030A50(void);
+bool ftLib_80086F4C(HSD_GObj* gobj);
+float ftLib_80086F80(HSD_GObj* gobj);
+Vec3* lbVector_WorldToScreen(HSD_CObj* cobj, const Vec3* pos3d, Vec3* screenCoords, int d);
+
+static void TagCameraRender(HSD_GObj* gobj, int pass)
+{
+    (void) pass;
+    if (ifAll_IsHUDHidden() || s_tagsHidden)
+        return;
+    if (HSD_CObjSetCurrent(GET_COBJ(gobj))) {
+        HSD_CObjEraseScreen(GET_COBJ(gobj), 0, 0, 1);
+        HSD_GObj_80390ED0(gobj, 7);
+        HSD_CObjEndCurrent();
+    }
+}
+
+/* fn_802FCC44 */
+static void TagProc(HSD_GObj* gobj)
+{
+    const int slot = *(u8*) gobj->user_data;
+    HSD_JObj* jobj = gobj->hsd_obj;
+    HSD_GObj* fighter = Player_GetEntity(slot);
+    HSD_GObj* camera = Camera_80030A50();
+    Fighter* fp = fighter ? GET_FIGHTER(fighter) : NULL;
+    Vec3 pos, screen;
+    if (!fp || !camera || fp->x221F_b3 || fp->invisible ||
+        (s_controller.start.is_stock && !Player_GetStocks(slot)) ||
+        !(s_tagsForced || ftLib_80086F4C(fighter))) {
+        HSD_JObjSetFlags(HSD_JObjGetChild(jobj), JOBJ_HIDDEN);
+        return;
+    }
+    HSD_JObjClearFlags(HSD_JObjGetChild(jobj), JOBJ_HIDDEN);
+    pos = fp->cur_pos;
+    pos.y += ftLib_80086F80(fighter) - 2.5f;
+    lbVector_WorldToScreen(GET_COBJ(camera), &pos, &screen, 0);
+    HSD_JObjSetTranslateX(jobj, screen.x);
+    HSD_JObjSetTranslateY(jobj, -screen.y);
+}
+
+static void TagUserDataKeep(void* data)
+{
+    (void) data;
+}
+
+static void TagsCreate(void)
+{
+    DiscU32* models = NULL;
+    DynamicModelDesc* d;
+    HSD_Joint* joint;
+    HSD_AnimJoint* anim;
+    HSD_MatAnimJoint* matanim;
+    HSD_ShapeAnimJoint* shapeanim;
+    int i;
+    memset(s_tags, 0, sizeof(s_tags));
+    s_tagCamera = NULL;
+    lbArchive_LoadSections(*ifAll_GetArchive(), (void**) &models, "ScInfPnm_scene_models", 0);
+    if (!models || !(d = DP(DynamicModelDesc, models[0].v)))
+        return;
+    joint = DP(HSD_Joint, d->joint);
+    anim = d->anims ? (HSD_AnimJoint*) (uintptr_t) DP(DiscU32, d->anims)[0].v : NULL;
+    matanim = d->matanims ? (HSD_MatAnimJoint*) (uintptr_t) DP(DiscU32, d->matanims)[0].v : NULL;
+    shapeanim = d->shapeanims ? (HSD_ShapeAnimJoint*) (uintptr_t) DP(DiscU32, d->shapeanims)[0].v : NULL;
+    memset(&s_tagCamDesc, 0, sizeof(s_tagCamDesc));
+    s_tagCamDesc.projection_type = 3;
+    s_tagCamDesc.viewport.xmax = 640;
+    s_tagCamDesc.viewport.ymax = 480;
+    s_tagCamDesc.scissor.right = 640;
+    s_tagCamDesc.scissor.bottom = 480;
+    s_tagCamDesc.eyepos = &s_tagEye;
+    s_tagCamDesc.interest = &s_tagInterest;
+    s_tagCamDesc.nnear = 0.1f;
+    s_tagCamDesc.ffar = 32768.0f;
+    s_tagCamDesc.top = 0.0f;
+    s_tagCamDesc.bottom = -480.0f;
+    s_tagCamDesc.left = 0.0f;
+    s_tagCamDesc.right = 640.0f;
+    s_tagCamera = GObj_Create(0xE, 15, 0);
+    HSD_GObjObject_80390A70(s_tagCamera, HSD_GObj_CameraKind,
+                            lb_80013B14((HSD_CameraDescPerspective*) &s_tagCamDesc));
+    GObj_SetupGXLinkMax(s_tagCamera, TagCameraRender, 6);
+    s_tagCamera->gxlink_prios = 0x200;
+    for (i = 0; i < 4; ++i) {
+        HSD_GObj* gobj;
+        HSD_JObj* jobj;
+        if (Player_GetPlayerSlotType(i) == Gm_PKind_NA)
+            continue;
+        gobj = GObj_Create(HSD_GOBJ_CLASS_UI, 15, 0);
+        jobj = HSD_JObjLoadJoint(joint);
+        HSD_GObjObject_80390A70(gobj, HSD_GObj_JObjKind, jobj);
+        GObj_SetupGXLink(gobj, HSD_GObj_JObjCallback, 9, 0);
+        HSD_JObjSetScaleX(jobj, 10.0f);
+        HSD_JObjSetScaleY(jobj, 10.0f);
+        HSD_JObjSetScaleZ(jobj, 10.0f);
+        HSD_JObjAddAnimAll(jobj, anim, matanim, shapeanim);
+        HSD_JObjReqAnimAll(jobj, Player_GetPlayerSlotType(i) == Gm_PKind_Human ? kTagFrame[i] : 18.0f);
+        HSD_JObjAnimAll(jobj);
+        s_tagSlot[i] = (u8) i;
+        GObj_InitUserData(gobj, 0, TagUserDataKeep, &s_tagSlot[i]);
+        HSD_GObj_SetupProc(gobj, TagProc, 17);
+        s_tags[i] = gobj;
+    }
+}
+
+/* ifall.c show/hide hooks for the pointers (un_802FD450/45C) and their
+ * teardown (un_802FD468). */
+void un_802FD450(void) { s_tagsHidden = 1; }
+void un_802FD45C(void) { s_tagsHidden = 0; }
+void un_802FD468(void)
+{
+    int i;
+    for (i = 0; i < GM_MAX_PLAYERS; ++i)
+        if (s_tags[i]) {
+            HSD_GObjFree(s_tags[i]);
+            s_tags[i] = NULL;
+        }
+    if (s_tagCamera)
+        HSD_GObjFree(s_tagCamera);
+    s_tagCamera = NULL;
+}
+void un_802FD4C8(void)
+{
+    s_tagsForced = 0;
+    s_tagsHidden = 0;
+    TagsCreate();
+}
 void un_802FD668(void) {}
 void un_802FD674(void) {}
 void un_802FD704(void) {}
@@ -260,6 +405,7 @@ static void HudCountdownDone(int idx)
 {
     (void) idx;
     ftLib_800868A4();
+    s_tagsForced = 0;
     s_fightStarted = 1;
     s_fightStartFrame = s_lastFrame;
     ifStatus_802F6EA4(4, -1, -1, 0, NULL, (Event) HudGoDone);
@@ -300,6 +446,7 @@ void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds)
     s_lastFrame = 0;
     s_endShown = 0;
     s_endDone = 0;
+    s_tagsForced = 1;
     /* Fighters ignore input until the countdown ends (ftLib_80086824). */
     ftLib_80086824();
     ifStatus_802F6EA4(3, -1, -1, 0, NULL, (Event) HudCountdownDone);
