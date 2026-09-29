@@ -579,7 +579,6 @@ CmSubject* Camera_80029044(int kind)
 }
 
 /* Data owned by baselib/gm objects the XEX does not link. */
-HSD_MObjInfo hsdMObj;
 HSD_TObj* tobj_toon;
 HSD_TObj* tobj_shadows;
 UnkAllstarData gm_80473A18;
