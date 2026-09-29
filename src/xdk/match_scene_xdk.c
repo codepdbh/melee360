@@ -9,6 +9,7 @@
 #include <sysdolphin/baselib/aobj.h>
 #include <sysdolphin/baselib/cobj.h>
 #include <sysdolphin/baselib/displayfunc.h>
+#include <sysdolphin/baselib/dobj.h>
 #include <sysdolphin/baselib/fog.h>
 #include <sysdolphin/baselib/gobj.h>
 #include <sysdolphin/baselib/gobjgxlink.h>
@@ -58,9 +59,63 @@ void M360_MatchHangInfo(unsigned* out)
     out[1] = proc ? (unsigned) (uintptr_t) proc->on_invoke : 0;
     out[2] = proc && proc->gobj ? proc->gobj->p_link : 99;
     out[3] = g_m360CrumbDetail;
-    out[4] = out[5] = out[6] = 0;
+    out[4] = out[5] = out[6] = out[7] = out[8] = out[9] = out[10] = out[11] = 0;
     if (proc && proc->gobj && proc->gobj->p_link == 8)
         M360_FighterHangInfo(proc->gobj, &out[4]);
+}
+
+static unsigned DObjChainLength(HSD_DObj* d)
+{
+    unsigned n = 0;
+    while (d && n < 1000) {
+        d = d->next;
+        ++n;
+    }
+    return n;
+}
+
+extern char it_mobj[];
+
+static void TraceClassChain(HSD_ClassInfo* c)
+{
+    int i;
+    for (i = 0; c && i < 6; ++i, c = c->head.parent) {
+        M360_MatchTrace("hang.class.ptr", (unsigned) (uintptr_t) c);
+        M360_MatchTrace("hang.class.size", (unsigned) c->head.obj_size);
+        M360_MatchTrace("hang.class.flags", (unsigned) c->head.flags);
+    }
+}
+
+void M360_MatchHangItems(void)
+{
+    HSD_GObj* g;
+    TraceClassChain((HSD_ClassInfo*) it_mobj);
+    TraceClassChain((HSD_ClassInfo*) &hsdMObj);
+    for (g = HSD_GObjPLinkHead[9]; g; g = g->next) {
+        HSD_JObj* j = g->hsd_obj;
+        unsigned steps = 0, worst = 0;
+        while (j && steps < 4000) {
+            const unsigned len = DObjChainLength(j->u.dobj);
+            if (len > worst)
+                worst = len;
+            ++steps;
+            if (j->child)
+                j = j->child;
+            else if (j->next)
+                j = j->next;
+            else {
+                while (j->parent && !j->parent->next && steps < 4000) {
+                    j = j->parent;
+                    ++steps;
+                }
+                j = j->parent ? j->parent->next : NULL;
+            }
+        }
+        M360_MatchTrace("hang.item.gobj", (unsigned) (uintptr_t) g);
+        M360_MatchTrace("hang.item.kind", g->user_data ? *(unsigned*) ((char*) g->user_data + 0x10) : 0xFFFFFFFFu);
+        M360_MatchTrace("hang.item.jobj_steps", steps);
+        M360_MatchTrace("hang.item.dobj_chain", worst);
+    }
 }
 
 static void TraceHeap(const char* used, const char* largest)

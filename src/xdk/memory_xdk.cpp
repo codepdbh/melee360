@@ -3,17 +3,25 @@
 #include <cstdio>
 #include <cstdlib>
 
+#if defined(_XBOX)
+void M360_Trace(const char* stage, unsigned value);
+#endif
+
 namespace {
 
 struct M360_MemBlock {
     u32 size;
     int used;
+    u32 magic;
     M360_MemBlock* next;
     M360_MemBlock* prev;
 };
 
 const u32 kArenaSize = 24u * 1024u * 1024u;
 const u32 kAlign = 16u;
+const u32 kMagicUsed = 0x4D333630u;
+const u32 kMagicFree = 0x46524545u;
+unsigned s_badFrees;
 
 unsigned char s_arena[kArenaSize];
 unsigned char* s_arenaStart = 0;
@@ -43,6 +51,7 @@ extern "C" void M360_HSD_HeapInit(void)
     s_first = reinterpret_cast<M360_MemBlock*>(s_arenaStart);
     s_first->size = static_cast<u32>(s_arenaEnd - s_arenaStart) - kHeaderSize;
     s_first->used = 0;
+    s_first->magic = kMagicFree;
     s_first->next = 0;
     s_first->prev = 0;
 }
@@ -60,6 +69,14 @@ extern "C" void* OSAllocFromHeap(OSHeapHandle heap, u32 size)
 
     const u32 need = RoundUp(size, kAlign);
     for (M360_MemBlock* block = s_first; block; block = block->next) {
+        if (block->magic != (block->used ? kMagicUsed : kMagicFree) ||
+            (block->next && block->next <= block)) {
+#if defined(_XBOX)
+            M360_Trace("heap.corrupt.block", static_cast<unsigned>(reinterpret_cast<size_t>(block)));
+            M360_Trace("heap.corrupt.magic", block->magic);
+#endif
+            return 0;
+        }
         if (block->used || block->size < need)
             continue;
 
@@ -70,6 +87,7 @@ extern "C" void* OSAllocFromHeap(OSHeapHandle heap, u32 size)
             M360_MemBlock* split = reinterpret_cast<M360_MemBlock*>(splitAddr);
             split->size = remaining - kHeaderSize;
             split->used = 0;
+            split->magic = kMagicFree;
             split->next = block->next;
             split->prev = block;
             if (block->next)
@@ -79,6 +97,7 @@ extern "C" void* OSAllocFromHeap(OSHeapHandle heap, u32 size)
         }
 
         block->used = 1;
+        block->magic = kMagicUsed;
         return reinterpret_cast<unsigned char*>(block) + kHeaderSize;
     }
 
@@ -96,11 +115,23 @@ extern "C" void OSFreeToHeap(OSHeapHandle heap, void* ptr)
         return;
 
     M360_MemBlock* block = reinterpret_cast<M360_MemBlock*>(raw);
+    if (block->magic != kMagicUsed || !block->used) {
+        ++s_badFrees;
+#if defined(_XBOX)
+        if (s_badFrees <= 8) {
+            M360_Trace("heap.bad_free.ptr", static_cast<unsigned>(reinterpret_cast<size_t>(ptr)));
+            M360_Trace("heap.bad_free.magic", block->magic);
+        }
+#endif
+        return;
+    }
     block->used = 0;
+    block->magic = kMagicFree;
 
     if (block->next && !block->next->used) {
         M360_MemBlock* next = block->next;
         block->size += kHeaderSize + next->size;
+        next->magic = 0;
         block->next = next->next;
         if (next->next)
             next->next->prev = block;
@@ -109,6 +140,7 @@ extern "C" void OSFreeToHeap(OSHeapHandle heap, void* ptr)
     if (block->prev && !block->prev->used) {
         M360_MemBlock* prev = block->prev;
         prev->size += kHeaderSize + block->size;
+        block->magic = 0;
         prev->next = block->next;
         if (block->next)
             block->next->prev = prev;
