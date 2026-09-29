@@ -49,9 +49,14 @@ first public title root. It then constructs the title JObj/MObj/PObj/TObj
 graph, decodes its first tiled GameCube texture and translates the title PObj
 GX display lists into a D3D9 triangle list. It is a
 real Xbox 360 PowerPC XEX importing `xam.xex` and `xboxkrnl.exe`. The original
-menu scene and a fixed two-Mario Battlefield quick-match loop are now linked;
-the latter is still an integration prototype and has not passed interactive
-movement/combat validation. See [remaining gameplay gaps](PLAYABLE_PORT_GAPS.md).
+menu and a selectable VS match are linked. Scripted Xenia input has exercised
+movement, attacks, hits, stock loss and Mario's cape through match frame 3486;
+console play remains unverified. See [remaining gameplay gaps](PLAYABLE_PORT_GAPS.md).
+
+The XEX reads `game:\melee.iso` beside the executable at runtime. When copying
+the build to another device, copy the actual `melee.iso` file along with
+`default.xex`; the local hardlink itself does not travel with the XEX. The
+`assets` folder contains the optional sprite atlas.
 
 Controller input also passes through the original
 `upstream/melee-pc/src/sysdolphin/baselib/controller.c`. The Xbox adapter

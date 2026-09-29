@@ -1,21 +1,21 @@
 ﻿# Remaining work for playable Melee
 
-The XDK executable now has a quick-match route from VS mode and a native match
-loop. It is still an integration prototype, not a verified playable match.
-Archive loading, fighter count and successful `Present` calls do not establish
-that the game responds correctly to a player or resolves combat correctly.
+The XDK executable has a quick-match route from VS mode and a native match
+loop. Scripted Xenia input verifies movement, attacks, hits, damage, stock loss,
+respawn, Mario's cape, CPU actions, music and SFX submissions. Interactive
+controller play on a physical Xbox 360 remains unverified.
 
 ## Verified current path
 
 `main.cpp` runs the original menu scene through the shared HSD renderer. VS
-selection enters `M360_MatchEnter`, which loads Battlefield (`GrNBa.dat`),
-creates stage/camera objects and loads two Mario fighters from the user's ISO.
-The match loop advances stage and fighter animation, updates selected original
-common motion states, checks stage collision and blast zones, and renders the
-scene. A local `dist/runtime-trace.txt` reached match frame 900 with two
-fighters and successful frame presentation. In that run P1 remained in Wait
-at `(0, 0)`, P2 damage stayed at zero, and the hit count stayed at zero. No
-input-driven match or successful hit is claimed by that trace.
+selection enters `M360_MatchEnter`, which loads a selected stage, creates its
+stage/camera objects and loads selected fighters from the user's ISO. The match
+loop advances stage and fighter animation, runs common motion states, checks
+stage collision and blast zones, and renders the scene. On 2026-09-29, the
+40-step scripted Xenia run passed the former freeze at match frame 1000 when
+Mario spawned his cape, then reached match frame 3486 with further hits and
+successful frame presentation. The trace reported 88 SFX submissions and one
+miss by frame 1500. It does not verify audible quality or console behavior.
 
 The current Xenia runtime trace records the original menu exiting with
 `GM_CLASSIC`, selecting mode 3, loading both fighters, and finding/playing

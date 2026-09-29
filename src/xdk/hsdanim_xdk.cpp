@@ -34,6 +34,16 @@ extern "C" {
 
 M360AnimStubState g_m360AnimStub;
 
+static void M360_MObjInfoInit(void)
+{
+    hsdInitClassInfo(HSD_CLASS_INFO(&hsdMObj), HSD_CLASS_INFO(&hsdClass),
+                     const_cast<char*>("sysdolphin_base_library"),
+                     const_cast<char*>("hsd_mobj"), sizeof(HSD_MObjInfo),
+                     sizeof(HSD_MObj));
+}
+
+HSD_MObjInfo hsdMObj = { { { M360_MObjInfoInit } } };
+
 static void M360_MObjUpdate(void* object, enum_t type, HSD_ObjData* value)
 {
     HSD_MObj* mobj = static_cast<HSD_MObj*>(object);
@@ -143,6 +153,9 @@ HSD_MObj* HSD_MObjLoadDesc(HSD_MObjDesc* mobjdesc)
     if (!mobj)
         return NULL;
     memset(mobj, 0, sizeof(*mobj));
+    ClassInfoInit(HSD_CLASS_INFO(&hsdMObj));
+    mobj->parent.class_info = HSD_CLASS_INFO(&hsdMObj);
+    ++hsdMObj.parent.head.nb_exist;
     mobj->rendermode = mobjdesc->rendermode | RENDER_TOON;
     mobj->tobj = HSD_TObjLoadDesc(mobjdesc->texdesc);
     if (mobjdesc->mat) {
@@ -165,6 +178,8 @@ void HSD_MObjRemove(HSD_MObj* mobj)
     g_m360AnimStub.lastPtr = mobj;
     if (!mobj)
         return;
+    if (mobj->parent.class_info && mobj->parent.class_info->head.nb_exist)
+        --mobj->parent.class_info->head.nb_exist;
     HSD_AObjRemove(mobj->aobj);
     HSD_TObjRemoveAll(mobj->tobj);
     HSD_Free(mobj->pe);
