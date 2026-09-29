@@ -65,11 +65,11 @@ LibXenon implementations.
 | Character sound effects | 🚧 Original SEM/SSM samples now use nibble-correct DSP decoding and separate mono/stereo buffers. 21 SSM entries match an independent decoder; XAudio2 submission/buffer reuse checked on the host. Audible in-game confirmation remains pending |
 | Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
 | Original menu scene and navigation | 🚧 Original `mnmain` scene lifecycle and shared HSD rendering are active; VS mode requests a quick match. Several menu leaves remain bridged/incomplete |
-| Quick-match boot | ✅ VS route loads Battlefield and two Mario fighters, then runs the native stage/fighter loop in Xenia; this validates integration, not playable controls or combat |
-| Classic and Adventure modes | 🚧 The original menu entries currently route to the same provisional VS arena. This is not the original Classic/Adventure progression: fighter roster, round/stage sequence, and results flow are still missing |
-| Fighter actions and combat | 🚧 Selected original common states, provisional Mario hitstun/damage motions, platform drop-through and ceiling collision are linked. Input/status traces and 4-stock rules are present; interactive movement/hits and original knockback remain unverified |
-| Local two-player quick match | 🚧 A connected second XInput controller controls P2; otherwise a basic CPU approaches and attacks |
-| Melee rendering and gameplay | 🚧 Original title/menu/stage/fighter graphs render; full material effects, match rules, fighter/stage selection and verified gameplay remain |
+| Quick match | 🚧 VS has fighter, costume, stage, stock and CPU selection. A scripted Xenia match verified movement, hits, stock loss, Mario's cape and continued play through frame 3486; physical Xbox 360 play remains unverified |
+| Classic and Adventure modes | 🚧 Menu routes enter a five-round campaign scaffold with changing CPU opponents and result flow. Both still share the selected arena and lack their original round types and progression |
+| Fighter actions and combat | 🚧 Original common states, Mario specials, item code and CPU AI are linked. Scripted hits, damage and respawn run in Xenia; full behavior and controller play on console need validation |
+| Local two-player quick match | 🚧 A connected second XInput controller can control P2; otherwise the linked CPU AI controls the opponent |
+| Melee rendering and gameplay | 🚧 Original title/menu/stage/fighter graphs render. Material effects, match rules, stage coverage and console validation remain incomplete |
 
 The current `xenon.elf` is a platform and integration test. With a legal
 `GALE01` image on the USB drive it now opens `GmTtAll.dat`, runs the original
