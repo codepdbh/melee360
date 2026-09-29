@@ -2806,6 +2806,7 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     SetVisGroup(f, 0, -1);
     SetVisGroup(f, 1, -1);
     fp->ft_data = kind->data;
+    fp->x108_costume_joint = kind->costumeJoint[costume];
     fp->co_attrs = *kind->data->x0;
     fp->x24 = kind->data->xC;
     fp->x28 = (u8(*)[2]) kind->data->x10;
@@ -3359,6 +3360,11 @@ void M360_FighterHangInfo(void* handle, unsigned* out)
     out[0] = (unsigned) fp->player_id << 16 | (unsigned) fp->motion_id;
     out[1] = (unsigned) (uintptr_t) fp->input_cb;
     out[2] = (unsigned) (uintptr_t) fp->anim_cb;
+    memcpy(&out[3], &fp->input.lstick[0].x, 4);
+    memcpy(&out[4], &fp->input.lstick[0].y, 4);
+    memcpy(&out[5], &fp->facing_dir, 4);
+    memcpy(&out[6], &fp->mv.co.guard.x8, 4);
+    memcpy(&out[7], &fp->input.triggers[0], 4);
 }
 
 void M360_FighterTraceCpu(void* handle)

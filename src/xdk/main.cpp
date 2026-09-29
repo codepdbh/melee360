@@ -231,8 +231,27 @@ void TraceStage(const char* stage, unsigned value)
 }
 
 volatile unsigned g_loopFrame;
+const unsigned* volatile g_stackTop;
 
 extern "C" void M360_MatchHangInfo(unsigned* out);
+extern "C" void M360_MatchHangItems(void);
+
+void TraceStackCode()
+{
+    const unsigned* top = g_stackTop;
+    if (!top)
+        return;
+    const unsigned* bottom = top - 8 * 1024;
+    unsigned logged = 0;
+    for (const unsigned* p = top; p > bottom && logged < 160; --p) {
+        const unsigned v = *p;
+        if (v >= 0x82060000u && v < 0x82270000u && !(v & 3u)) {
+            TraceStage("hang.stack.depth", static_cast<unsigned>(top - p));
+            TraceStage("hang.stack.code", v);
+            ++logged;
+        }
+    }
+}
 
 DWORD WINAPI Watchdog(LPVOID)
 {
@@ -248,9 +267,13 @@ DWORD WINAPI Watchdog(LPVOID)
         if (++stalls != 3)
             continue;
         TraceStage("hang.frame", now);
+        TraceStackCode();
+        M360_MatchHangItems();
         for (int i = 0; i < 4; ++i) {
-            unsigned info[7];
+            unsigned info[12];
             M360_MatchHangInfo(info);
+            for (int k = 7; k < 12; ++k)
+                TraceStage("hang.extra", info[k]);
             TraceStage("hang.fighter", info[4]);
             TraceStage("hang.input_cb", info[5]);
             TraceStage("hang.anim_cb", info[6]);
@@ -985,6 +1008,8 @@ void __cdecl main()
     LARGE_INTEGER previousFrame;
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&previousFrame);
+    unsigned stackMarker = 0;
+    g_stackTop = &stackMarker;
     CreateThread(0, 0, Watchdog, 0, 0, 0);
     for (;;) {
         g_loopFrame = frameCount;
