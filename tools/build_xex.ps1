@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch] $BootToMatch, [switch] $InputScript)
+param([switch] $BootToMatch, [switch] $InputScript, [switch] $CallTrace)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -181,6 +181,17 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
 }
 
 New-Item -ItemType Directory -Path $build, $dist -Force | Out-Null
+
+# -CallTrace also instruments the C units compiled here (HSD baselib and
+# original lb/menu code) with /Gh; C++ bridges stay uninstrumented.
+$clPath = $compiler
+if ($CallTrace) {
+    $compiler = {
+        $clArgs = @($args | ForEach-Object { $_ })
+        if ($clArgs -contains '/TC') { $clArgs += '/Gh' }
+        & $clPath @clArgs
+    }
+}
 
 & $atlasGenerator -OutputPath (Join-Path $dist 'assets\sprite_atlas.png')
 
@@ -663,7 +674,7 @@ foreach ($scene in $sceneSources) {
     $sceneObjects += $sceneObject
 }
 Write-Host '[M360][XEX] compiling original fighter states and native match glue'
-$matchObjects = @(& (Join-Path $PSScriptRoot 'build_match_xdk.ps1') -Compiler $compiler -Build $build)
+$matchObjects = @(& (Join-Path $PSScriptRoot 'build_match_xdk.ps1') -Compiler $clPath -Build $build -CallTrace:$CallTrace)
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
     '/INCREMENTAL:NO', '/OPT:REF', "/OUT:$pe", "/PDB:$pdb", "/MAP:$(Join-Path $build 'melee360.map')", "/LIBPATH:$libXbox",

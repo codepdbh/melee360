@@ -233,6 +233,67 @@ void TraceStage(const char* stage, unsigned value)
 volatile unsigned g_loopFrame;
 const unsigned* volatile g_stackTop;
 
+} // namespace
+
+/* Function-entry ring for builds whose match units use /Gh (build_xex.ps1
+ * -CallTrace): the compiler calls __penter after each prologue with the
+ * arguments still live, so it only touches r9-r11 and restores them. */
+extern "C" {
+volatile unsigned g_m360CallRing[64];
+volatile unsigned g_m360CallSp[64];
+volatile unsigned g_m360CallPos;
+/* Scratch words any unit may set while chasing a hang; dumped as hang.dbg. */
+volatile unsigned g_m360Dbg[8];
+
+__declspec(naked) void __penter(void)
+{
+    __asm {
+        stw r11, -8(r1)
+        stw r10, -12(r1)
+        stw r9, -16(r1)
+        mflr r11
+        lau r10, g_m360CallPos
+        lal r10, r10, g_m360CallPos
+        lwz r9, 0(r10)
+        addi r9, r9, 1
+        stw r9, 0(r10)
+        rlwinm r9, r9, 2, 24, 29
+        lau r10, g_m360CallRing
+        lal r10, r10, g_m360CallRing
+        stwx r11, r10, r9
+        lau r10, g_m360CallSp
+        lal r10, r10, g_m360CallSp
+        stwx r1, r10, r9
+        lwz r9, -16(r1)
+        lwz r10, -12(r1)
+        lwz r11, -8(r1)
+        blr
+    }
+}
+}
+
+namespace {
+
+void TraceCallRing()
+{
+    unsigned copy[64], sp[64];
+    const unsigned pos = g_m360CallPos;
+    if (!pos)
+        return;
+    for (unsigned i = 0; i < 64; ++i) {
+        copy[i] = g_m360CallRing[(pos + 1 + i) & 63];
+        sp[i] = g_m360CallSp[(pos + 1 + i) & 63];
+    }
+    TraceStage("hang.calls", pos);
+    for (unsigned i = 0; i < 64; ++i)
+        if (copy[i]) {
+            TraceStage("hang.call", copy[i]);
+            TraceStage("hang.call_sp", sp[i]);
+        }
+    for (unsigned i = 0; i < 8; ++i)
+        TraceStage("hang.dbg", g_m360Dbg[i]);
+}
+
 extern "C" void M360_MatchHangInfo(unsigned* out);
 extern "C" void M360_MatchHangItems(void);
 
@@ -245,7 +306,7 @@ void TraceStackCode()
     unsigned logged = 0;
     for (const unsigned* p = top; p > bottom && logged < 160; --p) {
         const unsigned v = *p;
-        if (v >= 0x82060000u && v < 0x82270000u && !(v & 3u)) {
+        if (v >= 0x82060000u && v < 0x82300000u && !(v & 3u)) {
             TraceStage("hang.stack.depth", static_cast<unsigned>(top - p));
             TraceStage("hang.stack.code", v);
             ++logged;
@@ -267,6 +328,7 @@ DWORD WINAPI Watchdog(LPVOID)
         if (++stalls != 3)
             continue;
         TraceStage("hang.frame", now);
+        TraceCallRing();
         TraceStackCode();
         M360_MatchHangItems();
         for (int i = 0; i < 4; ++i) {
@@ -281,6 +343,7 @@ DWORD WINAPI Watchdog(LPVOID)
             TraceStage("hang.proc", info[1]);
             TraceStage("hang.plink", info[2]);
             TraceStage("hang.detail", info[3]);
+            TraceStage("hang.calls_now", g_m360CallPos);
             Sleep(250);
         }
     }

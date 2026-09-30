@@ -110,16 +110,8 @@
 
 void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
 
-Fighter_ItemEvent ftData_OnItemDrop[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnItemDropExt[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnItemInvisible[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnItemPickup[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnItemVisible[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnKnockbackEnter[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnKnockbackExit[Ft_Kind_Max];
-HSD_GObjEvent ftData_UnkMotionStates1[Ft_Kind_Max];
-HSD_GObjEvent ftData_UnkMotionStates2[Ft_Kind_Max];
-HSD_GObjEvent ftKindCalcIndiviParamTable[Ft_Kind_Max];
+/* The per-kind item, knockback and attribute event tables come from ftdata.c
+ * (build_match_xdk.ps1 ftdata_event_tables.c). */
 
 static unsigned s_reported[128];
 static unsigned s_reportedCount;
@@ -218,9 +210,6 @@ UNPORTED_BOOL(ftCo_800C60C8, (Fighter_GObj* gobj))
 bool gm_8016B0FC(void) { return false; }
 
 DbLKind DbLevel;
-HSD_GObjEvent ftData_UnkMotionStates3[Ft_Kind_Max];
-HSD_GObjEvent ftData_UnkMotionStates4[Ft_Kind_Max];
-HSD_GObjEvent ftData_OnAbsorb[Ft_Kind_Max];
 
 void ftPartSetRotX(Fighter* fp, int part_idx, f32 rotate_x)
 {
@@ -604,7 +593,6 @@ void pl_8003E978(int slot, bool fp_x221F_b4, Item_GObj* item_gobj) { (void) slot
 void pl_8003EC30(int slot, int a1, int a2, float a3) { (void) slot; (void) a1; (void) a2; (void) a3; Report("fighter.unported.pl_8003EC30"); }
 void pl_8003FDF4(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_8003FDF4"); }
 void pl_800403C0(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.pl_800403C0"); }
-Fighter_ItemEvent ftData_OnItemPickupExt[Ft_Kind_Max];
 /* gr/stage.c state; only the Bury states read it here. */
 StageInfo stage_info;
 

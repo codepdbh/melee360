@@ -70,6 +70,8 @@ HSD_Archive s_menuArchive;
 
 }
 
+extern "C" void M360_ArchiveResolveExterns(HSD_Archive* archive);
+
 bool M360_ParseHsdArchive(unsigned char* image, unsigned imageSize,
                           char* firstSymbol, size_t firstSymbolCapacity,
                           void** firstRoot)
@@ -84,6 +86,7 @@ bool M360_ParseHsdArchive(unsigned char* image, unsigned imageSize,
         !s_titleArchive.symbols) {
         return false;
     }
+    M360_ArchiveResolveExterns(&s_titleArchive);
 
     const char* symbol =
         s_titleArchive.symbols + s_titleArchive.public_info[0].symbol;
@@ -109,6 +112,7 @@ bool M360_ParseMenuHsdArchive(unsigned char* image, unsigned imageSize,
     if (HSD_ArchiveParse(&s_menuArchive, image, imageSize) != 0 ||
         !s_menuArchive.data || !s_menuArchive.symbols)
         return false;
+    M360_ArchiveResolveExterns(&s_menuArchive);
     static const char* const modelNames[] = {
         "MenMainBack", "MenMainPanel", "MenMainConTop", "MenMainCursor",
         "MenMainConRl", "MenMainCursorRl", "MenMainNmRl",
@@ -146,6 +150,18 @@ void* M360_GetMenuHsdPublic(const char* symbol)
     return HSD_ArchiveGetPublicAddress(&s_menuArchive, symbol);
 }
 
+/* lbArchive_InitializeDAT (lbarchive.c) binds every external reference of a
+ * freshly parsed archive to NULL. Without it, each extern chain keeps its raw
+ * file offsets (for example the empty ItmSamusGBeam*_shapeanim_joint slots of
+ * PlSs.dat hold 0x99EC), which item code then dereferences. */
+extern "C" void M360_ArchiveResolveExterns(HSD_Archive* archive)
+{
+    const char* symbol;
+    int i = 0;
+    while ((symbol = HSD_ArchiveGetExtern(archive, i++)) != NULL)
+        HSD_ArchiveLocateExtern(archive, symbol, NULL);
+}
+
 extern "C" void* M360_ArchiveOpen(unsigned char* image, unsigned imageSize)
 {
     HSD_Archive* archive = static_cast<HSD_Archive*>(malloc(sizeof(HSD_Archive)));
@@ -156,6 +172,7 @@ extern "C" void* M360_ArchiveOpen(unsigned char* image, unsigned imageSize)
         free(archive);
         return 0;
     }
+    M360_ArchiveResolveExterns(archive);
     return archive;
 }
 
