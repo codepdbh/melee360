@@ -20,8 +20,28 @@ enum {
 enum {
     M360_MATCH_CONTINUE = 0,
     M360_MATCH_TO_MENU = 1,
-    M360_MATCH_NEXT_ROUND = 2
+    M360_MATCH_NEXT_ROUND = 2,
+    M360_MATCH_RESTART = 3
 };
+
+/* Unattended match setup read from game:\match-config.txt by the
+ * boot-to-match build (tools/soak_xenia.ps1): skips the select phase and
+ * can chain several matches to check teardown and heap reuse. */
+typedef struct M360MatchAutoConfig {
+    int enabled;
+    unsigned stage;
+    unsigned kinds[4];
+    unsigned costumes[4];
+    unsigned players;
+    int humanP1;
+    unsigned cpuLevel;
+    unsigned stocks;
+    unsigned timeMinutes;
+    int items;
+    unsigned repeat;
+} M360MatchAutoConfig;
+
+void M360_MatchSetAutoConfig(const M360MatchAutoConfig* config);
 
 enum { M360_MAX_STAGE_LINES = 512 };
 

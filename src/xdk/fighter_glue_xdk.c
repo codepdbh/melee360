@@ -2092,11 +2092,15 @@ mp_UnkStruct0* mpIsland_8005AC14(Vec3* pos, float dist)
 }
 
 /* lbArchive_InitializeDAT: parse an archive image already in memory (effect
- * banks) with the XEX's archive.c. */
+ * banks) with the XEX's archive.c and bind its externs to NULL as the
+ * original does. */
+void M360_ArchiveResolveExterns(HSD_Archive* archive);
+
 void lbArchive_InitializeDAT(HSD_Archive* archive, void* data, size_t length)
 {
     memset(archive, 0, sizeof(*archive));
-    HSD_ArchiveParse(archive, (u8*) data, length);
+    if (HSD_ArchiveParse(archive, (u8*) data, length) == 0)
+        M360_ArchiveResolveExterns(archive);
 }
 
 HSD_TObj* HSD_MObjGetTObj(HSD_MObj* mobj)

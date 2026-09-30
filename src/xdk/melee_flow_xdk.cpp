@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <string.h>
+
 #include "melee_flow_xdk.h"
 #include "melee_archive_xdk.h"
 #include "melee_movie_xdk.h"
@@ -231,8 +234,71 @@ void UpdateMatch(MeleeFlow* flow, MeleeAudioStatus* audio)
             M360_MatchLeave();
             EnterState(flow, kFlowMatch, audio);
         }
+    } else if (result == M360_MATCH_RESTART) {
+        M360_MatchLeave();
+        EnterState(flow, kFlowMatch, audio);
     }
 }
+
+#ifdef M360_BOOT_TO_MATCH
+/* game:\match-config.txt: "key value" lines (see tools/soak_xenia.ps1).
+ * Kinds use the port roster order; "-" leaves a slot empty. */
+void LoadAutoConfig()
+{
+    HANDLE file = CreateFileA("game:\\match-config.txt", GENERIC_READ, FILE_SHARE_READ, 0,
+                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (file == INVALID_HANDLE_VALUE)
+        return;
+    static char text[4096];
+    DWORD read = 0;
+    ReadFile(file, text, sizeof(text) - 1, &read, 0);
+    CloseHandle(file);
+    text[read] = 0;
+    M360MatchAutoConfig config;
+    ZeroMemory(&config, sizeof(config));
+    config.enabled = 1;
+    config.players = 2;
+    config.humanP1 = 1;
+    config.cpuLevel = 3;
+    config.stocks = 4;
+    config.items = -1;
+    config.repeat = 1;
+    config.costumes[1] = 3;
+    config.costumes[2] = 1;
+    config.costumes[3] = 2;
+    char* line = text;
+    while (*line) {
+        char* end = line;
+        while (*end && *end != '\n')
+            ++end;
+        const char next = *end;
+        *end = 0;
+        char key[32];
+        int value = 0;
+        if (*line != '#' && sscanf(line, "%31s %d", key, &value) == 2) {
+            if (!strcmp(key, "stage")) config.stage = static_cast<unsigned>(value);
+            else if (!strcmp(key, "p1")) config.kinds[0] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "p2")) config.kinds[1] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "p3")) config.kinds[2] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "p4")) config.kinds[3] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "c1")) config.costumes[0] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "c2")) config.costumes[1] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "c3")) config.costumes[2] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "c4")) config.costumes[3] = static_cast<unsigned>(value);
+            else if (!strcmp(key, "players")) config.players = static_cast<unsigned>(value);
+            else if (!strcmp(key, "human")) config.humanP1 = value;
+            else if (!strcmp(key, "cpu_level")) config.cpuLevel = static_cast<unsigned>(value);
+            else if (!strcmp(key, "stocks")) config.stocks = static_cast<unsigned>(value);
+            else if (!strcmp(key, "time")) config.timeMinutes = static_cast<unsigned>(value);
+            else if (!strcmp(key, "items")) config.items = value;
+            else if (!strcmp(key, "repeat")) config.repeat = static_cast<unsigned>(value);
+        }
+        line = next ? end + 1 : end;
+    }
+    M360_Trace("auto.config", 1);
+    M360_MatchSetAutoConfig(&config);
+}
+#endif
 
 } // namespace
 
@@ -247,6 +313,7 @@ void M360_FlowStart(MeleeFlow* flow, MeleeAudioStatus* audio)
     flow->campaignRound = 0;
     flow->state = kFlowMainMenu;
 #ifdef M360_BOOT_TO_MATCH
+    LoadAutoConfig();
     EnterState(flow, kFlowMatch, audio);
 #else
     EnterState(flow, kFlowOpening, audio);

@@ -222,6 +222,22 @@ digits and timer (`ifAll_802F3394`) and shows the original GmPause panel
 magnifier bubbles (they need an EFB-to-texture copy) and the results
 screen.
 
+### Soak runs in Xenia (2026-09-30)
+
+`tools/soak_xenia.ps1` builds (with `-Build`) or reuses `build-x360\soak.xex`
+(`-BootToMatch -InputScript -CallTrace`) and runs each configuration of its
+matrix in one headless Xenia instance at a time: every fighter as the
+scripted P1 and as the CPU, every stage in a four-CPU free-for-all with
+items, a one-minute timed match between level-1 CPUs (sudden death) and
+three chained matches. The P1 script cycles ground attacks, tilts, smashes,
+aerials, the four specials, shield, rolls, spot/air dodges, grabs with all
+throws and a taunt. Results go to `soak-matrix.csv`/`.md` in `-OutDir`
+(default `build-x360\soak`). A FREEZE lists the most recent function entries
+from the `/Gh` call ring. A run that ends in Xenia's own error box is
+reported as CRASH(host) and the process is killed; the harness never sends
+window input. Verified so far: the Mario vs CPU Zelda and Dr. Mario vs CPU
+Samus runs, which froze before the M43 fixes, reach match frame 7500.
+
 ### Host link check
 
 The XDK is not available in every environment. `tools/host_xdk_check/`

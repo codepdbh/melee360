@@ -72,6 +72,13 @@ behavior remains pending. The original helper is included unchanged through a
 C-linkage XDK wrapper; only its CRT-conflicting private `expf`/`powf` symbol
 names are remapped during compilation.
 
+For unattended testing, `./tools/build_xex.ps1 -BootToMatch -InputScript
+-CallTrace` starts straight in a match configured by `game:\match-config.txt`
+and driven by `game:\input-script.txt`; `-CallTrace` adds `/Gh` to the C
+units so the hang watchdog can report the last function entries.
+`./tools/soak_xenia.ps1` runs a whole matrix of such matches (see
+[remaining gameplay gaps](PLAYABLE_PORT_GAPS.md)).
+
 Run it with a local Xenia Canary build:
 
 ```powershell
