@@ -1,5 +1,6 @@
 #include <xtl.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "controller_xdk_compat.h"
 
@@ -53,6 +54,8 @@ unsigned g_scriptIndex;
 unsigned g_scriptLeft;
 unsigned g_scriptHold;
 bool g_scriptLoaded;
+bool g_scriptLoop;
+unsigned g_scriptPasses;
 
 u16 ParseButtons(const char* text)
 {
@@ -103,7 +106,9 @@ void LoadScript()
             unsigned frames = 0;
             int sx = 0, sy = 0, cx = 0, cy = 0;
             char buttons[32] = "-";
-            if (sscanf(line, "snap %d %u", &snap, &frames) == 2) {
+            if (!strncmp(line, "loop", 4)) {
+                g_scriptLoop = true;
+            } else if (sscanf(line, "snap %d %u", &snap, &frames) == 2) {
                 step.snap = snap;
                 step.frames = frames;
                 ++g_scriptCount;
@@ -138,6 +143,13 @@ void ApplyScript(PADStatus* status)
         M360_MatchTrace("script.step", g_scriptIndex);
         if (!step.frames)
             ++g_scriptIndex;
+    }
+    if (g_scriptLoop && g_scriptCount && g_scriptIndex >= g_scriptCount && !g_scriptLeft && !g_scriptHold) {
+        /* "loop": replay the steps for long soak runs. */
+        M360_MatchTrace("script.pass", ++g_scriptPasses);
+        g_scriptIndex = 0;
+        ApplyScript(status);
+        return;
     }
     if (g_scriptIndex >= g_scriptCount && !g_scriptLeft && !g_scriptHold) {
         if (g_scriptCount && g_scriptIndex++ == g_scriptCount)

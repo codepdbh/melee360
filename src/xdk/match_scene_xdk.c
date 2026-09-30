@@ -273,6 +273,9 @@ static unsigned s_selReady[kMaxFighters];
 static int s_selHuman[kMaxFighters];
 static float s_selPrevStick[kMaxFighters];
 static int s_selProbeP2;
+static M360MatchAutoConfig s_auto;
+static unsigned s_autoPlayed;
+static unsigned s_autoResultFrames;
 
 static int IsCampaign(void);
 static void StartFight(void);
@@ -291,7 +294,43 @@ static void DebugRender(HSD_GObj* gobj, int pass)
 
 static unsigned TimeMinutes(void)
 {
-    return IsCampaign() || s_suddenDeath ? 0 : kTimeOptions[s_timeOption];
+    if (IsCampaign() || s_suddenDeath)
+        return 0;
+    return s_auto.enabled ? s_auto.timeMinutes : kTimeOptions[s_timeOption];
+}
+
+void M360_MatchSetAutoConfig(const M360MatchAutoConfig* config)
+{
+    s_auto = *config;
+    s_autoPlayed = 0;
+}
+
+/* Applies the unattended setup instead of the select phase. */
+static void ApplyAutoConfig(void)
+{
+    unsigned i;
+    const unsigned count = M360_FighterKindCount();
+    s_slotCount = s_auto.players < 2 ? 2 : (s_auto.players > kMaxFighters ? kMaxFighters : s_auto.players);
+    for (i = 0; i < kMaxFighters; ++i) {
+        s_selKind[i] = s_auto.kinds[i] < count ? s_auto.kinds[i] : 0;
+        s_selCostume[i] = s_auto.costumes[i] % kMaxCostumes;
+        s_selReady[i] = 1;
+        s_selHuman[i] = 0;
+    }
+    s_selHuman[0] = s_auto.humanP1 != 0;
+    s_stocks = s_auto.stocks ? s_auto.stocks : 1;
+    s_itemFreq = s_auto.items < -1 ? -1 : (s_auto.items > 4 ? 4 : s_auto.items);
+    s_cpuLevel = s_auto.cpuLevel ? s_auto.cpuLevel : 1;
+    M360_FighterSetCpuLevel(s_cpuLevel);
+    s_selProbeP2 = 0;
+    s_autoResultFrames = 0;
+    M360_MatchTrace("auto.match.index", s_autoPlayed + 1);
+    M360_MatchTrace("auto.stage", s_stageIndex);
+    M360_MatchTrace("auto.players", s_slotCount);
+    M360_MatchTrace("auto.time", s_auto.timeMinutes);
+    M360_MatchTrace("auto.items", (unsigned) (s_itemFreq + 1));
+    TraceHeap("auto.heap.used", "auto.heap.largest_free");
+    StartFight();
 }
 
 static float DegToRad(float d) { return d * 0.017453292f; }
@@ -1040,6 +1079,8 @@ void M360_MatchEnter(void)
         return;
     M360_FighterResetMatch();
     s_builtStage = ~0u;
+    if (s_auto.enabled && !IsCampaign())
+        s_stageIndex = s_auto.stage < kStageCount ? s_auto.stage : 0;
     M360_MatchTrace("match.enter.step", 1);
     if (!BuildStage(s_stageIndex))
         return;
@@ -1064,6 +1105,8 @@ void M360_MatchEnter(void)
     if (IsCampaign() && s_campaignRound > 0) {
         s_selReady[0] = s_selReady[1] = 1;
         StartFight();
+    } else if (s_auto.enabled && !IsCampaign()) {
+        ApplyAutoConfig();
     }
     CamUpdate(1);
     M360_MatchTrace("match.mode", s_gameMode);
@@ -1106,7 +1149,7 @@ static void StartFight(void)
     memset(s_fighters, 0, sizeof(s_fighters));
     M360_FighterEffectsInit();
     for (i = 0; i < s_slotCount; ++i) {
-        const int port = i == 0 ? 0 : (s_selHuman[i] ? (int) i : -1);
+        const int port = s_selHuman[i] ? (int) i : -1;
         M360_FighterSelect((int) i, s_selKind[i], s_selCostume[i]);
         s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
                                           s_stage.spawnX[i] > 0.0f ? -1.0f : 1.0f, port);
@@ -1294,6 +1337,14 @@ int M360_MatchFrame(void)
         return M360_MATCH_CONTINUE;
     }
     if (s_matchOver) {
+        if (s_auto.enabled && !IsCampaign() && ++s_autoResultFrames == 120) {
+            ++s_autoPlayed;
+            TraceHeap("auto.end.heap.used", "auto.end.heap.largest_free");
+            M360_MatchTrace("auto.match.done", s_autoPlayed);
+            if (s_autoPlayed < s_auto.repeat)
+                return M360_MATCH_RESTART;
+            M360_MatchTrace("auto.all.done", s_autoPlayed);
+        }
         if (buttons & 0x200u) {
             M360_MatchTrace("match.result.return_menu", s_winner);
             return M360_MATCH_TO_MENU;

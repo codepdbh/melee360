@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)] [string] $Compiler,
-    [Parameter(Mandatory = $true)] [string] $Build
+    [Parameter(Mandatory = $true)] [string] $Build,
+    # Instrument every match unit with /Gh so __penter (main.cpp) records the
+    # most recent function entries for the hang watchdog.
+    [switch] $CallTrace
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -137,6 +140,24 @@ $table += "};`r`nconst unsigned M360_MotionTableCount = $found;`r`n"
 $motionTable = Join-Path $out 'motion_table.c'
 Set-Content -Encoding ASCII $motionTable $table
 
+# Per-kind event tables copied verbatim from ftdata.c (item pickup/drop and
+# visibility hooks, knockback enter/exit, special-attribute loaders, ...).
+# Entries of the boss/special kinds that are not linked (Master/Crazy Hand,
+# wireframes, Giga Bowser, Sandbag) become NULL, which the callers test.
+$ftDataText = Get-Content -Raw (Join-Path $src 'melee/ft/ftdata.c')
+$ftDataTables = @('ftData_OnAbsorb', 'ftData_OnItemPickupExt', 'ftData_OnItemInvisible', 'ftData_OnItemVisible',
+    'ftData_OnItemDropExt', 'ftData_OnItemPickup', 'ftData_OnItemDrop', 'ftData_UnkMotionStates1',
+    'ftData_UnkMotionStates2', 'ftData_OnKnockbackEnter', 'ftData_OnKnockbackExit', 'ftData_UnkMotionStates3',
+    'ftData_UnkMotionStates4', 'ftKindCalcIndiviParamTable')
+$ftDataUnit = (([regex]::Matches($ftDataText, '(?m)^#include[^\r\n]*') | ForEach-Object { $_.Value }) -join "`r`n") + "`r`n`r`n"
+foreach ($name in $ftDataTables) {
+    $m = [regex]::Match($ftDataText, '(?s)\n((?:HSD_GObjEvent|Fighter_ItemEvent) ' + $name + '\[Ft_Kind_Max\] = \{.*?\n\};)')
+    if (-not $m.Success) { throw "Missing ftdata.c table: $name" }
+    $ftDataUnit += [regex]::Replace($m.Groups[1].Value, '\bft(Mh|Ch|Bo|Gl|Gk|Sb)_\w+', 'NULL') + "`r`n`r`n"
+}
+$ftDataTablesPath = Join-Path $out 'ftdata_event_tables.c'
+Set-Content -Encoding ASCII $ftDataTablesPath $ftDataUnit
+
 $fighterSource = Get-Content -Raw (Join-Path $src 'melee/ft/fighter.c')
 $fighterConsts = [regex]::Match($fighterSource, '(?s)const Vec3 Fighter_803B7488 = [^;]*;\s*const Vec3 vec3_803B7494 = [^;]*;').Value
 $rangeStart = $fighterSource.IndexOf('void Fighter_8006A1BC(')
@@ -236,6 +257,7 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/lb/lbcommand.c') },
     @{ Path = (Join-Path $src 'melee/lb/lbanim.c') },
     @{ Path = $motionTable; Dir = (Join-Path $src 'melee/ft') },
+    @{ Path = $ftDataTablesPath; Dir = (Join-Path $src 'melee/ft') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_FallSpecial.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Guard.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Escape.c') },
@@ -721,6 +743,7 @@ $base = @('/nologo','/c','/TC','/O2','/MT','/GS-','/D_XBOX','/DXBOX','/DNDEBUG',
     "/FI$(Join-Path $root 'src/xdk/gameplay_probe_compat.h')",
     "/FI$overlay/melee/ft/forward.h", "/FI$overlay/melee/ft/kinds/ftCommon/forward.h",
     "/FI$overlay/melee/ft/types.h")
+if ($CallTrace) { $base += '/Gh' }
 # Quoted kind "forward.h" includes resolve beside the source before /I paths,
 # so force every kind overlay (same include guards) ahead of the originals.
 $kindForward = @(Get-ChildItem -Path (Join-Path $overlay 'melee/ft/kinds') -Filter 'forward.h' -Recurse |
@@ -755,6 +778,7 @@ $nativeBase = @('/nologo','/c','/TC','/O2','/MT','/GS-','/W4','/D_XBOX','/DXBOX'
     "/I$matchOverlay", "/I$overlay", "/I$env:XEDK/include/xbox", "/I$(Join-Path $root 'src/xdk')",
     "/I$src", "/I$(Join-Path $src 'sdk_include')",
     "/FI$(Join-Path $root 'src/xdk/fighter_glue_compat.h')")
+if ($CallTrace) { $nativeBase += '/Gh' }
 foreach ($native in @('fighter_glue_xdk.c', 'fighter_unported_xdk.c', 'particle_draw_xdk.c', 'hud_xdk.c')) {
     $object = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($native) + '.obj')
     & $Compiler ($nativeBase + @("/Fo$object", (Join-Path $root "src/xdk/$native"))) | Write-Host
