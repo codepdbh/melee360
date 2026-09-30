@@ -7,6 +7,8 @@
 #pragma warning(disable : 4244)
 #include <melee/ft/fighter.h>
 #include <melee/ft/ft_081B.h>
+#include <melee/ft/ft_0877.h>
+#include <melee/lb/lbaudio_ax.h>
 #include <melee/ft/ftaction.h>
 #include <melee/ft/ftanim.h>
 #include <melee/ft/ftcolanim.h>
@@ -2707,8 +2709,8 @@ Fighter_Part ftParts_GetBoneIndex(Fighter* fp, Fighter_Part part)
 
 void ft_PlaySFX(Fighter* fp, enum_t sfx_id, u8 sfx_vol, u8 sfx_pan)
 {
-    (void) fp;
-    M360_AudioSfx((unsigned) sfx_id, sfx_vol, sfx_pan);
+    sfx_id = ft_80087D0C(fp, sfx_id);
+    fp->x2160 = lbAudioAx_800237A8(sfx_id, sfx_vol, sfx_pan);
 }
 
 /* lbAudioAx_80023870: fighter voice/SFX tracks. Key-off requests (0x83D61)

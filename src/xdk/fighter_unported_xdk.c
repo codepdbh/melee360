@@ -171,7 +171,6 @@ HSD_GObj* lbAudioAx_800263E8(float a, HSD_GObj* b, int c, int d, int e, int f, i
     return NULL;
 }
 int lbAudioAx_800264E4(HSD_GObj* data) { (void) data; return 0; }
-s32 ft_80087D0C(Fighter* fp, s32 a) { (void) fp; return a; }
 enum_t ftCo_8009E318(Fighter_GObj* gobj, Fighter_Part part, float f) { (void) gobj; (void) part; (void) f; return 0; }
 bool ftCo_8009E714(Fighter_GObj* gobj, Fighter_Part part, int a, float x, float y, float b, float c, float d)
 {
