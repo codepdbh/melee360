@@ -313,7 +313,7 @@ bool LoadSfxSem(void)
 
 bool ResolveSfxSampleId(unsigned sfxId, unsigned* outSampleId)
 {
-    unsigned bank, bankLocal, sampleIndex, streamOffset, command, i;
+    unsigned bank, bankLocal, sampleIndex, bankEnd, streamOffset, command, i;
     if (!LoadSfxSem())
         return false;
     bank = sfxId / 10000u;
@@ -321,8 +321,14 @@ bool ResolveSfxSampleId(unsigned sfxId, unsigned* outSampleId)
     if (bank >= 55)
         return false;
     sampleIndex = ReadBe32(s_sfxSem + s_sfxSemBankTable + bank * 4u);
-    if (sampleIndex > s_sfxSemStreamCount ||
-        bankLocal >= s_sfxSemStreamCount - sampleIndex)
+    bankEnd = bank + 1u < 55u
+        ? ReadBe32(s_sfxSem + s_sfxSemBankTable + (bank + 1u) * 4u)
+        : s_sfxSemStreamCount;
+    /* AXDriver_8038CFF4 rejects IDs outside this bank, even if their index
+     * would still be inside the global stream table. Otherwise a bad Mario
+     * ID, for example, can play Marth's first stream. */
+    if (bankEnd > s_sfxSemStreamCount || sampleIndex > bankEnd ||
+        bankLocal >= bankEnd - sampleIndex)
         return false;
     sampleIndex += bankLocal;
     streamOffset = ReadBe32(s_sfxSem + s_sfxSemStreamTable + sampleIndex * 4u);

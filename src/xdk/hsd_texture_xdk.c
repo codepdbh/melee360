@@ -86,14 +86,19 @@ static void DecodeCmprBlock(const unsigned char* block, unsigned* out)
     for (ch = 0; ch < 24; ch += 8) {
         const unsigned a = (colors[0] >> ch) & 255, b = (colors[1] >> ch) & 255;
         if (c0 > c1) {
-            colors[2] |= ((2 * a + b) / 3) << ch;
-            colors[3] |= ((a + 2 * b) / 3) << ch;
+            /* GX CMPR interpolates in eighths, unlike desktop DXT1 thirds.
+             * Match Aurora's BuildRGBA8FromCMPR/S3TCBlend. */
+            colors[2] |= ((5 * a + 3 * b) >> 3) << ch;
+            colors[3] |= ((3 * a + 5 * b) >> 3) << ch;
         } else {
             colors[2] |= ((a + b) / 2) << ch;
+            colors[3] |= ((a + b) / 2) << ch;
         }
     }
     if (c0 <= c1)
-        colors[3] = 0;
+        /* Transparent texels retain the midpoint RGB. Black here introduces
+         * dark fringes when the GPU filters across a transparent edge. */
+        colors[3] &= 0x00FFFFFFu;
     bits = ((unsigned) block[4] << 24) | ((unsigned) block[5] << 16) |
            ((unsigned) block[6] << 8) | block[7];
     for (p = 0; p < 16; ++p)
