@@ -748,6 +748,27 @@ if ($CallTrace) { $base += '/Gh' }
 # so force every kind overlay (same include guards) ahead of the originals.
 $kindForward = @(Get-ChildItem -Path (Join-Path $overlay 'melee/ft/kinds') -Filter 'forward.h' -Recurse |
     Where-Object { $_.Directory.Name -ne 'ftCommon' } | ForEach-Object { "/FI$($_.FullName)" })
+# Keep fighter sound selection in the original code: size/metal variants and
+# the Popo/Nana costume voice swap are not interchangeable sample IDs.
+$units += New-Slice 'melee/ft/ft_0877.c' 'bool ft_800877F8(' @('s32 ft_80087C70(', 's32 ft_80087D0C(') 'fighter_sfx_slice'
+
+# Only extract the sound range metadata and queries, not the Dolphin audio
+# hardware loader. This preserves the character voice thresholds verbatim.
+$audioText = Get-Content -Raw (Join-Path $src 'melee/lb/lbaudio_ax.c')
+$audioStatic = Get-Content -Raw (Join-Path $src 'melee/lb/lbaudio_ax.static.h')
+$audioRanges = "#include <melee/lb/lbaudio_ax.h>`r`n"
+foreach ($name in @('s32_arr_803BB5D0', 's32_arr_803BB8D4')) {
+    $m = [regex]::Match($audioStatic, '(?s)static (?:int|s8) ' + $name + '\[[^;]*?\n\};')
+    if (-not $m.Success) { throw "Missing original sound range table: $name" }
+    $audioRanges += $m.Value + "`r`n"
+}
+foreach ($signature in @('int lbAudioAx_800230C8(', 'int lbAudioAx_80023130(', 'int lbAudioAx_80023220(')) {
+    $audioRanges += (Get-CFunction $audioText $signature) + "`r`n"
+}
+$audioRangesPath = Join-Path $out 'audio_ranges_slice.c'
+Set-Content -Encoding ASCII $audioRangesPath $audioRanges
+$units += @{ Path = $audioRangesPath }
+
 foreach ($unit in $units) {
     $dir = if ($unit.Dir) { $unit.Dir } else { Split-Path $unit.Path }
     $object = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($unit.Path) + '.obj')

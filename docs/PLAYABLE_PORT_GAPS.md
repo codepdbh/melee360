@@ -45,7 +45,36 @@ nibble-boundary regression checks pass. Local validation scripts/results are in
 `build-x360/audio-validation/`. These checks do not establish audible playback
 in Xenia or on console; that still needs an in-game listening check.
 
+## Sound selection and CMPR corrections (2026-09-30)
+
+The native `ft_PlaySFX` bridge now calls the original `ft_80087D0C` selector,
+with `ft_80087C70` and the original audio range/voice-threshold tables extracted
+at build time. This restores size and metal sound variants and the Ice Climbers'
+costume-dependent voice swap. The US language mapping remains the existing
+identity bridge; the full SEM interpreter, track key-off and pitch handling
+are still incomplete.
+
+SEM lookup now rejects a local sound ID at the next bank's boundary, following
+`AXDriver_8038CFF4`, instead of allowing it to play another bank's stream.
+`tools/test_audio_xdk.ps1` executes the original sound selectors on the host,
+checks all 55 bank boundaries against the user's ISO and validates 32 XAudio2
+submissions with a test double. These tests do not verify audible correctness.
+
+CMPR decoding now matches the bundled Aurora converter's 5/8 and 3/8 gradients
+and retains midpoint RGB on transparent texels. The old DXT1-style thirds and
+transparent black differed from GX and could introduce dark filtered edges.
+The same host command tests fixed colour vectors and partial-tile bounds.
+Material/TEV completeness and visual fidelity still need in-game validation.
+
+A rebuilt boot-to-match XEX ran scripted Mario vs Fox on Battlefield to match
+frame 3900 in Xenia, recording 17 hits, 128 SFX submissions, one SFX miss and
+zero music history mismatches without a recorded hang/crash. This is a runtime
+regression check, not a listening or visual fidelity check. Its saved trace is
+in the ignored `dist/asset-check-20260930/runtime-trace.txt`. The final
+`dist/default.xex` uses normal boot and live input and passes `imagexex /DUMP`.
+
 ## Original common actions (2026-09-24)
+
 
 `tools/build_match_xdk.ps1` now also compiles the original shield, dodge,
 grab/throw, captured, ledge, teeter, taunt, special-fall and rebound units and
