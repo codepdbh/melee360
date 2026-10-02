@@ -77,6 +77,8 @@ struct HsdVertex {
 struct TextureEntry {
     const void* image;
     const void* palette;
+    unsigned width, height, format, paletteFormat, paletteEntries;
+    unsigned age;
     IDirect3DTexture9* texture;
 };
 
@@ -91,6 +93,7 @@ IDirect3DVertexDeclaration9* s_declaration;
 IDirect3DTexture9* s_white;
 TextureEntry s_textures[kMaxTextures];
 unsigned s_textureCount;
+unsigned s_textureAge;
 GxState s_gx;
 GXColor s_eraseColor;
 bool s_allowErase = true;
@@ -163,6 +166,43 @@ const unsigned char* PaletteData(const HSD_TObj* tobj, unsigned* format,
     return tlut ? static_cast<const unsigned char*>(tlut->lut) : NULL;
 }
 
+bool TextureMatches(const TextureEntry& entry, const void* image, const void* palette,
+                    unsigned width, unsigned height, unsigned format,
+                    unsigned paletteFormat, unsigned paletteEntries)
+{
+    return entry.image == image && entry.palette == palette &&
+        entry.width == width && entry.height == height && entry.format == format &&
+        entry.paletteFormat == paletteFormat && entry.paletteEntries == paletteEntries;
+}
+
+void CacheTexture(const void* image, const void* palette, unsigned width,
+                  unsigned height, unsigned format, unsigned paletteFormat,
+                  unsigned paletteEntries, IDirect3DTexture9* texture)
+{
+    if (!texture)
+        return; // a transient upload failure must not poison the cache
+    unsigned slot = s_textureCount;
+    if (slot == kMaxTextures) {
+        slot = 0;
+        for (unsigned i = 1; i < s_textureCount; ++i)
+            if (s_textures[i].age < s_textures[slot].age)
+                slot = i;
+        s_textures[slot].texture->Release();
+    } else {
+        ++s_textureCount;
+    }
+    TextureEntry& entry = s_textures[slot];
+    entry.image = image;
+    entry.palette = palette;
+    entry.width = width;
+    entry.height = height;
+    entry.format = format;
+    entry.paletteFormat = paletteFormat;
+    entry.paletteEntries = paletteEntries;
+    entry.texture = texture;
+    entry.age = ++s_textureAge;
+}
+
 IDirect3DTexture9* ResolveTexture(const HSD_TObj* tobj)
 {
     const HSD_ImageDesc* image = tobj ? tobj->imagedesc : NULL;
@@ -171,9 +211,11 @@ IDirect3DTexture9* ResolveTexture(const HSD_TObj* tobj)
     unsigned paletteFormat, paletteEntries;
     const unsigned char* palette = PaletteData(tobj, &paletteFormat, &paletteEntries);
     for (unsigned i = 0; i < s_textureCount; ++i)
-        if (s_textures[i].image == image->image_ptr &&
-            s_textures[i].palette == palette)
+        if (TextureMatches(s_textures[i], image->image_ptr, palette,
+            image->width, image->height, image->format, paletteFormat, paletteEntries)) {
+            s_textures[i].age = ++s_textureAge;
             return s_textures[i].texture;
+        }
     IDirect3DTexture9* texture = NULL;
     unsigned* pixels = NULL;
     unsigned width = 0, height = 0;
@@ -194,11 +236,8 @@ IDirect3DTexture9* ResolveTexture(const HSD_TObj* tobj)
     M360_HsdFreeDecoded(pixels);
     if (!texture && s_stats.decodeFailures++ < 16)
         M360_Trace("hsd.texture.decode_failed", image->format);
-    if (s_textureCount < kMaxTextures) {
-        s_textures[s_textureCount].image = image->image_ptr;
-        s_textures[s_textureCount].palette = palette;
-        s_textures[s_textureCount++].texture = texture;
-    }
+    CacheTexture(image->image_ptr, palette, width, height, image->format,
+                 paletteFormat, paletteEntries, texture);
     return texture;
 }
 
@@ -655,7 +694,7 @@ void DecodeColor(const unsigned char* p, GXCompType type, float* rgba)
 }
 
 struct RawVertex {
-    float pos[3], nrm[3], color[4], uv0[2], uv1[2];
+    float pos[3], nrm[3], color[4], uv[8][2];
     unsigned matrix;
 };
 
@@ -670,18 +709,22 @@ bool ParseVertex(const HSD_VtxDescList* descs, const unsigned char** cursor,
         if (d->attr_type == GX_NONE)
             continue;
         const unsigned char* value = s;
+        const unsigned indices = (d->attr == GX_VA_NRM || d->attr == GX_VA_NBT) &&
+                                  d->comp_cnt == GX_NRM_NBT3 ? 3u : 1u;
         if (d->attr_type == GX_INDEX8) {
-            if (s + 1 > end) return false;
+            if (static_cast<unsigned>(end - s) < indices || !d->vertex) return false;
             value = static_cast<const unsigned char*>(d->vertex) + *s * d->stride;
-            s += 1;
+            s += indices;
         } else if (d->attr_type == GX_INDEX16) {
-            if (s + 2 > end) return false;
+            if (static_cast<unsigned>(end - s) < indices * 2 || !d->vertex) return false;
             value = static_cast<const unsigned char*>(d->vertex) + Read16(s) * d->stride;
-            s += 2;
-        } else {
+            s += indices * 2;
+        } else if (d->attr_type == GX_DIRECT) {
             const unsigned size = DirectSize(d);
-            if (s + size > end) return false;
+            if (static_cast<unsigned>(end - s) < size) return false;
             s += size;
+        } else {
+            return false;
         }
         const unsigned cs = ComponentSize(d->comp_type);
         switch (d->attr) {
@@ -703,8 +746,9 @@ bool ParseVertex(const HSD_VtxDescList* descs, const unsigned char** cursor,
         case GX_VA_CLR0:
             DecodeColor(value, d->comp_type, v->color);
             break;
-        case GX_VA_TEX0: case GX_VA_TEX1: {
-            float* uv = d->attr == GX_VA_TEX0 ? v->uv0 : v->uv1;
+        case GX_VA_TEX0: case GX_VA_TEX1: case GX_VA_TEX2: case GX_VA_TEX3:
+        case GX_VA_TEX4: case GX_VA_TEX5: case GX_VA_TEX6: case GX_VA_TEX7: {
+            float* uv = v->uv[d->attr - GX_VA_TEX0];
             uv[0] = ReadComponent(value, d->comp_type, d->frac);
             if (d->comp_cnt == GX_TEX_ST)
                 uv[1] = ReadComponent(value + cs, d->comp_type, d->frac);
@@ -718,7 +762,8 @@ bool ParseVertex(const HSD_VtxDescList* descs, const unsigned char** cursor,
     return true;
 }
 
-void Transform(const MatrixSet* set, const RawVertex& raw, HsdVertex* out)
+void Transform(const MatrixSet* set, const RawVertex& raw, HsdVertex* out,
+               const unsigned* texSources)
 {
     const unsigned slot = raw.matrix < 10 && set->valid[raw.matrix] ? raw.matrix : 0;
     const float (*m)[4] = set->pos[slot];
@@ -731,8 +776,8 @@ void Transform(const MatrixSet* set, const RawVertex& raw, HsdVertex* out)
     out->ny = n[1][0] * raw.nrm[0] + n[1][1] * raw.nrm[1] + n[1][2] * raw.nrm[2];
     out->nz = n[2][0] * raw.nrm[0] + n[2][1] * raw.nrm[1] + n[2][2] * raw.nrm[2];
     out->r = raw.color[0]; out->g = raw.color[1]; out->b = raw.color[2]; out->a = raw.color[3];
-    out->u0 = raw.uv0[0]; out->v0 = raw.uv0[1];
-    out->u1 = raw.uv1[0]; out->v1 = raw.uv1[1];
+    out->u0 = raw.uv[texSources[0]][0]; out->v0 = raw.uv[texSources[0]][1];
+    out->u1 = raw.uv[texSources[1]][0]; out->v1 = raw.uv[texSources[1]][1];
 }
 
 void Flush(unsigned* count)
@@ -757,7 +802,8 @@ void Emit(unsigned* count, const HsdVertex& a, const HsdVertex& b, const HsdVert
     s_vertices[(*count)++] = c;
 }
 
-void DrawPObj(HSD_PObj* pobj, const MatrixSet* set, unsigned* count)
+void DrawPObj(HSD_PObj* pobj, const MatrixSet* set, unsigned* count,
+              const unsigned* texSources)
 {
     if (!pobj->verts || !pobj->display || pobj->n_display > 0x4000)
         return;
@@ -774,7 +820,7 @@ void DrawPObj(HSD_PObj* pobj, const MatrixSet* set, unsigned* count)
         for (unsigned i = 0; i < n; ++i) {
             if (!ParseVertex(pobj->verts, &s, end, &raw))
                 return;
-            Transform(set, raw, &current);
+            Transform(set, raw, &current, texSources);
             ++s_stats.vertices;
             if (pobj_type(pobj) == POBJ_ENVELOPE)
                 ++s_stats.envelopeVertices;
@@ -913,6 +959,7 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
     memset(flags, 0, sizeof(flags));
 
     HSD_TObj* slots[2] = { NULL, NULL };
+    unsigned texSources[2] = { 0, 0 };
     unsigned used = 0;
     for (HSD_TObj* t = mobj->tobj; t && used < 2; t = t->next) {
         if (t->id == GX_TEXMAP_NULL || !t->imagedesc)
@@ -933,8 +980,15 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
             vs[12 * 4 + used] = 2.0f;
         else if (coord != TEX_COORD_UV)
             ++s_stats.unsupported;
-        else
-            vs[12 * 4 + used] = t->src == GX_TG_TEX1 ? 1.0f : 0.0f;
+        else {
+            if (t->src >= GX_TG_TEX0 && t->src <= GX_TG_TEX7)
+                texSources[used] = t->src - GX_TG_TEX0;
+            else
+                ++s_stats.unsupported;
+            /* The CPU routes the material's chosen GX UV set into each
+             * of the two shader slots, keeping the GPU vertex stride small. */
+            vs[12 * 4 + used] = static_cast<float>(used);
+        }
         slots[used++] = t;
     }
     flags[6] = (rm & RENDER_VERTEX) != 0;
@@ -998,7 +1052,7 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
                            (cull == POBJ_CULLFRONT ? D3DCULL_CW : D3DCULL_NONE);
         Flush(&count);
         s_device->SetRenderState(D3DRS_CULLMODE, mode);
-        DrawPObj(pobj, &set, &count);
+        DrawPObj(pobj, &set, &count, texSources);
         Flush(&count);
     }
 }
@@ -1306,16 +1360,19 @@ bool M360_HsdDecodeImage(const void* imageHandle, const void* tobjHandle,
     return true;
 }
 
-/* Native particle quads (see particle_draw_xdk.c). Textures are cached like
- * material textures, keyed by image and palette. */
+/* Particle and material textures share a cache, including descriptor metadata
+ * so a shared image/palette pointer cannot reuse a differently decoded view. */
 static IDirect3DTexture9* ResolveParticleTexture(const M360ParticleTexture* tex)
 {
     if (!tex || !tex->image || !tex->width || !tex->height ||
         tex->width > 1024 || tex->height > 1024)
         return NULL;
     for (unsigned i = 0; i < s_textureCount; ++i)
-        if (s_textures[i].image == tex->image && s_textures[i].palette == tex->palette)
+        if (TextureMatches(s_textures[i], tex->image, tex->palette, tex->width,
+                           tex->height, tex->format, tex->paletteFormat, tex->paletteEntries)) {
+            s_textures[i].age = ++s_textureAge;
             return s_textures[i].texture;
+        }
     IDirect3DTexture9* texture = NULL;
     unsigned* pixels = static_cast<unsigned*>(malloc(tex->width * tex->height * sizeof(unsigned)));
     if (pixels) {
@@ -1341,11 +1398,8 @@ static IDirect3DTexture9* ResolveParticleTexture(const M360ParticleTexture* tex)
     }
     if (!texture && s_stats.decodeFailures++ < 16)
         M360_Trace("hsd.particle.decode_failed", tex->format);
-    if (s_textureCount < kMaxTextures) {
-        s_textures[s_textureCount].image = tex->image;
-        s_textures[s_textureCount].palette = tex->palette;
-        s_textures[s_textureCount++].texture = texture;
-    }
+    CacheTexture(tex->image, tex->palette, tex->width, tex->height, tex->format,
+                 tex->paletteFormat, tex->paletteEntries, texture);
     return texture;
 }
 
@@ -1459,12 +1513,18 @@ bool M360_HsdRenderInit(IDirect3DDevice9* device)
     return true;
 }
 
-void M360_HsdRenderShutdown(void)
+void M360_HsdRenderClearTextures(void)
 {
     for (unsigned i = 0; i < s_textureCount; ++i)
         if (s_textures[i].texture)
             s_textures[i].texture->Release();
     s_textureCount = 0;
+    s_textureAge = 0;
+}
+
+void M360_HsdRenderShutdown(void)
+{
+    M360_HsdRenderClearTextures();
     if (s_white) s_white->Release();
     if (s_declaration) s_declaration->Release();
     if (s_pixelShader) s_pixelShader->Release();

@@ -30,6 +30,9 @@ short s_pcm[kBufferCount][kBufferFrames * M360_HPS_MAX_CHANNELS];
 unsigned s_nextBuffer = 0;
 IXAudio2SourceVoice* s_sfxVoices[kSfxVoiceCount] = {};
 unsigned s_sfxRates[kSfxVoiceCount] = {};
+int s_sfxHandles[kSfxVoiceCount] = {};
+unsigned s_sfxTracks[kSfxVoiceCount] = {};
+unsigned s_sfxHandleSerial = 0;
 short s_sfxPcm[kSfxVoiceCount][kSfxMaxFrames * 2];
 short s_sfxLeftScratch[kSfxMaxFrames];
 short s_sfxRightScratch[kSfxMaxFrames];
@@ -472,10 +475,11 @@ void M360_AudioUpdate(MeleeAudioStatus* status)
     Snapshot(status);
 }
 
-extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan)
+extern "C" int M360_AudioPlaySfx(unsigned sfxId, unsigned volume, unsigned pan,
+                                 unsigned track)
 {
     static const float kPi = 3.14159265358979323846f;
-    const unsigned voiceIndex = s_sfxNextVoice++ % kSfxVoiceCount;
+    unsigned voiceIndex = s_sfxNextVoice % kSfxVoiceCount;
     const unsigned boundedVolume = volume > 127 ? 127 : volume;
     const unsigned boundedPan = pan > 127 ? 127 : pan;
     const float pan01 = (float) boundedPan / 127.0f;
@@ -486,16 +490,34 @@ extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan)
     unsigned bankId = 0, sampleId = 0;
     unsigned sampleRate = 0, frames = 0, i;
     XAUDIO2_BUFFER buffer;
-    if (!s_engine || !s_master || !boundedVolume)
-        return;
+    if (!s_engine || !s_master || !boundedVolume || track > 255)
+        return -1;
     if (!ResolveSfxSampleId(sfxId, &sampleId) ||
         !ResolveSfxBank(sampleId, sfxId / 10000u, &bank, &bankId) ||
         !DecodeSfx(bank, bankId, voiceIndex, &sampleRate, &frames,
                             s_sfxLeftScratch,
                             s_sfxRightScratch)) {
         ++s_sfxMisses;
-        return;
+        return -1;
     }
+    /* Prefer a free/completed slot. Only steal the next active voice when
+     * every slot is occupied, rather than cutting it while others are idle. */
+    for (unsigned candidate = 0; candidate < kSfxVoiceCount; ++candidate) {
+        const unsigned slot = (s_sfxNextVoice + candidate) % kSfxVoiceCount;
+        XAUDIO2_VOICE_STATE state;
+        if (!s_sfxVoices[slot]) {
+            voiceIndex = slot;
+            break;
+        }
+        s_sfxVoices[slot]->GetState(&state);
+        if (!state.BuffersQueued) {
+            voiceIndex = slot;
+            break;
+        }
+    }
+    s_sfxNextVoice = (voiceIndex + 1) % kSfxVoiceCount;
+    /* Invalidate the old token even when an idle voice object is reused. */
+    s_sfxHandles[voiceIndex] = 0;
     if (s_sfxVoices[voiceIndex]) {
         XAUDIO2_VOICE_STATE state;
         s_sfxVoices[voiceIndex]->GetState(&state);
@@ -521,7 +543,7 @@ extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan)
         format.nAvgBytesPerSec = sampleRate * format.nBlockAlign;
         if (FAILED(s_engine->CreateSourceVoice(&s_sfxVoices[voiceIndex], &format))) {
             ++s_sfxMisses;
-            return;
+            return -1;
         }
         s_sfxRates[voiceIndex] = sampleRate;
     }
@@ -529,19 +551,103 @@ extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan)
         s_sfxPcm[voiceIndex][i * 2] = (short) (s_sfxLeftScratch[i] * gain * leftGain);
         s_sfxPcm[voiceIndex][i * 2 + 1] = (short) (s_sfxRightScratch[i] * gain * rightGain);
     }
+    if (FAILED(s_sfxVoices[voiceIndex]->SetFrequencyRatio(1.0f))) {
+        ++s_sfxMisses;
+        s_sfxVoices[voiceIndex]->DestroyVoice();
+        s_sfxVoices[voiceIndex] = 0;
+        s_sfxRates[voiceIndex] = 0;
+        return -1;
+    }
     ZeroMemory(&buffer, sizeof(buffer));
     buffer.AudioBytes = frames * 2u * sizeof(short);
     buffer.pAudioData = reinterpret_cast<const BYTE*>(s_sfxPcm[voiceIndex]);
     buffer.Flags = XAUDIO2_END_OF_STREAM;
     if (FAILED(s_sfxVoices[voiceIndex]->SubmitSourceBuffer(&buffer))) {
         ++s_sfxMisses;
-        return;
+        return -1;
     }
     if (FAILED(s_sfxVoices[voiceIndex]->Start(0))) {
         ++s_sfxMisses;
-        return;
+        /* Submission may have queued PCM even if Start failed. */
+        s_sfxVoices[voiceIndex]->DestroyVoice();
+        s_sfxVoices[voiceIndex] = 0;
+        s_sfxRates[voiceIndex] = 0;
+        return -1;
     }
     ++s_sfxSubmitted;
+    s_sfxHandleSerial = (s_sfxHandleSerial + 1u) & 0x7FFFFFFFu;
+    if (!s_sfxHandleSerial)
+        ++s_sfxHandleSerial;
+    s_sfxHandles[voiceIndex] = static_cast<int>(s_sfxHandleSerial);
+    s_sfxTracks[voiceIndex] = track;
+    return s_sfxHandles[voiceIndex];
+}
+
+extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan)
+{
+    M360_AudioPlaySfx(sfxId, volume, pan, 0);
+}
+
+static void StopSfxSlot(unsigned slot)
+{
+    /* DestroyVoice synchronizes with the audio thread before PCM reuse. */
+    if (s_sfxVoices[slot])
+        s_sfxVoices[slot]->DestroyVoice();
+    s_sfxVoices[slot] = 0;
+    s_sfxRates[slot] = 0;
+    s_sfxHandles[slot] = 0;
+    s_sfxTracks[slot] = 0;
+}
+
+extern "C" void M360_AudioStopSfx(int handle)
+{
+    if (handle <= 0)
+        return;
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i)
+        if (s_sfxHandles[i] == handle)
+            StopSfxSlot(i);
+}
+
+extern "C" void M360_AudioStopSfxTrack(unsigned track)
+{
+    if (track > 255)
+        return;
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i)
+        if (s_sfxHandles[i] && s_sfxTracks[i] == track)
+            StopSfxSlot(i);
+}
+
+extern "C" void M360_AudioStopAllSfx(void)
+{
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i)
+        StopSfxSlot(i);
+}
+
+extern "C" int M360_AudioSfxPlaying(int handle)
+{
+    if (handle <= 0)
+        return 0;
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i) {
+        if (s_sfxHandles[i] == handle && s_sfxVoices[i]) {
+            XAUDIO2_VOICE_STATE state;
+            s_sfxVoices[i]->GetState(&state);
+            return state.BuffersQueued != 0;
+        }
+    }
+    return 0;
+}
+
+extern "C" int M360_AudioSetSfxPitch(int handle, int cents)
+{
+    if (handle <= 0)
+        return 0;
+    if (cents < -1200) cents = -1200;
+    if (cents > 1200) cents = 1200;
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i)
+        if (s_sfxHandles[i] == handle && M360_AudioSfxPlaying(handle))
+            return SUCCEEDED(s_sfxVoices[i]->SetFrequencyRatio(
+                static_cast<float>(pow(2.0, cents / 1200.0))));
+    return 0;
 }
 
 unsigned M360_AudioSfxSubmitted(void)

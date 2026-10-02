@@ -38,6 +38,7 @@
 #include "menu_scene_xdk.h"
 
 extern void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
+extern void M360_AudioStopAllSfx(void);
 
 extern MenuKindData mn_803EB6B0[0x22];
 void HSD_GObj_RunProcs(void);
@@ -54,11 +55,37 @@ static struct GamePrefs s_gamePrefs;
 static HSD_Text* s_texts[16];
 static int s_archiveToken;
 static int s_textTraced;
+static unsigned s_noticeFrames;
+static const char* s_noticeLabel;
+
+static const char* LeafLabel(const char* leaf)
+{
+    static const struct { const char* tag; const char* label; } names[] = {
+        { "misc_records", "MISC RECORDS" }, { "erase_data", "ERASE DATA" },
+        { "screen_display", "SCREEN DISPLAY" }, { "vs_records", "VS RECORDS" },
+        { "event_match", "EVENT MATCH" }, { "movies", "MOVIES" },
+        { "multiman", "MULTI-MAN MELEE" }, { "bonus_records", "BONUS RECORDS" },
+        { "special_data", "SPECIAL DATA" }, { "language", "LANGUAGE" },
+        { "name_entry", "NAME ENTRY" }, { "snapshots", "SNAPSHOTS" },
+        { "sound_test", "SOUND TEST" }, { "sound", "SOUND OPTIONS" },
+        { "rumble", "RUMBLE OPTIONS" }, { "rules", "RULES" }
+    };
+    const char* tag = strchr(leaf, ':');
+    unsigned i;
+    if (tag)
+        for (i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+            if (strcmp(tag + 1, names[i].tag) == 0)
+                return names[i].label;
+    return "THIS SCREEN";
+}
 
 static void ResumeMenu(const char* leaf)
 {
     void (*think)(HSD_GObj*) = mn_803EB6B0[mn_804A04F0.cur_menu].think;
     M360_MenuTrace(leaf, mn_804A04F0.cur_menu);
+    s_noticeLabel = LeafLabel(leaf);
+    s_noticeFrames = 240;
+    mn_804A04F0.entering_menu = 0;
     if (think) {
         HSD_GObjProc* proc = HSD_GObj_SetupProc(GObj_Create(0, 1, 0x80), think, 0);
         proc->flags_3 = (u8) HSD_GObj_804D783C;
@@ -119,7 +146,7 @@ u8 gm_SelKindToCKind(u8 selkind) { return selkind; }
 void gm_80190EA4(void) { M360_MenuTrace("menu.leaf.unported:tournament", 0); }
 s32 mnCharSel_802640A0(void) { M360_MenuTrace("menu.leaf.unported:charsel", 0); return 0; }
 
-int lbAudioAx_80023694(void) { return 0; }
+int lbAudioAx_80023694(void) { M360_AudioStopAllSfx(); return -1; }
 int lbAudioAx_800236DC(void) { return 0; }
 void lbAudioAx_8002392C(void) {}
 int lbAudioAx_80023F28(int bgm) { M360_MenuPlayBgm(bgm); return 0; }
@@ -229,6 +256,8 @@ void M360_MenuSceneEnter(unsigned kind, unsigned selection)
     M360_MenuSceneLeave();
     memset(&s_exitData, 0, sizeof(s_exitData));
     s_exitRequested = 0;
+    s_noticeFrames = 0;
+    s_noticeLabel = NULL;
     data.menu_kind = (u8) kind;
     data.hovered_selection = (u8) selection;
     data.load_assets = 1;
@@ -238,6 +267,8 @@ void M360_MenuSceneEnter(unsigned kind, unsigned selection)
 
 int M360_MenuSceneFrame(void)
 {
+    if (s_noticeFrames)
+        --s_noticeFrames;
     mnMain_Scene_OnFrame();
     if (!s_exitRequested)
         HSD_GObj_RunProcs();
@@ -260,8 +291,19 @@ int M360_MenuSceneFrame(void)
         return M360_MENU_TO_ADVENTURE;
     default:
         M360_MenuTrace("menu.leaf.unported:mode", (unsigned) s_exitData.pending_mode);
+        /* The original menu already requested a scene exit. Rebuild its
+         * current submenu instead of leaving it in the exit animation with
+         * no destination scene; keep the highlighted option for navigation. */
+        M360_MenuSceneEnter(mn_804A04F0.cur_menu, mn_804A04F0.hovered_selection);
+        s_noticeLabel = "THIS MODE";
+        s_noticeFrames = 240;
         return M360_MENU_CONTINUE;
     }
+}
+
+const char* M360_MenuSceneNotice(void)
+{
+    return s_noticeFrames ? s_noticeLabel : NULL;
 }
 
 void M360_MenuSceneRender(void)

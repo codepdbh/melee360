@@ -52,7 +52,54 @@ int main(int argc, char** argv)
     }
     assert(M360_AudioSfxMisses() == 0);
     assert(destroyedPending == 24);
+    M360_AudioStopAllSfx();
+    int trackA = M360_AudioPlaySfx(ids[0], 127, 64, 54);
+    int trackA2 = M360_AudioPlaySfx(ids[1], 127, 64, 54);
+    int trackB = M360_AudioPlaySfx(ids[2], 127, 64, 55);
+    assert(trackA > 0 && trackA2 > 0 && trackB > 0);
+    assert(trackA != trackA2 && trackA2 != trackB);
+    assert(M360_AudioSetSfxPitch(trackB, 1200));
+    assert(lastVoice->pitch == 2.0f);
+    assert(M360_AudioSetSfxPitch(trackB, -2400));
+    assert(lastVoice->pitch == 0.5f);
+    assert(!M360_AudioSetSfxPitch(-1, 100));
+    M360_AudioStopSfxTrack(54);
+    assert(!M360_AudioSfxPlaying(trackA));
+    assert(!M360_AudioSfxPlaying(trackA2));
+    assert(M360_AudioSfxPlaying(trackB));
+    M360_AudioStopSfx(trackB);
+    assert(!M360_AudioSfxPlaying(trackB));
+    assert(!M360_AudioSetSfxPitch(trackB, 0));
+
+    int stale = M360_AudioPlaySfx(ids[0], 127, 64, 1);
+    int current = -1;
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i)
+        current = M360_AudioPlaySfx(ids[i % 4], 127, 64, 2);
+    assert(!M360_AudioSfxPlaying(stale));
+    M360_AudioStopSfx(stale);
+    assert(M360_AudioSfxPlaying(current));
+    assert(lastVoice->pitch == 1.0f);
+    M360_AudioStopSfx(-1);
+    M360_AudioStopSfx(0);
+    M360_AudioStopSfxTrack(256);
+    assert(M360_AudioSfxPlaying(current));
+    // Natural completion is reported without stopping unrelated voices.
+    lastVoice->pending = false;
+    assert(!M360_AudioSfxPlaying(current));
+    IXAudio2SourceVoice* finishedVoice = lastVoice;
+    int reused = M360_AudioPlaySfx(ids[3], 127, 64, 3);
+    assert(reused > 0 && lastVoice == finishedVoice);
+    assert(M360_AudioSfxPlaying(reused));
+    M360_AudioStopSfx(current);
+    assert(M360_AudioSfxPlaying(reused));
+    assert(M360_AudioPlaySfx(ids[0], 127, 64, 256) == -1);
+    M360_AudioStopAllSfx();
+    for (unsigned i = 0; i < kSfxVoiceCount; ++i) {
+        assert(!s_sfxVoices[i]);
+        assert(!s_sfxHandles[i]);
+    }
     printf("PASS: %u SEM streams resolve; %u bank boundaries reject spillover; "
            "32 real submissions preserve PCM/pan/volume and live buffers\n", valid, rejected);
+    puts("PASS: track/voice stop, stale tokens, natural completion and scene cleanup");
     return 0;
 }

@@ -207,6 +207,11 @@ bool lb_8000B074(HSD_JObj* jobj);
 void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
 
 extern void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
+extern int M360_AudioPlaySfx(unsigned sfxId, unsigned volume, unsigned pan, unsigned track);
+extern void M360_AudioStopSfx(int handle);
+extern void M360_AudioStopSfxTrack(unsigned track);
+extern int M360_AudioSfxPlaying(int handle);
+extern int M360_AudioSetSfxPitch(int handle, int cents);
 
 typedef union AnimFn {
     void (*fn)(void);
@@ -589,7 +594,7 @@ static M360LoadedKind* LoadKind(unsigned index)
     return k;
 }
 
-/* Costume model (PlXxNr/Ye/...); falls back to the default costume. */
+/* Costume model (PlXxNr/Ye/...); failed loads remain visible to the caller. */
 static int LoadCostume(M360LoadedKind* k, const M360KindDesc* desc, unsigned costume)
 {
     if (costume >= kMaxCostumes || !desc->costumeDat[costume])
@@ -605,14 +610,23 @@ static int LoadCostume(M360LoadedKind* k, const M360KindDesc* desc, unsigned cos
                 k->costumeMatAnim[costume] = M360_ArchiveFind(archive, desc->costumeMatAnim[costume]);
         }
     }
-    if (!k->costumeJoint[costume] && costume)
-        return LoadCostume(k, desc, 0);
     return k->costumeJoint[costume] ? (int) costume : -1;
 }
 
 unsigned M360_FighterKindCount(void)
 {
     return kSelectableKinds;
+}
+
+unsigned M360_FighterCostumeCount(unsigned kindIndex)
+{
+    unsigned count = 0;
+    if (kindIndex >= kKindCount)
+        return 1;
+    while (count < kMaxCostumes && s_kinds[kindIndex].costumeDat[count] &&
+           s_kinds[kindIndex].costumeJoint[count])
+        ++count;
+    return count ? count : 1;
 }
 
 const char* M360_FighterKindName(unsigned index)
@@ -625,7 +639,7 @@ void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume)
     if (slot < 0 || slot >= kMaxFighters)
         return;
     s_selectKind[slot] = kindIndex < kSelectableKinds ? kindIndex : 0;
-    s_selectCostume[slot] = costume;
+    s_selectCostume[slot] = costume % M360_FighterCostumeCount(s_selectKind[slot]);
 }
 
 static const M360KindDesc* KindDesc(FighterKind kind, M360LoadedKind** loaded)
@@ -1650,9 +1664,11 @@ void Camera_GetTransformPosition(Vec* out)
 /* lbAudioAx_800237A8: one-shot SFX; the id translation is the identity. */
 int lbAudioAx_800237A8(enum_t sfx_id, int sfx_vol, int sfx_pan)
 {
-    if (sfx_id != 0x83D60 && sfx_id != 0x83D61)
-        M360_AudioSfx((unsigned) sfx_id, (unsigned) sfx_vol, (unsigned) sfx_pan);
-    return 0;
+    if (sfx_id < 0 || sfx_id >= 0x83D60)
+        return -1;
+    return M360_AudioPlaySfx((unsigned) sfx_id,
+        (unsigned) (sfx_vol < 0 ? 0 : sfx_vol),
+        (unsigned) (sfx_pan < 0 ? 0 : sfx_pan), 0);
 }
 
 int lbAudioAx_800233EC(int sfx_id)
@@ -1662,8 +1678,18 @@ int lbAudioAx_800233EC(int sfx_id)
 
 int lbAudioAx_800236B8(int handle)
 {
-    (void) handle;
-    return 0;
+    M360_AudioStopSfx(handle);
+    return -1;
+}
+
+bool lbAudioAx_80023710(int handle)
+{
+    return M360_AudioSfxPlaying(handle) != 0;
+}
+
+int lbAudioAx_80024B94(int handle, int cents)
+{
+    return M360_AudioSetSfxPitch(handle, cents);
 }
 
 /* lbArchive_80017040: load an archive and resolve (out, name) pairs. Like the
@@ -2711,17 +2737,27 @@ void ft_PlaySFX(Fighter* fp, enum_t sfx_id, u8 sfx_vol, u8 sfx_pan)
 {
     sfx_id = ft_80087D0C(fp, sfx_id);
     fp->x2160 = lbAudioAx_800237A8(sfx_id, sfx_vol, sfx_pan);
+    lbAudioAx_80024B94(fp->x2160,
+        sfx_id >= 332 && sfx_id <= 370 ? HSD_Randi(200) - 100 : 0);
 }
 
-/* lbAudioAx_80023870: fighter voice/SFX tracks. Key-off requests (0x83D61)
- * and the list terminator (0x83D60) have no native voice to stop; other ids
- * go to the SSM player. The track number serves as the handle. */
+/* Preserve the original track key-off protocol and return a voice token,
+ * so a delayed stop cannot kill a different sound after slot reuse. */
 int lbAudioAx_80023870(int id, int vol, int pan, int track)
 {
-    if (id == 0x83D60 || id == 0x83D61)
+    if (track == 0)
+        return lbAudioAx_800237A8(id, vol, pan);
+    if (track < 0 || track > 255)
         return -1;
-    M360_AudioSfx((unsigned) id, (unsigned) vol, (unsigned) pan);
-    return track;
+    if (id == 0x83D61) {
+        M360_AudioStopSfxTrack((unsigned) track);
+        return -1;
+    }
+    if (id < 0 || id >= 0x83D60)
+        return -1;
+    return M360_AudioPlaySfx((unsigned) id,
+        (unsigned) (vol < 0 ? 0 : vol),
+        (unsigned) (pan < 0 ? 0 : pan), (unsigned) track);
 }
 
 static void ProcHit(HSD_GObj* gobj)
@@ -2789,7 +2825,13 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     memset(f, 0, sizeof(*f));
     fp = &f->fighter;
     gobj = GObj_Create(HSD_GOBJ_CLASS_FIGHTER, 8, 0);
+    if (!gobj)
+        return NULL;
     root = HSD_JObjLoadJoint(kind->costumeJoint[costume]);
+    if (!root) {
+        HSD_GObjFree(gobj);
+        return NULL;
+    }
     HSD_JObjAddAnimAll(root, NULL, kind->costumeMatAnim[costume], NULL);
     HSD_JObjReqAnimAll(root, 0.0f);
     HSD_JObjAnimAll(root);
@@ -2901,8 +2943,8 @@ void* M360_FighterSpawn(int slot, float x, float y, float facing, int port)
     if (slot < 0 || slot >= kMaxFighters)
         return NULL;
     if (!LoadKind(s_selectKind[slot])) {
-        M360_MatchTrace("fighter.kind.fallback", s_selectKind[slot]);
-        s_selectKind[slot] = 0;
+        M360_MatchTrace("fighter.kind.load_failed", s_selectKind[slot]);
+        return NULL;
     }
     s_entities[slot][0] = s_entities[slot][1] = NULL;
     s_nanaCpu[slot] = 0;

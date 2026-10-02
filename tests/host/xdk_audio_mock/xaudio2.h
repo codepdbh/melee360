@@ -13,7 +13,9 @@ public:
     const BYTE* active;
     std::vector<short> captured;
     bool pending;
-    IXAudio2SourceVoice() : active(0), pending(false) {}
+    float pitch;
+    IXAudio2SourceVoice() : active(0), pending(false), pitch(1.0f) {}
+    HRESULT SetFrequencyRatio(float ratio) { pitch = ratio; return S_OK; }
     HRESULT Stop(unsigned) { return S_OK; }
     HRESULT FlushSourceBuffers() { return S_OK; }
     HRESULT Start(unsigned) { return S_OK; }

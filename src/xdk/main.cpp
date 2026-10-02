@@ -662,7 +662,8 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
         g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
         AddText(g_dynamic, x, 310, campaignCpu ? "RANDOM" : M360_FighterKindName(match.selectKind[i]), slots > 2 ? 2 : 3);
         if (!campaignCpu) {
-            _snprintf(line, sizeof(line), "COLOR %u", match.selectCostume[i] + 1);
+            _snprintf(line, sizeof(line), "COLOR %u/%u", match.selectCostume[i] + 1,
+                M360_FighterCostumeCount(match.selectKind[i]));
             line[sizeof(line) - 1] = '\0';
             AddText(g_dynamic, x, 360, line, 2);
         }
@@ -671,11 +672,19 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     }
     g_dynamic.count = 0;
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    if (match.loadFailedSlot) {
+        char line[80];
+        _snprintf(line, sizeof(line), "P%u COULD NOT LOAD. CHOOSE ANOTHER FIGHTER OR PRESS B.", match.loadFailedSlot);
+        line[sizeof(line) - 1] = 0;
+        AddText(g_dynamic, 210, 495, line, 2);
+    }
     AddText(g_dynamic, 250, 530, "LEFT/RIGHT: FIGHTER   X/Y: COLOR   A: CONFIRM   B: BACK", 2);
     if (!match.campaignRounds) {
         AddText(g_dynamic, 250, 570, "P1 PICKS THE CPUS. OTHER PADS: PRESS A BUTTON TO JOIN", 2);
         AddText(g_dynamic, 250, 610, "DPAD UP/DOWN: STAGE  RB: STOCKS  LB: CPU LV  RT: PLAYERS  START: ITEMS", 2);
         AddText(g_dynamic, 250, 640, "RIGHT STICK UP/DOWN: STOCK OR TIME MATCH", 2);
+    } else {
+        AddText(g_dynamic, 250, 570, "LB: CPU LEVEL", 2);
     }
     RenderBatch(renderer, g_dynamic);
 }
@@ -705,13 +714,16 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
             AddText(g_dynamic, 588, 230, "TIME", 5);
         if (match.draw)
             _snprintf(line, sizeof(line), "DRAW");
+        else if (match.campaignRounds)
+            _snprintf(line, sizeof(line), match.winner == 0 ? "ROUND CLEAR" : "GAME OVER");
         else
             _snprintf(line, sizeof(line), "%s WINS", PlayerTag(match.winner, match.human[match.winner & 3] != 0));
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 548, 300, line, 6);
         AddText(g_dynamic, 400, 382,
-                match.campaignRounds && match.winner == 0
-                    ? "A: NEXT FIGHT   B: MAIN MENU"
+                match.campaignRounds && !match.draw && match.winner == 0
+                    ? (match.campaignRound + 1 >= match.campaignRounds
+                        ? "A: FINISH   B: MAIN MENU" : "A: NEXT FIGHT   B: MAIN MENU")
                     : "B: RETURN TO MAIN MENU", 2);
         RenderBatch(renderer, g_dynamic);
     }
@@ -1138,6 +1150,16 @@ void __cdecl main()
         M360_MovieGetStatus(&movie);
         M360MatchStatus match;
         M360_MatchGetStatus(&match);
+        if (menuScene && M360_MenuSceneNotice()) {
+            const SpriteColor notice = { 0.02f, 0.03f, 0.07f, 0.94f };
+            renderer.Begin();
+            renderer.AddQuad(230, 592, 820, 90, notice);
+            g_dynamic.count = 0;
+            AddText(g_dynamic, 260, 608, M360_MenuSceneNotice(), 2);
+            AddText(g_dynamic, 260, 644, "STILL IN DEVELOPMENT", 2);
+            RenderBatch(renderer, g_dynamic);
+            renderer.End(device);
+        }
         if (matchScene) {
             renderer.Begin();
             RenderMatchHud(renderer, match);

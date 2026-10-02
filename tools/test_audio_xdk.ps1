@@ -47,9 +47,34 @@ foreach ($signature in @('s32 ft_80087C70(', 's32 ft_80087D0C(')) {
 $commonText = Get-Content -Raw (Join-Path $upstreamSrc 'ft/ftcommon.c')
 $selection += Get-SoundFunction $commonText 'bool ftCommon_80080144('
 Set-Content -LiteralPath (Join-Path $out 'fighter_sfx_original.h') -Encoding ASCII $selection
+$renderText = Get-Content -Raw (Join-Path $root 'src/xdk/hsd_render_xdk.cpp')
+$cache = (Get-SoundFunction $renderText 'struct TextureEntry {') + ";`r`n"
+$cache += "const unsigned kMaxTextures = 4;`r`nTextureEntry s_textures[kMaxTextures];`r`nunsigned s_textureCount, s_textureAge;`r`n"
+foreach ($signature in @('bool TextureMatches(', 'void CacheTexture(', 'void M360_HsdRenderClearTextures(')) {
+    $cache += (Get-SoundFunction $renderText $signature) + "`r`n"
+}
+Set-Content -LiteralPath (Join-Path $out 'texture_cache_original.h') -Encoding ASCII $cache
+$vertex = ''
+foreach ($signature in @('struct HsdVertex {', 'struct MatrixSet {', 'struct RawVertex {')) {
+    $vertex += (Get-SoundFunction $renderText $signature) + ";`r`n"
+}
+foreach ($signature in @('unsigned Read16(', 'unsigned Read32(', 'unsigned ComponentSize(',
+    'float ReadComponent(', 'unsigned DirectSize(', 'unsigned Expand4(', 'void DecodeColor(',
+    'bool ParseVertex(', 'void Transform(')) {
+    $vertex += (Get-SoundFunction $renderText $signature) + "`r`n"
+}
+Set-Content -LiteralPath (Join-Path $out 'gx_vertex_original.h') -Encoding ASCII $vertex
 $batch = @"
 @echo off
 call "$VcVars" >nul 2>&1
+if errorlevel 1 exit /b 1
+cl /nologo /MT /O2 /EHsc /W4 /WX /I"$out" /I"$root\upstream\melee-pc\src\sdk_include" /Fo"$out\test_gx_vertex.obj" /Fe"$out\test_gx_vertex.exe" "$root\tests\host\test_gx_vertex.cpp"
+if errorlevel 1 exit /b 1
+"$out\test_gx_vertex.exe"
+if errorlevel 1 exit /b 1
+cl /nologo /MT /O2 /EHsc /W4 /WX /I"$out" /Fo"$out\test_texture_cache.obj" /Fe"$out\test_texture_cache.exe" "$root\tests\host\test_texture_cache.cpp"
+if errorlevel 1 exit /b 1
+"$out\test_texture_cache.exe"
 if errorlevel 1 exit /b 1
 cl /nologo /MT /O2 /EHsc /W4 /WX /I"$out" /Fo"$out\test_fighter_sfx.obj" /Fe"$out\test_fighter_sfx.exe" "$root\tests\host\test_fighter_sfx.cpp"
 if errorlevel 1 exit /b 1

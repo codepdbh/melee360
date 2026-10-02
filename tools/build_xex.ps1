@@ -182,6 +182,12 @@ foreach ($required in @($compiler, $linker, $imagexex, $shaderCompiler,
 
 New-Item -ItemType Directory -Path $build, $dist -Force | Out-Null
 
+# Retain the original BGM ID-to-file mapping rather than guessing stage music.
+$audioMetadata = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/lb/lbaudio_ax.static.h')
+$bgmTable = [regex]::Match($audioMetadata, '(?s)static const char\* hps_files\[\] = \{.*?\n\};')
+if (-not $bgmTable.Success) { throw 'Original HPS file table not found.' }
+Set-Content -Encoding ASCII (Join-Path $build 'melee_bgm_files.h') ($bgmTable.Value.Replace('hps_files', 'g_m360BgmFiles'))
+
 # -CallTrace also instruments the C units compiled here (HSD baselib and
 # original lb/menu code) with /Gh; C++ bridges stay uninstrumented.
 $clPath = $compiler
@@ -704,8 +710,18 @@ Set-Content -Encoding ASCII $linkResponse ($linkArgs | ForEach-Object { '"' + $_
 if ($LASTEXITCODE -ne 0) { throw 'XDK PE link failed.' }
 
 Write-Host '[M360][XEX] building dist/default.xex'
-& $imagexex "/IN:$pe" "/OUT:$xex"
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $xex)) {
+# imagexex writes its normal version banner to stderr. Windows PowerShell
+# wraps that as NativeCommandError when the caller captures all streams;
+# check the process exit code instead of treating the banner as a build error.
+$imageErrorPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = 'Continue'
+    & $imagexex "/IN:$pe" "/OUT:$xex"
+    $imageExitCode = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $imageErrorPreference
+}
+if ($imageExitCode -ne 0 -or -not (Test-Path -LiteralPath $xex)) {
     throw 'imagexex failed.'
 }
 
