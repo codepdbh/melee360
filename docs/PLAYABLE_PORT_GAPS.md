@@ -7,6 +7,100 @@ controller play on a physical Xbox 360 remains unverified.
 
 ## Verified current path
 
+The normal build starts at the opening movie, then title, original menu,
+native fighter/stage selection and match. Diagnostic `-BootToMatch` and
+`-InputScript` builds are opt-in and must not replace the live-input release.
+
+## Native lifecycle fixes (2026-10-02)
+
+SFX now return voice tokens instead of placeholder handles. Individual stops,
+track key-off, completion queries and pitch changes reach XAudio2; reused slots
+invalidate old tokens, restore neutral pitch and prefer completed voices over
+interrupting active ones. Scene transitions stop effects from the previous scene.
+The original fighter hit-sound pitch variation is restored. Eight simultaneous
+native voices and the simplified SEM stream resolver remain limitations.
+
+Texture cache identity includes dimensions, format and palette metadata, with
+LRU eviction, retry after failed upload and release on scene transitions. Host
+regressions exercise these rules using the actual cache implementation. This
+does not complete GX materials, lighting or TEV.
+
+Unimplemented menu leaves display a temporary notice and resume navigation;
+unsupported scene exits rebuild their current submenu so it remains usable.
+Those destinations are still unimplemented. Match music now uses the original
+HPS filename table and the stage archive's base StageParam row (VS/1P columns),
+with separate character-selection music. Alternate music and the full campaign
+stage sequence remain pending.
+
+## Stock and campaign state fixes (2026-10-02)
+
+The provisional Classic/Adventure route now starts with the original default
+of three player lives, retains losses across its rounds and gives each ordinary
+opponent one stock. A fresh run resets the player lives. Result prompts distinguish
+round clear, game over and the final round; a draw cannot advance the campaign.
+The original encounter order, bonus stages, bosses and campaign results are
+still missing, so this remains a five-fight scaffold.
+
+Stock matches ignore eliminated fighter slots and decide the result after all
+fighters' blast-zone checks for the frame. This prevents repeated stock-loss
+notifications while surviving players fight and prevents a false winner when
+the last two fighters fall together. Timed matches retain unlimited respawns.
+`tools/test_match_rules.ps1` executes the actual match frame function with mocked
+fighters/HUD, covering these cases and campaign life/reset rules. Re-entering a
+match now uses a single teardown through the flow state transition.
+
+A scripted Xenia run in `dist/classic-rules-final-20261002/` traversed opening,
+title, 1P menu, Classic submenu and character selection. Its fight recorded
+player lives dropping to 2, 1 and 0, then winner 1 and a B-button return to the
+main menu without an observed hang. It does not verify advancing an entire
+campaign. The final `dist/default.xex` is rebuilt with normal boot/live input
+and passes the XDK image dump check.
+
+## Selection and load recovery (2026-10-02)
+
+Costume selection uses each fighter's actual archive count, including wraparound
+and normalization when changing characters. Duplicate fighters receive distinct
+available colors with a bounded search. The UI shows the color index and count.
+Changing player count clears old confirmations and removed human slots;
+disconnecting a pad during selection makes that slot available as a CPU again.
+Previous stick edges are reset when entering selection.
+
+A failed fighter/costume load no longer silently substitutes Mario or the
+default costume. A partial match load frees its scene, resets fighters/effects,
+rebuilds the stage and returns to selection with a load-failure message. Failed
+GObj/JObj allocation is checked before constructing a fighter. The automated
+match harness exits a failed load instead of waiting indefinitely at selection.
+Host tests execute the actual selection/start functions with injected load
+failure, then verify a successful retry. A read-only audit of the user's ISO
+found all 120 costume archives and their model/material-animation public roots.
+
+The scripted Xenia run in `dist/selection-20261002/` traversed opening/title/VS,
+cycled Luigi's four colors, selected two Luigi with the same requested color
+and loaded `PlLgNr.dat`/`PlLgWh.dat` as distinct costumes 0/1. It reached match
+frame 631, paused and returned to the menu without an observed hang. Partial
+load recovery and pad-disconnect behavior are host-test evidence, not hardware
+tests. The final normal-boot/live-input XEX passes `imagexex /DUMP`.
+
+## GX vertex and UV fixes (2026-10-02)
+
+Indexed NBT3 normals consume all three indices (three/six bytes for index8/16)
+before the next vertex attribute, matching upstream Aurora's GX display-list
+reader. The port still uses only the normal vector; tangent/binormal-dependent
+bump mapping remains unsupported. Truncated tuples, absent indexed arrays and
+unknown attribute types fail parsing instead of shifting the remaining stream.
+
+The raw vertex retains TEX0 through TEX7. Each of the two supported material
+texture slots selects its requested UV set before upload, so TEX2-TEX7 no longer
+fall back to TEX0. The GPU vertex layout stays at 56 bytes. This does not lift
+the two-texture material limit or implement the missing TEV/texgen modes.
+`tools/test_audio_xdk.ps1` tests the actual parser/transform functions for NBT3
+index8/16 alignment, tuple truncation, direct normals and all eight UV sets,
+alongside existing texture-cache, CMPR and sound tests. A read-only audit of
+9,977 costume meshes found TEX0/TEX1 and no indexed NBT3, so these fixes alone
+do not explain all reported fighter appearance defects.
+
+## Earlier runtime evidence
+
 `main.cpp` runs the original menu scene through the shared HSD renderer. VS
 selection enters `M360_MatchEnter`, which loads a selected stage, creates its
 stage/camera objects and loads selected fighters from the user's ISO. The match
@@ -51,8 +145,9 @@ The native `ft_PlaySFX` bridge now calls the original `ft_80087D0C` selector,
 with `ft_80087C70` and the original audio range/voice-threshold tables extracted
 at build time. This restores size and metal sound variants and the Ice Climbers'
 costume-dependent voice swap. The US language mapping remains the existing
-identity bridge; the full SEM interpreter, track key-off and pitch handling
-are still incomplete.
+identity bridge. Native sound handles now support individual/track stop,
+completion queries and pitch adjustment, but the full SEM interpreter remains
+incomplete.
 
 SEM lookup now rejects a local sound ID at the next bank's boundary, following
 `AXDriver_8038CFF4`, instead of allowing it to play another bank's stream.

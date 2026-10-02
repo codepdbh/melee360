@@ -4,9 +4,11 @@
 #include "melee_flow_xdk.h"
 #include "melee_archive_xdk.h"
 #include "melee_movie_xdk.h"
+#include "hsd_render_xdk.h"
 #include "melee_title_scene_xdk.h"
 #include "menu_scene_xdk.h"
 #include "match_xdk.h"
+#include "melee_bgm_files.h"
 
 extern "C" int HSD_Randi(int max_val);
 
@@ -31,6 +33,7 @@ bool s_allCharactersUnlocked = false;
 MeleeFlow* s_flow;
 MeleeAudioStatus* s_audio;
 int s_playingBgm = -1;
+const char* s_matchMusic;
 bool s_menuAvailable;
 bool s_menuActive;
 
@@ -61,8 +64,29 @@ void ChooseMenuBgm(MeleeFlow* flow)
     M360_Trace("menu.bgm.choice", flow->rulesBgm);
 }
 
+void UpdateMatchMusic(MeleeAudioStatus* audio)
+{
+    M360MatchStatus status;
+    M360_MatchGetStatus(&status);
+    const int bgm = M360_MatchBgmId();
+    const char* file = status.selecting ? "s_select.hps" :
+        (bgm >= 0 && static_cast<unsigned>(bgm) < sizeof(g_m360BgmFiles) / sizeof(g_m360BgmFiles[0])
+            ? g_m360BgmFiles[bgm] : NULL);
+    if (!file || (s_matchMusic && !strcmp(s_matchMusic, file)))
+        return;
+    s_matchMusic = file;
+    char path[48];
+    _snprintf(path, sizeof(path), "audio/%s", file);
+    path[sizeof(path) - 1] = 0;
+    const bool playing = M360_AudioPlay(path, audio);
+    M360_Trace("audio.match.bgm", status.selecting ? 0xFFFFFFFFu : static_cast<unsigned>(bgm));
+    M360_Trace("audio.match.background", playing);
+    M360_Trace("audio.match.file_found", audio->fileFound);
+}
+
 void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
 {
+    M360_AudioStopAllSfx();
     if (flow->state == kFlowOpening && state != kFlowOpening) {
         M360_MovieClose();
         MeleeMovieStatus movie;
@@ -78,6 +102,7 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
     }
     if (flow->state == kFlowMatch && state != kFlowMatch)
         M360_MatchLeave();
+    M360_HsdRenderClearTextures();
     flow->state = state;
     flow->sceneTick = 0;
     ++flow->transitions;
@@ -115,9 +140,8 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         flow->titleVisible = false;
         M360_MatchSetMode(flow->gameMode, flow->campaignRound);
         M360_MatchEnter();
-        const bool playing = M360_AudioPlay("audio/vl_battle.hps", audio);
-        M360_Trace("audio.match.background", playing);
-        M360_Trace("audio.match.file_found", audio->fileFound);
+        s_matchMusic = NULL;
+        UpdateMatchMusic(audio);
     } else {
         flow->menuSelection = 0;
         flow->menuKind = 0;
@@ -219,6 +243,8 @@ void UpdateMatch(MeleeFlow* flow, MeleeAudioStatus* audio)
 {
     ++flow->sceneTick;
     const int result = M360_MatchFrame();
+    if (result == M360_MATCH_CONTINUE)
+        UpdateMatchMusic(audio);
     if (result == M360_MATCH_TO_MENU) {
         flow->gameMode = kGameModeVs;
         flow->campaignRound = 0;
@@ -231,11 +257,9 @@ void UpdateMatch(MeleeFlow* flow, MeleeAudioStatus* audio)
             flow->campaignRound = 0;
             EnterState(flow, kFlowMainMenu, audio);
         } else {
-            M360_MatchLeave();
             EnterState(flow, kFlowMatch, audio);
         }
     } else if (result == M360_MATCH_RESTART) {
-        M360_MatchLeave();
         EnterState(flow, kFlowMatch, audio);
     }
 }
