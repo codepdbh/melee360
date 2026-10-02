@@ -42,6 +42,7 @@ typedef struct M360MatchAutoConfig {
 } M360MatchAutoConfig;
 
 void M360_MatchSetAutoConfig(const M360MatchAutoConfig* config);
+int M360_MatchBgmId(void);
 
 enum { M360_MAX_STAGE_LINES = 512 };
 
@@ -100,6 +101,7 @@ typedef struct M360MatchStatus {
     unsigned draw;
     unsigned suddenDeath;
     unsigned debugHitboxes;
+    unsigned loadFailedSlot; /* 1-based slot; 0 means no load failure. */
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
@@ -148,6 +150,7 @@ void M360_FighterBuildIslands(void);
 void M360_FighterFollowFloors(void);
 void M360_FighterEffectsInit(void);
 unsigned M360_FighterKindCount(void);
+unsigned M360_FighterCostumeCount(unsigned kindIndex);
 const char* M360_FighterKindName(unsigned index);
 void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume);
 unsigned M360_FighterKindIndex(void* gobj);

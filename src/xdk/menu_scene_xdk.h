@@ -19,6 +19,7 @@ int M360_MenuSceneFrame(void);
 void M360_MenuSceneRender(void);
 void M360_MenuSceneLeave(void);
 void M360_MenuSceneState(unsigned* kind, unsigned* selection);
+const char* M360_MenuSceneNotice(void);
 
 void M360_MenuTrace(const char* stage, unsigned value);
 void* M360_MenuSymbol(const char* name);
