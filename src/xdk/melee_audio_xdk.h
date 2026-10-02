@@ -30,9 +30,17 @@ void M360_AudioUpdate(MeleeAudioStatus* status);
 unsigned M360_AudioSfxSubmitted(void);
 unsigned M360_AudioSfxMisses(void);
 #ifdef __cplusplus
-extern "C" void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
-#else
+extern "C" {
+#endif
 void M360_AudioSfx(unsigned sfxId, unsigned volume, unsigned pan);
+int M360_AudioPlaySfx(unsigned sfxId, unsigned volume, unsigned pan, unsigned track);
+void M360_AudioStopSfx(int handle);
+void M360_AudioStopSfxTrack(unsigned track);
+void M360_AudioStopAllSfx(void);
+int M360_AudioSfxPlaying(int handle);
+int M360_AudioSetSfxPitch(int handle, int cents);
+#ifdef __cplusplus
+}
 #endif
 
 #endif
