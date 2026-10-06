@@ -187,8 +187,8 @@ or a finished match. Objective pilots cannot pass merely by reaching a frame
 target or an automatic match-end counter.
 
 `./tools/test_route_pilot.ps1` extracts the diagnostic navigation helpers and
-checks connected ceiling spans, reversed endpoints, inactive geometry and
-corner selection. These helpers produce ordinary PAD input and are excluded
+checks connected ceiling and combat-floor spans, reversed endpoints, inactive
+geometry and corner selection. These helpers produce ordinary PAD input and are excluded
 from the normal live-input build.
 
 To test a separately linked prototype without replacing the default diagnostic
@@ -198,8 +198,13 @@ race pilot. The saved twenty-phase diagnostic uses the default count of 20.
 An explicit prototype path cannot be combined with `-Build`.
 
 Normal builds generate the twenty-phase Adventure table. To include the
-experimental F-Zero terrain course, build with `./tools/build_xex.ps1
--ExperimentalRace`. The soak harness also accepts `-ExperimentalRace -Build`;
+experimental F-Zero terrain course, build with:
+
+```powershell
+./tools/build_xex.ps1 -ExperimentalRace
+```
+
+The soak harness also accepts `-ExperimentalRace -Build`;
 use `-AdventurePhaseCount 21` when testing its separately linked executable.
 Traffic and car collisions remain unfinished; this option is experimental.
 
