@@ -22,7 +22,10 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`DBF616E6B00A7C8F3B33CA95B4AF23872250CFDD437B618BED9E0492E7667565`.
+`C7272C2962895FEBC3A02F6A2ECAB7CA28F0FAFF42A249F9ADCC9984A7C9727C`.
+This build restores only traversal groups 0-7 after a maze fight, preserving
+the original disabled state of other arena groups. A normal-boot smoke test
+presented 1,194 opening frames without movie errors or a watchdog alert.
 It also uses the original grab wall-occlusion query; host tests verify the
 ECB center coordinates and wall-side choice. The complete runtime grab
 interaction across all stages remains unverified.

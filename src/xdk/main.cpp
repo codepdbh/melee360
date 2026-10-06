@@ -693,7 +693,9 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     } else {
         AddText(g_dynamic, 250, 570, match.gameMode == 4 ? "LB: DIFFICULTY" : "LB: CPU LEVEL", 2);
         AddText(g_dynamic, 250, 610, match.gameMode == 4
-            ? "MUSHROOM KINGDOM, MAZE, BRINSTAR ESCAPE, F-ZERO AND BATTLES"
+            ? (match.campaignRounds > 20
+                ? "MUSHROOM KINGDOM, MAZE, BRINSTAR ESCAPE, F-ZERO AND BATTLES"
+                : "MUSHROOM KINGDOM, UNDERGROUND MAZE, BRINSTAR ESCAPE AND BATTLES")
             : "COMBAT PREVIEW - SPECIAL STAGES AND BOSSES PENDING", 2);
     }
     RenderBatch(renderer, g_dynamic);
