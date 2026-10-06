@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch] $BootToMatch, [switch] $InputScript, [switch] $CallTrace)
+param([switch] $BootToMatch, [switch] $InputScript, [switch] $CallTrace, [switch] $ExperimentalRace)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -188,7 +188,9 @@ $bgmTable = [regex]::Match($audioMetadata, '(?s)static const char\* hps_files\[\
 if (-not $bgmTable.Success) { throw 'Original HPS file table not found.' }
 Set-Content -Encoding ASCII (Join-Path $build 'melee_bgm_files.h') ($bgmTable.Value.Replace('hps_files', 'g_m360BgmFiles'))
 & (Join-Path $PSScriptRoot 'generate_classic_matchups.ps1') -OutputPath (Join-Path $build 'melee_classic_matchups.h')
-& python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $build 'melee_adventure_matchups.h')
+$adventureGeneratorArgs = @((Join-Path $PSScriptRoot 'generate_adventure_matchups.py'), (Join-Path $build 'melee_adventure_matchups.h'))
+if ($ExperimentalRace) { $adventureGeneratorArgs += '--experimental-race' }
+& python $adventureGeneratorArgs
 if ($LASTEXITCODE -ne 0) { throw 'Adventure encounter generation failed.' }
 
 # -CallTrace also instruments the C units compiled here (HSD baselib and

@@ -28,13 +28,20 @@ $script:MapSymbols = $null; $script:MapCodeEnd = 0
 Assert-Rule ((Resolve-Address '0x82060048') -eq 'Next+0x8') 'Valid code address did not resolve.'
 Assert-Rule ((Resolve-Address '0x82060120') -eq '0x82060120') 'Heap/data pointer was mislabeled as the last function.'
 Assert-Rule ((Resolve-Address '0x8205FFFF') -eq '0x8205FFFF') 'Address before code was mislabeled.'
-$config = [pscustomobject]@{ Script = 'adventurepilot'; Repeat = 1; TargetFrame = 99999; Mode = 4 }
+$config = [pscustomobject]@{ Script = 'adventurepilot'; Repeat = 1; TargetFrame = 99999; Mode = 4; Seed = -1 }
 $trace = Read-Fixture "match.campaign.preview_complete: 4`n"
 Assert-Rule (-not $trace.CampaignComplete) 'Final match marker must not establish flow completion.'
 Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Incomplete flow incorrectly passed.'
 $trace = Read-Fixture "mode.preview_complete: 4`nloop.flow_state: 2`n"
 Assert-Rule $trace.CampaignComplete 'Flow completion marker was missed.'
 Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Completed flow failed.'
+$config.Seed = 12000
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'An ignored diagnostic seed must not pass.'
+Assert-Rule (-not (Test-RunComplete $config "mode.preview_complete: 4`n" $false)) 'Seed mismatch stopped the run.'
+$trace = Read-Fixture "auto.random.seed: 12000`nmode.preview_complete: 4`n"
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Matching diagnostic seed was rejected.'
+Assert-Rule (Test-RunComplete $config "auto.random.seed: 12000`nmode.preview_complete: 4`n" $false) 'Matching seeded completion did not stop the run.'
+$config.Seed = -1
 $trace = Read-Fixture "mode.preview_complete: 3`n"
 Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Classic completion must not establish an Adventure clear.'
 Assert-Rule (-not (Test-RunComplete $config "mode.preview_complete: 3`n" $false)) 'Wrong campaign mode stopped the Adventure run.'
@@ -93,6 +100,7 @@ $AdventurePhaseCount = 20
 $matrix20 = @(Get-SoakMatrix)
 Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-from-maze-pilot').Round -eq 4) 'Maze transition campaign must start at the maze.'
 Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-from-maze-pilot').Script -eq 'adventurepilot') 'Maze transition campaign must require campaign completion, not just a maze clear.'
+Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-from-maze-very-easy-pilot').CpuLevel -eq 1) 'Very Easy transition test must use the original lowest difficulty.'
 Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-wireframe-wave-pilot').Round -eq 16) 'Twenty-phase wireframe round shifted.'
 Assert-Rule (-not ($matrix20 | Where-Object Name -eq 'adventure-race-pilot')) 'Twenty-phase build must not select the race.'
 $AdventurePhaseCount = 21
@@ -100,4 +108,16 @@ $matrix21 = @(Get-SoakMatrix)
 Assert-Rule (($matrix21 | Where-Object Name -eq 'adventure-wireframe-wave-pilot').Round -eq 17) 'Twenty-one-phase wireframe round did not shift.'
 Assert-Rule (($matrix21 | Where-Object Name -eq 'adventure-bowser-easy-final-pilot').Round -eq 19) 'Twenty-one-phase final round did not shift.'
 Assert-Rule (($matrix21 | Where-Object Name -eq 'adventure-race-pilot').Round -eq 14) 'Race pilot selects the wrong round.'
+foreach ($phaseCount in @(20, 21)) {
+    $header = Join-Path $out "adventure-$phaseCount.h"
+    $generatorArgs = @((Join-Path $PSScriptRoot 'generate_adventure_matchups.py'), $header)
+    if ($phaseCount -eq 21) { $generatorArgs += '--experimental-race' }
+    & python $generatorArgs
+    if ($LASTEXITCODE -ne 0) { throw 'Adventure metadata generation failed.' }
+    $generated = Get-Content -Raw $header
+    $encounters = [regex]::Match($generated, '(?s)g_m360Adventure\[\] = \{(.*?)\n\};').Groups[1].Value
+    $scenes = @([regex]::Matches($encounters, '(?m)^\s*\{\s*(\d+),') | ForEach-Object { [int]$_.Groups[1].Value })
+    Assert-Rule ($scenes.Count -eq $phaseCount) 'Generated Adventure phase count differs from the build option.'
+    Assert-Rule (($scenes -contains 58) -eq ($phaseCount -eq 21)) 'Experimental race leaked into the default build or is absent from the prototype.'
+}
 Write-Host '[M360][HOST] Soak evidence and phase matrix rules PASS'

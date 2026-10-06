@@ -196,3 +196,16 @@ XEX/map, pass `-DiagnosticXexPath <path>`; the matching `.map` is selected besid
 it. `-AdventurePhaseCount 21` shifts the later encounter cases and enables the
 race pilot. The saved twenty-phase diagnostic uses the default count of 20.
 An explicit prototype path cannot be combined with `-Build`.
+
+Normal builds generate the twenty-phase Adventure table. To include the
+experimental F-Zero terrain course, build with `./tools/build_xex.ps1
+-ExperimentalRace`. The soak harness also accepts `-ExperimentalRace -Build`;
+use `-AdventurePhaseCount 21` when testing its separately linked executable.
+Traffic and car collisions remain unfinished; this option is experimental.
+
+Boot-to-match diagnostics optionally read a nonnegative `seed` from
+`match-config.txt`, set the original HSD random seed and record
+`auto.random.seed`. The `adventure-from-maze-seeded-pilot` case uses 12000.
+This makes one original maze variant reproducible without moving fighters or
+changing the goal. It does not validate all six variants. Normal live-input
+builds do not read this diagnostic setting.

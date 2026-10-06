@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +19,25 @@ unsigned leaves, enters, modeRound, modeKind, menuLeaves, menuEnters;
 unsigned M360_MatchNextCampaignRound() { return modeRound + 1; }
 unsigned liveScenes, cacheClears, musicUpdates, stopSfxCalls;
 int matchResult, menuResult;
+typedef unsigned DWORD;
+typedef int HANDLE;
+const int GENERIC_READ = 1, FILE_SHARE_READ = 1, OPEN_EXISTING = 1, FILE_ATTRIBUTE_NORMAL = 1;
+const HANDLE INVALID_HANDLE_VALUE = -1;
+const char* configFixture;
+MeleeFlow* s_flow;
+unsigned randomSeed;
+unsigned* HSD_RandSeedPtr = &randomSeed;
+M360MatchAutoConfig autoConfig;
+HANDLE CreateFileA(const char*, int, int, int, int, int, int) { return 1; }
+bool ReadFile(HANDLE, char* text, unsigned length, DWORD* count, int) {
+    *count = static_cast<DWORD>(strlen(configFixture));
+    assert(*count < length);
+    memcpy(text, configFixture, *count);
+    return true;
+}
+void CloseHandle(HANDLE) {}
+#define ZeroMemory(ptr, size) memset(ptr, 0, size)
+void M360_MatchSetAutoConfig(const M360MatchAutoConfig* config) { autoConfig = *config; }
 
 void M360_Trace(const char*, unsigned) {}
 void M360_MatchTrace(const char*, unsigned) {}
@@ -101,4 +121,16 @@ int main() {
     assert(leaves == oldLeaves + 4);
     assert(cacheClears == enters + 3); // Two completions and one exit.
     puts("PASS: five Classic rounds, twenty-one Adventure phases, teardown before cache clearing and VS restarts");
+    MeleeFlow configFlow = {};
+    s_flow = &configFlow;
+    configFixture = "mode 4\nround 4\np1 18\nseed 12000\n";
+    randomSeed = 777;
+    LoadAutoConfig();
+    assert(randomSeed == 12000 && configFlow.gameMode == 4 && configFlow.campaignRound == 4);
+    assert(autoConfig.enabled && autoConfig.kinds[0] == 18);
+    configFixture = "mode 4\nseed -1\n";
+    randomSeed = 777; LoadAutoConfig(); assert(randomSeed == 777);
+    configFixture = "mode 4\n";
+    LoadAutoConfig(); assert(randomSeed == 777);
+    puts("PASS: diagnostic seed is explicit, rejects negative values and leaves the RNG unchanged when absent");
 }

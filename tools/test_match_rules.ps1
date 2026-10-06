@@ -11,7 +11,7 @@ if (-not $VcVars) {
 $out = Join-Path $root 'build-x360/host-tests/match-rules'
 New-Item -ItemType Directory -Force $out | Out-Null
 & (Join-Path $PSScriptRoot 'generate_classic_matchups.ps1') -OutputPath (Join-Path $out 'melee_classic_matchups.h')
-& python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $out 'melee_adventure_matchups.h')
+& python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $out 'melee_adventure_matchups.h') --experimental-race
 if ($LASTEXITCODE -ne 0) { throw 'Adventure generation failed.' }
 $source = (Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')).Replace("`r`n", "`n")
 function Get-MatchFunction([string] $Signature) {

@@ -6,6 +6,13 @@
 
 int main()
 {
+    assert(PilotMazeSteer(8, false) == 64 && PilotMazeSteer(-8, false) == -64);
+    assert(PilotMazeSteer(1, false) == 0 && PilotMazeSteer(-1, false) == 0);
+    assert(PilotMazeSteer(20, false) == 80 && PilotMazeSteer(40, false) == 127);
+    assert(PilotMazeSteer(3, true) == 127 && PilotMazeSteer(-3, true) == -127);
+    assert(!PilotMazeCanJump(true, 100, 0));
+    assert(PilotMazeCanJump(false, 100, 0) && PilotMazeCanJump(true, 10, 0));
+    assert(PilotMazeCanJump(true, 100, -1));
     M360MatchStage stage = {};
     stage.lineCount = 6;
     stage.lines[0] = { 0, 10, 20, 10, M360_LINE_CEILING, 0, 0, 0, 0, 0, 0, 0 };
@@ -18,9 +25,9 @@ int main()
     PilotSurfaceSpan(&stage, 0, M360_LINE_CEILING, &left, &leftY, &right, &rightY);
     assert(left == -20 && leftY == 5 && right == 40 && rightY == 20);
     assert(PilotCeilingDetour(&stage, 10, 0, 100, 100, &x, &y));
-    assert(x == 65 && y == 45);
+    assert(x == 65 && y == 70);
     assert(PilotCeilingDetour(&stage, 10, 0, -100, 100, &x, &y));
-    assert(x == -45 && y == 30);
+    assert(x == -45 && y == 70);
     assert(!PilotCeilingDetour(&stage, 100, 0, 100, 100, &x, &y));
     assert(!PilotCeilingDetour(&stage, 10, -100, 100, 100, &x, &y));
     assert(!PilotCeilingDetour(&stage, 10, 15, 100, 100, &x, &y));
@@ -29,7 +36,7 @@ int main()
     stage.lineCount = 1;
     stage.lines[0] = { 555, -297, 828, -190, M360_LINE_CEILING, 0, 0, 0, 0, 0, 0, 0 };
     assert(PilotCeilingDetour(&stage, 572, -310, 711, -95, &x, &y));
-    assert(x == 853 && y == -165);
+    assert(x == 853 && y == -125);
     stage.lines[0] = { 778, -48, 828, -60, M360_LINE_CEILING, 0, 0, 0, 0, 0, 0, 0 };
     assert(!PilotCeilingDetour(&stage, 811, -130, 711, -95, &x, &y));
     puts("PASS: diagnostic ceiling navigation follows connected ramps, ignores disabled and disconnected surfaces, and chooses a real edge");

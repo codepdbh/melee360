@@ -16,17 +16,17 @@ Original maze hazards and transition animations are still missing.
 
 The playable `dist/default.xex` now includes the experimental maze, with normal
 boot and live input, SHA-256
-`DBF616E6B00A7C8F3B33CA95B4AF23872250CFDD437B618BED9E0492E7667565`.
+`C7272C2962895FEBC3A02F6A2ECAB7CA28F0FAFF42A249F9ADCC9984A7C9727C`.
 This build also restores the original grab wall-occlusion query. Host tests
 verify ECB centers and both wall directions. A normal-boot Xenia smoke run
-presented 1,449 opening frames with no movie errors or watchdog hang
-(`build-x360/maze-normal-boot-runtime-trace-20261006.txt`); audio counters are
+presented 1,194 opening frames with no movie errors or watchdog hang
+(`build-x360/normal-maze-collision-runtime-trace-20261006.txt`); audio counters are
 submission evidence, not a listening test. This does not verify menu input.
 The preceding nineteen-phase E6F9B2A7 build is retained in
 `build-x360/playable-reserved-parts-20261006.xex`. Existing continuous
 seventeen-phase Easy results below refer to earlier builds without this course.
 
-The updated twenty-phase diagnostic build also passed the following Zelda
+The earlier twenty-phase diagnostic build also passed the following Zelda
 encounter (`adventure-maze-followup-smoke-20261006`): 3,900 sampled frames,
 41 hits and two falls. The continuous Easy run in
 `build-x360/adventure-full-maze-20261006` cleared the maze after a retry but
@@ -47,9 +47,38 @@ its time budget: verdict SHORT. This does not reproduce or resolve the earlier
 stalls. The diagnostic pilot now ignores roofs above the destination's head,
 with a regression based on the maze's upper corridor; native validation follows.
 
+Source review found that exploration incorrectly re-enabled all six arena
+collision groups after a fight. The original `grShrineRoute` restores only
+traversal joints 0-7 and preserves the selected arena's state. `MazeRoomBounds`
+now follows that rule; host tests check that other arenas stay disabled after
+successive room clears. `maze-navigation-transition-20261006` was intentionally
+stopped after identifying this defect (its harness CRASH is process termination,
+not an observed game crash). The corrected native test
+`maze-traversal-transition-20261006` reached and cleared room 2 without a
+watchdog, then was intentionally stopped to improve diagnostic navigation
+below the upper ledge (harness CRASH again denotes owned process termination).
+The pilot now retains its ceiling detour until close to the destination height;
+the continuing test is `maze-clearance-transition-20261006`.
+That test was intentionally stopped when traces showed the diagnostic stick
+falling into its dead zone eight units short of the overhang edge. Steering now
+keeps a minimum magnitude until within two units, with tests in both directions.
+The native continuation is `maze-steering-transition-20261006`; the three
+superseded pilot XEX/EXE pairs were removed, retaining maps and traces.
+The subsequent ramp pilot ran for 929 seconds without a watchdog but did not
+reach the Triforce: `maze-ramp-transition-20261006`, SHORT. Original collision
+restoration is now included in the normal twenty-phase XEX above. Diagnostic
+navigation uses the entrance's 35-unit half extent with a five-unit margin;
+the Very Easy test `maze-margin-very-easy-20261006` finished SHORT, with
+25,080 sampled frames, 48 hits, 36 falls and no recorded watchdog. It did not
+clear the maze. A reproducible original-RNG diagnostic is now running at
+`maze-seeded-campaign-20261006`, seed 12000; this does not cover all six rooms.
+The continuous
+campaign and the earlier maze-to-Zelda watchdog remain unvalidated.
+
 ## F-Zero course prototype — 2026-10-06
 
-The current source adds scene 58 as a twenty-first phase, using original
+The opt-in `-ExperimentalRace` build adds scene 58 as a twenty-first phase;
+normal builds retain twenty phases. The experimental course uses original
 GrNBr.dat terrain and markers, solo start, a 240-second timer, rebirth
 checkpoints 4-7 and the original 15/2000 finish half extents. Host match/flow
 rules pass and the XDK diagnostic prototype compiles. Losing the final life
@@ -64,8 +93,8 @@ is isolated in `build-x360/race-prototype-objects/race.xex` and has not replaced
 the current twenty-phase `dist/default.xex` or its active campaign test.
 
 A normal-boot/live-input candidate also links successfully at
-`build-x360/race-prototype-objects/playable.xex`, SHA-256
-`AAF314B0DDA823E42D49718CD8DD0EBB072FF9E71C92BECA3CF8E41FA6E2338A`.
+`build-x360/race-prototype-objects/playable-traversal.xex`, SHA-256
+`C13FEB2C1DCCF229CF9A7E2850ECD1A806DED23BF4CC5C3AC80B2C5AA48D31C0`.
 It has not been promoted while the maze render stalls are being investigated.
 
 Do not treat the preliminary inspection of floor 62 (a high boundary ledge)
@@ -78,6 +107,7 @@ Removed fifteen obsolete diagnostic ISO hardlinks and fifteen superseded
 diagnostic XEX files, retaining their traces. Removed four generated ASAN
 emulator build directories (1.63 GiB).
 Removed fifteen obsolete October 5 executable/map snapshots (35.7 MiB),
+and eleven superseded prototype binary/map files (32.4 MiB),
 retaining current and October 6 reference builds. Source, Git repositories, the current
 XEX and recent evidence remain. A subsequent full file scan measured
 5.70 GiB across 20,239 files; subtracting the two repeated ISO directory entries

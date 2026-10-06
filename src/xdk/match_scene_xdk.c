@@ -1798,8 +1798,14 @@ static void MazeRoomBounds(int room)
 {
     static const int joints[6] = { 19, 20, 18, 17, 16, 15 };
     unsigned i;
-    for (i = 0; i < 14; ++i)
-        SetCollisionGroupEnabled(i, room < 0 || i == 8u + (unsigned) room);
+    for (i = 0; i < 14; ++i) {
+        /* grShrineRoute restores only traversal joints 0-7 after a fight.
+         * Other arena joints stay disabled until their encounter begins. */
+        if (room >= 0)
+            SetCollisionGroupEnabled(i, i == 8u + (unsigned) room);
+        else if (i < 8)
+            SetCollisionGroupEnabled(i, 1);
+    }
     if (room < 0) {
         /* grShrineRoute_8020B0AC opens these authored traversal walls. */
         static const unsigned walls[7] = { 51, 79, 101, 102, 115, 116, 131 };

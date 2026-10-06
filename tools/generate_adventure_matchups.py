@@ -1,7 +1,12 @@
 """Generate native Adventure encounter metadata from the checked-out game source."""
 import pathlib
 import re
-import sys
+import argparse
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('output', type=pathlib.Path)
+parser.add_argument('--experimental-race', action='store_true')
+args = parser.parse_args()
 
 root = pathlib.Path(__file__).resolve().parent.parent
 source = root / 'upstream/melee-pc/src/melee'
@@ -18,7 +23,9 @@ gr = {name: int(number, 16) for number, name in re.findall(r'/\*\s*0x([0-9A-Fa-f
 ft = {name: int(number, 16) for number, name in re.findall(r'/\*\s*([0-9A-Fa-f]{2})\s*\*/\s*(Ft_Kind_\w+)', (source / 'ft/forward.h').read_text(encoding='utf-8'))}
 # Traversal, Brinstar escape and native fighter encounters. The climbing
 # course and race traffic remain unfinished. Giga eligibility is native.
-scene_ids = [1, 3, 9, 10, 17, 18, 25, 27, 33, 35, 37, 41, 43, 49, 58, 59, 65, 81, 83, 89, 92]
+scene_ids = [1, 3, 9, 10, 17, 18, 25, 27, 33, 35, 37, 41, 43, 49, 59, 65, 81, 83, 89, 92]
+if args.experimental_race:
+    scene_ids.insert(14, 58)
 records = {}
 for entry in re.finditer(r'\{([^{}]+)\}', table):
     values = [value.strip() for value in entry[1].split(',') if value.strip()]
@@ -103,4 +110,4 @@ for scene in scene_ids:
                  (', '.join('{ %d, %d, %d }' % tuple(row) for row in rows), scene))
 lines += ['};', '#define M360_ADVENTURE_LUIGI_KIND %d' % ft['Ft_Kind_Luigi'],
           '#define M360_ADVENTURE_ROUNDS (sizeof(g_m360Adventure) / sizeof(g_m360Adventure[0]))', '#endif']
-pathlib.Path(sys.argv[1]).write_text('\n'.join(lines) + '\n', encoding='ascii')
+args.output.write_text('\n'.join(lines) + '\n', encoding='ascii')

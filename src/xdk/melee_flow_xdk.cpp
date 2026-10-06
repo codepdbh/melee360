@@ -11,6 +11,7 @@
 #include "melee_bgm_files.h"
 
 extern "C" int HSD_Randi(int max_val);
+extern "C" unsigned* HSD_RandSeedPtr;
 
 namespace {
 
@@ -319,6 +320,10 @@ void LoadAutoConfig()
             else if (!strcmp(key, "time")) config.timeMinutes = static_cast<unsigned>(value);
             else if (!strcmp(key, "items")) config.items = value;
             else if (!strcmp(key, "repeat")) config.repeat = static_cast<unsigned>(value);
+            else if (!strcmp(key, "seed") && value >= 0) {
+                *HSD_RandSeedPtr = static_cast<unsigned>(value);
+                M360_Trace("auto.random.seed", static_cast<unsigned>(value));
+            }
         }
         line = next ? end + 1 : end;
     }
