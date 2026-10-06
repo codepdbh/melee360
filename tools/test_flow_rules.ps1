@@ -12,7 +12,7 @@ $out = Join-Path $root 'build-x360/host-tests/flow-rules'
 New-Item -ItemType Directory -Force $out | Out-Null
 $source = Get-Content -Raw (Join-Path $root 'src/xdk/melee_flow_xdk.cpp')
 $extracted = ''
-foreach ($signature in @('void EnterState(', 'void UpdateMenu(', 'void UpdateMatch(')) {
+foreach ($signature in @('void EnterState(', 'void UpdateMenu(', 'void UpdateMatch(', 'void LoadAutoConfig(')) {
     $start = $source.IndexOf($signature)
     if ($start -lt 0) { throw "Missing function: $signature" }
     $cursor = $source.IndexOf('{', $start) + 1

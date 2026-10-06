@@ -641,13 +641,15 @@ int main() {
     for (unsigned i = 1; i < 6; ++i) assert(!(mockSymbols[i].flags & JOBJ_HIDDEN));
     for (unsigned group = 0; group < 14; ++group)
         assert(s_stage.lines[mockGroups[group].floor_start].kind ==
-               (mockGroups[group].floor_start == 51 ? 0 : mockLines[mockGroups[group].floor_start].hi_flags));
+               (group > 8 || mockGroups[group].floor_start == 51 ? 0 : mockLines[mockGroups[group].floor_start].hi_flags));
     fighters[0].x = 0; M360_MatchFrame(); assert(s_mazeRoom == -1);
     fighters[0].x = 300; M360_MatchFrame();
     assert(s_mazeRoom == 1 && s_stocksRemaining[1] == 1 && !fighters[1].rebirths);
     assert(fighters[1].x == 300 && fighters[1].y == 10);
     fighters[1].x = 600; M360_MatchFrame();
     assert(s_mazeVisited == 3 && s_mazeRoom == -1 && !s_matchOver);
+    for (unsigned group = 8; group < 14; ++group)
+        assert((s_stage.lines[mockGroups[group].floor_start].kind != 0) == (group == 9));
     float mazeX, mazeY;
     assert(M360_MatchMazePoint(5, &mazeX, &mazeY) && mazeX == 1500 && mazeY == 0);
     assert(!M360_MatchMazePoint(6, &mazeX, &mazeY));
