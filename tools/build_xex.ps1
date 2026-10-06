@@ -277,11 +277,13 @@ Write-Host '[M360][XEX] compiling native HSD scene renderer'
 & $compiler @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W4', '/TC',
     '/D_XBOX', '/DXBOX', '/DNDEBUG', "/Fo$hsdTextureObject", $hsdTextureSource)
 if ($LASTEXITCODE -ne 0) { throw 'GX texture decoder compilation failed.' }
-& $compiler @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
+$hsdRenderArgs = @('/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
     '/D_XBOX', '/DXBOX', '/DNDEBUG',
     "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')", "/I$build",
     "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
     "/Fo$hsdRenderObject", $hsdRenderSource)
+if ($CallTrace) { $hsdRenderArgs += '/DM360_RENDER_TRACE' }
+& $compiler $hsdRenderArgs
 if ($LASTEXITCODE -ne 0) { throw 'HSD scene renderer compilation failed.' }
 
 $gcmArgs = @(

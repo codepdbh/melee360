@@ -32,7 +32,20 @@ struct CostumeTObjList { unsigned n_costume_tobjs; DiscU16* x5D0; HSD_TObj* cost
 struct FtPartsVisLookup { unsigned value; };
 struct FtPartsDesc { unsigned model_num; void* vis_table; };
 struct FtPartsVis { unsigned model_num; FtPartsVisLookup* xC[5]; bool cleared[5]; };
-struct Fighter { FighterData* ft_data; unsigned x619_costume_id, player_id, kind; CostumeTObjList tobj_list; bool x221E_b7; FtPartsVis x5AC; Fighter_GObj* gobj; Bone* parts; Vec3 x34_scale; bool no_normal_motion, is_sandbag; float x2DC, x2E0, x2E4, x2E8, x2EC; };
+struct Fighter { FighterData* ft_data; unsigned x619_costume_id, player_id, kind; CostumeTObjList tobj_list; bool x221E_b7; FtPartsVis x5AC; Fighter_GObj* gobj; Bone* parts; Vec3 x34_scale; bool no_normal_motion, is_sandbag; float x2DC, x2E0, x2E4, x2E8, x2EC; Vec3 cur_pos; struct { struct { Vec3 top, bottom; } ecb; } coll_data; };
+float wallQuery[4];
+unsigned wallSide;
+bool wallBlocked;
+bool mpCheckLeftWall(float ax, float ay, float bx, float by, Vec3*, int*, u32*, Vec3*, int, int)
+{
+    wallQuery[0] = ax; wallQuery[1] = ay; wallQuery[2] = bx; wallQuery[3] = by;
+    wallSide = 1; return wallBlocked;
+}
+bool mpCheckRightWall(float ax, float ay, float bx, float by, Vec3*, int*, u32*, Vec3*, int, int)
+{
+    wallQuery[0] = ax; wallQuery[1] = ay; wallQuery[2] = bx; wallQuery[3] = by;
+    wallSide = 2; return wallBlocked;
+}
 struct FigaTree { float frames; };
 FigaTree animationTrees[64];
 unsigned animationQueries;
@@ -102,6 +115,19 @@ void lb_8000B1CC(void* joint, Vec3*, Vec3* out) { *out = *(Vec3*) joint; }
 
 int main()
 {
+    Fighter attacker = {}, victim = {};
+    attacker.cur_pos = { 20, 30, 0 }; victim.cur_pos = { -10, 40, 0 };
+    attacker.coll_data.ecb.top.y = 18; attacker.coll_data.ecb.bottom.y = 2;
+    victim.coll_data.ecb.top.y = 14; victim.coll_data.ecb.bottom.y = -2;
+    wallBlocked = true;
+    assert(ft_80084CE4(&attacker, &victim) && wallSide == 2);
+    assert(wallQuery[0] == 20 && wallQuery[1] == 40 && wallQuery[2] == -10 && wallQuery[3] == 46);
+    assert(ft_80084CE4(&victim, &attacker) && wallSide == 1);
+    wallBlocked = false;
+    assert(!ft_80084CE4(&attacker, &victim));
+    victim.cur_pos.x = attacker.cur_pos.x;
+    assert(!ft_80084CE4(&attacker, &victim) && wallSide == 1);
+    puts("PASS: grab wall occlusion uses original ECB centers and the correct wall side");
     for (unsigned type = 0; type < 4; ++type) {
         HSD_JObj parent = {}, root = {}, old = {}, sibling = {}, inserted = {};
         root.parent = &parent;
