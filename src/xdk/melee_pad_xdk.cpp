@@ -71,6 +71,73 @@ int g_escapeTargetLine = -1;
 unsigned g_routePreviousFrame;
 unsigned g_routeArenaObjective;
 int g_mazeTargetRoom = -1;
+bool g_mazeDetour;
+float g_mazeDetourX, g_mazeDetourY;
+unsigned g_mazeJumpHold;
+unsigned g_mazeDetourAge;
+
+/* Follow authored adjoining surfaces; disconnected nearby geometry must not
+ * extend the span. This is navigation for the diagnostic PAD pilot only. */
+static void PilotSurfaceSpan(const M360MatchStage* stage, unsigned seed,
+                             unsigned kind, float* left, float* leftY,
+                             float* right, float* rightY)
+{
+    const M360StageLine& first = stage->lines[seed];
+    *left = first.x0; *leftY = first.y0; *right = first.x1; *rightY = first.y1;
+    if (*left > *right) {
+        *left = first.x1; *leftY = first.y1; *right = first.x0; *rightY = first.y0;
+    }
+    for (unsigned pass = 0; pass < stage->lineCount; ++pass) {
+        bool changed = false;
+        for (unsigned line = 0; line < stage->lineCount; ++line) {
+            const M360StageLine& candidate = stage->lines[line];
+            if (!(candidate.kind & kind) || (candidate.flags & M360_LINE_PLATFORM)) continue;
+            const float lx = candidate.x0 < candidate.x1 ? candidate.x0 : candidate.x1;
+            const float rx = candidate.x0 < candidate.x1 ? candidate.x1 : candidate.x0;
+            const float ly = candidate.x0 < candidate.x1 ? candidate.y0 : candidate.y1;
+            const float ry = candidate.x0 < candidate.x1 ? candidate.y1 : candidate.y0;
+            if (fabsf(rx - *left) < 1.0f && fabsf(ry - *leftY) < 1.0f && lx < *left - 0.1f) {
+                *left = lx; *leftY = ly; changed = true;
+            }
+            if (fabsf(lx - *right) < 1.0f && fabsf(ly - *rightY) < 1.0f && rx > *right + 0.1f) {
+                *right = rx; *rightY = ry; changed = true;
+            }
+        }
+        if (!changed) break;
+    }
+}
+
+static int PilotCeilingDetour(const M360MatchStage* stage, float x, float y,
+                              float goalX, float goalY, float* detourX, float* detourY)
+{
+    int selected = -1;
+    float nearest = 90.0f;
+    for (unsigned i = 0; i < stage->lineCount; ++i) {
+        const M360StageLine& line = stage->lines[i];
+        if (!(line.kind & M360_LINE_CEILING)) continue;
+        const float lo = line.x0 < line.x1 ? line.x0 : line.x1;
+        const float hi = line.x0 < line.x1 ? line.x1 : line.x0;
+        if (x < lo || x > hi || hi - lo < 0.1f) continue;
+        const float height = line.y0 + (line.y1 - line.y0) * ((x - line.x0) / (line.x1 - line.x0));
+        // A roof above the target's head does not obstruct reaching it.
+        // Detouring around that roof can trap the pilot in an upper corridor.
+        if (height > goalY + 20.0f) continue;
+        if (height > y + 2.0f && height - y < nearest) {
+            nearest = height - y; selected = static_cast<int>(i);
+        }
+    }
+    if (selected < 0) return 0;
+    float left, leftY, right, rightY;
+    PilotSurfaceSpan(stage, static_cast<unsigned>(selected), M360_LINE_CEILING,
+                     &left, &leftY, &right, &rightY);
+    // A sloping passage's high end may be farther away horizontally but
+    // leads upward; the low end can trap the pilot under another ceiling.
+    const float leftCost = fabsf(x - left) + fabsf(goalX - left) + fabsf(goalY - leftY) * 3.0f;
+    const float rightCost = fabsf(x - right) + fabsf(goalX - right) + fabsf(goalY - rightY) * 3.0f;
+    *detourX = leftCost < rightCost ? left - 25.0f : right + 25.0f;
+    *detourY = (leftCost < rightCost ? leftY : rightY) + 25.0f;
+    return 1;
+}
 
 /* Diagnostic input only: follow the collision surface with normal controller
  * commands. No position, damage, stocks or encounter state is modified. */
@@ -80,7 +147,7 @@ void ApplyRoutePilot(PADStatus* pad)
     M360_MatchGetStatus(&match);
     if (match.frame < g_routePreviousFrame) {
         g_escapeTargetLine = -1; g_routeArena = false;
-        g_routeJumpCooldown = 0; g_mazeTargetRoom = -1;
+        g_routeJumpCooldown = g_mazeJumpHold = g_mazeDetourAge = 0; g_mazeTargetRoom = -1; g_mazeDetour = false;
     }
     g_routePreviousFrame = match.frame;
     pad->err = 0;
@@ -93,6 +160,9 @@ void ApplyRoutePilot(PADStatus* pad)
         return;
     if (match.campaignObjective != g_routeArenaObjective) {
         g_routeArena = false;
+        g_mazeDetour = false;
+        g_mazeJumpHold = 0;
+        g_mazeDetourAge = 0;
         g_routeArenaObjective = match.campaignObjective;
     }
     const float x = match.posX[0], y = match.posY[0];
@@ -104,6 +174,7 @@ void ApplyRoutePilot(PADStatus* pad)
     float escapeHeight = y;
     if (match.campaignObjective == 5) {
         const unsigned visited = M360_MatchMazeVisited();
+        bool walkOffEdge = false;
         const M360MatchStage* stage = M360_MatchStageData();
         void* fighter = M360_FighterActive(0);
         if (g_mazeTargetRoom >= 0 && (visited & (1u << g_mazeTargetRoom))) g_mazeTargetRoom = -1;
@@ -117,6 +188,24 @@ void ApplyRoutePilot(PADStatus* pad)
             }
         }
         if (g_mazeTargetRoom >= 0) M360_MatchMazePoint(g_mazeTargetRoom, &targetX, &targetY);
+        if (g_mazeDetour && y >= g_mazeDetourY) { g_mazeDetour = false; g_mazeDetourAge = 0; }
+        if (g_mazeDetour && ++g_mazeDetourAge > 120 && fabsf(x - g_mazeDetourX) < 15.0f) {
+            // A separate lower ceiling may obstruct the chosen corner.
+            float alternateX, alternateY;
+            if (PilotCeilingDetour(stage, x, y, targetX, targetY, &alternateX, &alternateY) &&
+                fabsf(alternateX - g_mazeDetourX) > 5.0f) {
+                g_mazeDetourX = alternateX; g_mazeDetourY = alternateY;
+                g_mazeDetourAge = 0;
+            }
+        }
+        if (!g_mazeDetour && targetY > y + 25.0f) {
+            g_mazeDetour = PilotCeilingDetour(stage, x, y, targetX, targetY, &g_mazeDetourX, &g_mazeDetourY) != 0;
+            g_mazeDetourAge = 0;
+        }
+        if (g_mazeDetour) {
+            targetX = g_mazeDetourX;
+            if (targetY < g_mazeDetourY + 30.0f) targetY = g_mazeDetourY + 30.0f;
+        }
         const int floor = fighter ? M360_FighterFloorLine(fighter) : -1;
         if (floor >= 0 && static_cast<unsigned>(floor) < stage->lineCount && targetY < y - 70.0f) {
             const M360StageLine& ground = stage->lines[floor];
@@ -145,18 +234,32 @@ void ApplyRoutePilot(PADStatus* pad)
                 const float leftCost = fabsf(x - left) + fabsf(targetX - left);
                 const float rightCost = fabsf(x - right) + fabsf(targetX - right);
                 targetX = leftCost < rightCost ? left - 15.0f : right + 15.0f;
+                walkOffEdge = true;
             }
         }
         int steer = static_cast<int>((targetX - x) * 4.0f);
         if (steer > 127) steer = 127;
         if (steer < -127) steer = -127;
+        // The original edge collision requires a hard tilt to leave a ledge.
+        if (walkOffEdge) steer = targetX < x ? -127 : 127;
         pad->stickX = static_cast<s8>(steer);
-        if (targetY > y + 25.0f && tick % 8 != 0) pad->button |= PAD_BUTTON_X;
-        if (targetY < y - 35.0f) pad->stickY = -127;
+        // Save aerial jumps until descent instead of consuming all of them
+        // eight frames apart while still rising under a ceiling.
+        if (targetY > y + 25.0f && !g_routeJumpCooldown && (floor >= 0 || dy < -0.1f)) {
+            g_mazeJumpHold = 6;
+            g_routeJumpCooldown = 18;
+        }
+        if (g_mazeJumpHold) { pad->button |= PAD_BUTTON_X; --g_mazeJumpHold; }
+        // Down crouches on solid floors; use it only to drop through platforms.
+        if (targetY < y - 35.0f && floor >= 0 &&
+            static_cast<unsigned>(floor) < stage->lineCount &&
+            (stage->lines[floor].flags & M360_LINE_PLATFORM) && tick % 30 < 4)
+            pad->stickY = -127;
         if (match.frame % 300 == 0) {
             M360_MatchTrace("pilot.maze.target_room", static_cast<unsigned>(g_mazeTargetRoom));
             M360_MatchTrace("pilot.maze.target_x", static_cast<unsigned>(targetX));
             M360_MatchTrace("pilot.maze.floor", static_cast<unsigned>(floor));
+            M360_MatchTrace("pilot.maze.ceiling_detour", g_mazeDetour ? 1 : 0);
         }
         return;
     }

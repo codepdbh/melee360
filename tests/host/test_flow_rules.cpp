@@ -8,7 +8,7 @@
 
 const unsigned kGameModeVs = 2, kGameModeClassic = 3, kGameModeAdventure = 4;
 const unsigned kCampaignRounds = 5, kBgmOpening = 0x3E, kTitleCountdown = 20;
-unsigned M360_MatchCampaignRounds(unsigned mode) { return mode == kGameModeAdventure ? 20 : kCampaignRounds; }
+unsigned M360_MatchCampaignRounds(unsigned mode) { return mode == kGameModeAdventure ? 21 : kCampaignRounds; }
 const unsigned kOpeningRateTable[] = { 1250, 2, 394, 1, 65536, 2 };
 const unsigned __int64 kPadCancel = 1ull << 33;
 bool s_menuActive, s_menuAvailable = true;
@@ -100,5 +100,5 @@ int main() {
     assert(flow.state == kFlowMainMenu && liveScenes == 0);
     assert(leaves == oldLeaves + 4);
     assert(cacheClears == enters + 3); // Two completions and one exit.
-    puts("PASS: five Classic rounds, twenty Adventure phases, teardown before cache clearing and VS restarts");
+    puts("PASS: five Classic rounds, twenty-one Adventure phases, teardown before cache clearing and VS restarts");
 }

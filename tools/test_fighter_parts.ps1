@@ -15,7 +15,7 @@ foreach ($signature in @('u32 ftParts_8007506C(', 'static int SetupFighterParts(
     'void ftAnim_80070458(', 'void ftAnim_800704F0(', 'void ftAnim_800705E0(', 'void ftAnim_80070654(',
     'void ftCo_800A0098(', 'static void SetupCostumeVisibility(', 'static float FighterCollisionTop(',
     'static void SetupAnimationLengths(', 'static void AttachReservedJoint(',
-    'static HSD_Joint* ReservedJointDescriptor(')) {
+    'static HSD_Joint* ReservedJointDescriptor(', 'bool ft_80084CE4(')) {
     $start = $source.IndexOf($signature)
     if ($start -lt 0) { throw "Missing function: $signature" }
     $cursor = $source.IndexOf('{', $start) + 1
