@@ -10,7 +10,7 @@ $out = Join-Path $root 'build-x360/host-tests/route-pilot'
 New-Item -ItemType Directory -Force $out | Out-Null
 $source = Get-Content -Raw (Join-Path $root 'src/xdk/melee_pad_xdk.cpp')
 $extracted = ''
-foreach ($signature in @('static void PilotSurfaceSpan(', 'static int PilotCeilingDetour(', 'static int PilotMazeSteer(', 'static bool PilotMazeCanJump(')) {
+foreach ($signature in @('static void PilotSurfaceSpan(', 'static bool PilotCombatFloor(', 'static int PilotCeilingDetour(', 'static int PilotMazeSteer(', 'static bool PilotMazeCanJump(')) {
     $start = $source.IndexOf($signature)
     if ($start -lt 0) { throw "Missing function: $signature" }
     $cursor = $source.IndexOf('{', $start) + 1
