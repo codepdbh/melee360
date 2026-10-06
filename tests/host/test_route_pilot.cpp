@@ -39,5 +39,15 @@ int main()
     assert(x == 853 && y == -125);
     stage.lines[0] = { 778, -48, 828, -60, M360_LINE_CEILING, 0, 0, 0, 0, 0, 0, 0 };
     assert(!PilotCeilingDetour(&stage, 811, -130, 711, -95, &x, &y));
+    stage.lineCount = 5;
+    stage.lines[0] = { -60, -100, 0, -100, M360_LINE_FLOOR, 0, 0, 0, 0, 0, 0, 0 };
+    stage.lines[1] = { 60, -100, 0, -100, M360_LINE_FLOOR, 0, 0, 0, 0, 0, 0, 0 };
+    stage.lines[2] = { 120, -7, 190, -7, M360_LINE_FLOOR, 0, 0, 0, 0, 0, 0, 0 };
+    stage.lines[3] = { -500, 0, 500, 0, M360_LINE_FLOOR, M360_LINE_PLATFORM, 0, 0, 0, 0, 0, 0 };
+    stage.lines[4] = { -500, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    assert(PilotCombatFloor(&stage, &left, &right, &y));
+    assert(left == -52 && right == 52 && y == -100);
+    stage.lineCount = 0;
+    assert(!PilotCombatFloor(&stage, &left, &right, &y));
     puts("PASS: diagnostic ceiling navigation follows connected ramps, ignores disabled and disconnected surfaces, and chooses a real edge");
 }
