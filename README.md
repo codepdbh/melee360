@@ -12,9 +12,10 @@
 
 > [!IMPORTANT]
 > MELEE360 is an early community porting project. Its native XEX now boots a
-> legal `GALE01` image and relocates a real Melee HAL archive, but it is not
-> yet a playable Melee port and
-> does not contain Nintendo game data.
+> `GALE01` image and runs an experimental local VS flow with original game
+> resources. Scripted Xenia tests cover combat and scene transitions; physical
+> Xbox 360 play and full game fidelity remain unverified. The project does not
+> contain Nintendo game data. See the [local VS guide](docs/JUGAR_XEX.md).
 
 ## About
 
@@ -66,7 +67,7 @@ LibXenon implementations.
 | Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
 | Original menu scene and navigation | 🚧 Original `mnmain` scene lifecycle and shared HSD rendering are active; VS mode requests a quick match. Several menu leaves remain bridged/incomplete |
 | Quick match | 🚧 VS has fighter, costume, stage, stock and CPU selection. A scripted Xenia match verified movement, hits, stock loss, Mario's cape and continued play through frame 3486; physical Xbox 360 play remains unverified |
-| Classic and Adventure modes | 🚧 Menu routes enter a five-round campaign scaffold with changing CPU opponents and result flow. Both still share the selected arena and lack their original round types and progression |
+| Classic and Adventure modes | 🚧 Classic has five normal encounters. Adventure has nineteen encounter phases from the original scene table, distinct stages, enemy teams, giant/metal attributes and a ten-Yoshi Mushroom Kingdom route and Brinstar escape. A continuous Easy Xenia pilot cleared the seventeen mandatory available phases and returned to the menu. Full original progression, special scenes and console validation remain incomplete; see `docs/PLAYABLE_PORT_GAPS.md` |
 | Fighter actions and combat | 🚧 Original common states, Mario specials, item code and CPU AI are linked. Scripted hits, damage and respawn run in Xenia; full behavior and controller play on console need validation |
 | Local two-player quick match | 🚧 A connected second XInput controller can control P2; otherwise the linked CPU AI controls the opponent |
 | Melee rendering and gameplay | 🚧 Original title/menu/stage/fighter graphs render. Material effects, match rules, stage coverage and console validation remain incomplete |

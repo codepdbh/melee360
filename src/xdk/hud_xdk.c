@@ -361,6 +361,17 @@ void un_802FD4C8(void)
     s_tagsHidden = 0;
     TagsCreate();
 }
+
+void M360_HudAddFighter(unsigned slot)
+{
+    if (slot < 4) ifStatus_802F6508((int) slot);
+}
+
+void M360_HudRefreshFighterTags(void)
+{
+    un_802FD468();
+    un_802FD4C8();
+}
 void un_802FD668(void) {}
 void un_802FD674(void) {}
 void un_802FD704(void) {}
@@ -424,12 +435,12 @@ static void HudEndDone(int idx)
 /* gmvs.c match start (fn_8016E730 + gm_Scene_Vs_OnEnter): load IfAll, build
  * the HUD camera/light and panels, show "GO!", create the timer and one
  * damage/stock panel per slot. */
-void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds)
+void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds, int stockMatch)
 {
     StartMeleeRules* r = &s_controller.start;
     memset(&s_controller, 0, sizeof(s_controller));
-    r->match_kind = timeSeconds ? MatchKind_Time : MatchKind_Stock;
-    r->is_stock = !timeSeconds;
+    r->match_kind = stockMatch ? MatchKind_Stock : MatchKind_Time;
+    r->is_stock = stockMatch != 0;
     r->timer_enabled = timeSeconds != 0;
     r->time_limit = timeSeconds;
     r->x2_6 = 1;

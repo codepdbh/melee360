@@ -43,6 +43,13 @@ typedef struct M360MatchAutoConfig {
 
 void M360_MatchSetAutoConfig(const M360MatchAutoConfig* config);
 int M360_MatchBgmId(void);
+unsigned M360_MatchCampaignRounds(unsigned mode);
+unsigned M360_MatchNextCampaignRound(void);
+int M360_MatchTeam(unsigned slot);
+float M360_MatchCombatRatio(unsigned slot, int defense);
+unsigned M360_MatchCpuLevel(unsigned slot);
+unsigned M360_MatchCpuKind(unsigned slot);
+int M360_MatchIsTeams(void);
 
 enum { M360_MAX_STAGE_LINES = 512 };
 
@@ -102,6 +109,11 @@ typedef struct M360MatchStatus {
     unsigned suddenDeath;
     unsigned debugHitboxes;
     unsigned loadFailedSlot; /* 1-based slot; 0 means no load failure. */
+    unsigned disconnectedControllers; /* Bit per human slot awaiting its pad. */
+    unsigned campaignTimeLeft;
+    unsigned campaignTimedOut;
+    unsigned campaignObjective; /* 0: fight, 1: travel, 2: checkpoint, 3: finish, 4: escape, 5: maze, 6: Link room */
+    unsigned campaignEnemies;
 } M360MatchStatus;
 
 unsigned char* M360_ReadDiscFile(const char* name, unsigned* size);
@@ -118,9 +130,11 @@ void M360_MatchLeave(void);
 void M360_MatchSetMode(unsigned gameMode, unsigned round);
 void M360_MatchGetStatus(M360MatchStatus* status);
 const M360MatchStage* M360_MatchStageData(void);
+unsigned M360_MatchMazeVisited(void);
+int M360_MatchMazePoint(unsigned room, float* x, float* y);
 unsigned M360_MatchStageCount(void);
 unsigned M360_MatchSlotStocks(unsigned slot);
-void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds);
+void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds, int stockMatch);
 void M360_HudFrame(unsigned frame);
 void M360_HudStockLost(unsigned slot);
 void M360_HudStop(void);
@@ -151,6 +165,7 @@ void M360_FighterFollowFloors(void);
 void M360_FighterEffectsInit(void);
 unsigned M360_FighterKindCount(void);
 unsigned M360_FighterCostumeCount(unsigned kindIndex);
+int M360_FighterIndexForKind(int kind);
 const char* M360_FighterKindName(unsigned index);
 void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume);
 unsigned M360_FighterKindIndex(void* gobj);
@@ -163,6 +178,10 @@ void M360_FighterRespawn(void* gobj, float x, float y);
 void M360_FighterRebirth(void* gobj);
 void M360_FighterSetDead(void* gobj);
 void M360_FighterSetDamage(void* gobj, float percent);
+void M360_FighterSetEncounter(void* gobj, float scale, int metal);
+void M360_HudAddFighter(unsigned slot);
+void M360_HudRefreshFighterTags(void);
+int M360_FighterFloorLine(void* gobj);
 void M360_FighterGetState(void* gobj, float* x, float* y, float* facing,
                           unsigned* motion, unsigned* damage);
 void M360_FighterCameraBox(void* gobj, float* x, float* y, float* left,
