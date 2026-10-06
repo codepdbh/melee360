@@ -136,11 +136,35 @@ static int PilotCeilingDetour(const M360MatchStage* stage, float x, float y,
     const float rightCost = fabsf(x - right) + fabsf(goalX - right) + fabsf(goalY - rightY) * 3.0f;
     *detourX = leftCost < rightCost ? left - 25.0f : right + 25.0f;
     *detourY = (leftCost < rightCost ? leftY : rightY) + 25.0f;
+    // Stay outside the overhang until near the destination's height. Turning
+    // back immediately after clearing a low roof wastes jumps below a ledge.
+    // Maze entrances have a 35-unit half extent; retain a five-unit margin.
+    if (*detourY < goalY - 30.0f) *detourY = goalY - 30.0f;
     return 1;
 }
 
 /* Diagnostic input only: follow the collision surface with normal controller
  * commands. No position, damage, stocks or encounter state is modified. */
+static int PilotMazeSteer(float delta, bool walkOffEdge)
+{
+    if (fabsf(delta) < 2.0f) return 0;
+    if (walkOffEdge) return delta < 0.0f ? -127 : 127;
+    int steer = static_cast<int>(delta * 4.0f);
+    if (steer > 127) steer = 127;
+    if (steer < -127) steer = -127;
+    // Do not stop eight pixels short of an edge inside the stick dead zone.
+    if (steer > 0 && steer < 64) steer = 64;
+    if (steer < 0 && steer > -64) steer = -64;
+    return steer;
+}
+
+static bool PilotMazeCanJump(bool detour, float delta, int floor)
+{
+    // Grounded movement follows the ramp first; airborne recovery must
+    // remain available when a small wall prevents approaching the edge.
+    return !detour || fabsf(delta) < 20.0f || floor < 0;
+}
+
 void ApplyRoutePilot(PADStatus* pad)
 {
     M360MatchStatus match;
@@ -237,15 +261,14 @@ void ApplyRoutePilot(PADStatus* pad)
                 walkOffEdge = true;
             }
         }
-        int steer = static_cast<int>((targetX - x) * 4.0f);
-        if (steer > 127) steer = 127;
-        if (steer < -127) steer = -127;
-        // The original edge collision requires a hard tilt to leave a ledge.
-        if (walkOffEdge) steer = targetX < x ? -127 : 127;
+        const int steer = PilotMazeSteer(targetX - x, walkOffEdge);
         pad->stickX = static_cast<s8>(steer);
         // Save aerial jumps until descent instead of consuming all of them
         // eight frames apart while still rising under a ceiling.
-        if (targetY > y + 25.0f && !g_routeJumpCooldown && (floor >= 0 || dy < -0.1f)) {
+        // Walk along the authored ramp under an overhang before jumping
+        // around its edge; early jumps just hit the roof and consume them.
+        if (targetY > y + 25.0f && !g_routeJumpCooldown && (floor >= 0 || dy < -0.1f) &&
+            PilotMazeCanJump(g_mazeDetour, targetX - x, floor)) {
             g_mazeJumpHold = 6;
             g_routeJumpCooldown = 18;
         }
