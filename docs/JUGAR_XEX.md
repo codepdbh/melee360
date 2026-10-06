@@ -12,16 +12,22 @@ mientras te queden vidas. Si las agotas, A ofrece continuar con tres vidas
 en el mismo encuentro. La secuencia de cinco combates sigue siendo una
 vista previa: no incluye todavia las fases especiales ni el jefe final.
 
-Adventure tiene diecinueve fases. En Mushroom Kingdom, avanza a la derecha,
+Adventure tiene veinte fases, incluido el laberinto experimental. En Mushroom Kingdom, avanza a la derecha,
 derrota a los diez Yoshis del checkpoint y alcanza la salida. Este recorrido
 completo ya paso una prueba de Xenia con una vida restante. Brinstar tambien
 tiene una fase de escape: sube a la plataforma superior antes de cuarenta
 segundos. La subida completa ya paso en Xenia sin perder vidas, y despues
-cargo el siguiente combate contra Kirby. El laberinto, la carrera y la escalada originales siguen pendientes.
+cargo el siguiente combate contra Kirby. En Underground Maze, busca la
+Trifuerza entre seis salas: los simbolos falsos inician un combate con Link.
+Al derrotarlo puedes seguir explorando; tienes siete minutos por intento.
+Una prueba de Xenia completo el laberinto despues de un timeout y reintento.
+Faltan sus enemigos del recorrido y animaciones de transicion. La carrera
+y la escalada originales siguen pendientes.
 Una prueba continua completo las diecisiete fases obligatorias disponibles
-en Easy con la version actual, con tres Continues y vuelta al menu. Las otras dos fases dependen de las condiciones
-de Giant Kirby y Giga Bowser. Esto todavia no incluye los tres recorridos
-originales pendientes ni valida la ejecucion en Xbox 360. Consulta
+en Easy con una version anterior sin laberinto, con tres Continues y vuelta
+al menu. Giant Kirby y Giga Bowser dependen de condiciones originales.
+La secuencia completa de veinte fases no se ha validado todavia, ni la
+ejecucion en Xbox 360. Consulta
 `PLAYABLE_PORT_GAPS.md` para el estado y la version de cada prueba.
 
 Los enemigos de Adventure usan los valores originales de ataque, resistencia

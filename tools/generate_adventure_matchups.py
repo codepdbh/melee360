@@ -16,9 +16,9 @@ characters = re.findall(r'/\*\s*((?:CKind|ChKind)_\w+)\s*\*/\s*\{\s*(Ft_Kind_\w+
 character_names = dict(characters)
 gr = {name: int(number, 16) for number, name in re.findall(r'/\*\s*0x([0-9A-Fa-f]+)\s*\*/\s*(Gr_Kind_\w+)', (source / 'gr/forward.h').read_text(encoding='utf-8'))}
 ft = {name: int(number, 16) for number, name in re.findall(r'/\*\s*([0-9A-Fa-f]{2})\s*\*/\s*(Ft_Kind_\w+)', (source / 'ft/forward.h').read_text(encoding='utf-8'))}
-# Traversal, Brinstar escape and native fighter encounters. The race and
-# climbing courses still need scene code. Giga eligibility is handled natively.
-scene_ids = [1, 3, 9, 10, 17, 18, 25, 27, 33, 35, 37, 41, 43, 49, 59, 65, 81, 83, 89, 92]
+# Traversal, Brinstar escape and native fighter encounters. The climbing
+# course and race traffic remain unfinished. Giga eligibility is native.
+scene_ids = [1, 3, 9, 10, 17, 18, 25, 27, 33, 35, 37, 41, 43, 49, 58, 59, 65, 81, 83, 89, 92]
 records = {}
 for entry in re.finditer(r'\{([^{}]+)\}', table):
     values = [value.strip() for value in entry[1].split(',') if value.strip()]

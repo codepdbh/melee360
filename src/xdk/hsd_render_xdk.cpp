@@ -32,6 +32,23 @@ extern "C" void M360_HsdVideoInit(void);
 
 namespace {
 
+/* Optional watchdog detail for diagnostic builds. Restore the caller's
+ * detail after each operation so a stall identifies the active operation. */
+#ifdef M360_RENDER_TRACE
+extern "C" volatile unsigned g_m360CrumbDetail;
+class RenderTraceScope {
+    unsigned previous;
+public:
+    explicit RenderTraceScope(unsigned detail) : previous(g_m360CrumbDetail) {
+        g_m360CrumbDetail = detail;
+    }
+    ~RenderTraceScope() { g_m360CrumbDetail = previous; }
+};
+#define M360_RENDER_SCOPE(detail) RenderTraceScope renderTraceScope(detail)
+#else
+#define M360_RENDER_SCOPE(detail) ((void) 0)
+#endif
+
 struct LightSlot {
     float pos[4];
     float dir[4];
@@ -205,6 +222,7 @@ void CacheTexture(const void* image, const void* palette, unsigned width,
 
 IDirect3DTexture9* ResolveTexture(const HSD_TObj* tobj)
 {
+    M360_RENDER_SCOPE(0x1001);
     const HSD_ImageDesc* image = tobj ? tobj->imagedesc : NULL;
     if (!image || !image->image_ptr)
         return NULL;
@@ -783,6 +801,7 @@ void Transform(const MatrixSet* set, const RawVertex& raw, HsdVertex* out,
 void Flush(unsigned* count)
 {
     for (unsigned first = 0; first < *count; first += kVerticesPerDraw) {
+        M360_RENDER_SCOPE(0x1002);
         unsigned n = *count - first;
         if (n > kVerticesPerDraw) n = kVerticesPerDraw;
         s_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, n / 3, s_vertices + first,
@@ -952,6 +971,7 @@ void BindSampler(DWORD stage, const HSD_TObj* tobj)
 
 void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
 {
+    M360_RENDER_SCOPE(0x1003);
     HSD_MObj* mobj = dobj->mobj;
     if (!mobj || !s_device)
         return;
@@ -964,7 +984,10 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
     vs[16] = s_gx.fogStart;
     vs[17] = s_gx.fogEnd;
     vs[18] = static_cast<float>(s_gx.fogType & 7);
-    SetLightsAndChannels(mobj, vs);
+    {
+        M360_RENDER_SCOPE(0x1004);
+        SetLightsAndChannels(mobj, vs);
+    }
 
     float ps[54 * 4];
     memset(ps, 0, sizeof(ps));
