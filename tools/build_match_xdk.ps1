@@ -143,7 +143,7 @@ Set-Content -Encoding ASCII $motionTable $table
 # Per-kind event tables copied verbatim from ftdata.c (item pickup/drop and
 # visibility hooks, knockback enter/exit, special-attribute loaders, ...).
 # Entries of the boss/special kinds that are not linked (Master/Crazy Hand,
-# wireframes, Giga Bowser, Sandbag) become NULL, which the callers test.
+# Sandbag) become NULL, which the callers test.
 $ftDataText = Get-Content -Raw (Join-Path $src 'melee/ft/ftdata.c')
 $ftDataTables = @('ftData_OnAbsorb', 'ftData_OnItemPickupExt', 'ftData_OnItemInvisible', 'ftData_OnItemVisible',
     'ftData_OnItemDropExt', 'ftData_OnItemPickup', 'ftData_OnItemDrop', 'ftData_UnkMotionStates1',
@@ -153,8 +153,14 @@ $ftDataUnit = (([regex]::Matches($ftDataText, '(?m)^#include[^\r\n]*') | ForEach
 foreach ($name in $ftDataTables) {
     $m = [regex]::Match($ftDataText, '(?s)\n((?:HSD_GObjEvent|Fighter_ItemEvent) ' + $name + '\[Ft_Kind_Max\] = \{.*?\n\};)')
     if (-not $m.Success) { throw "Missing ftdata.c table: $name" }
-    $ftDataUnit += [regex]::Replace($m.Groups[1].Value, '\bft(Mh|Ch|Bo|Gl|Gk|Sb)_\w+', 'NULL') + "`r`n`r`n"
+    $ftDataUnit += [regex]::Replace($m.Groups[1].Value, '\bft(Mh|Ch|Sb)_\w+', 'NULL') + "`r`n`r`n"
 }
+$textureTableName = $ftDataText.IndexOf('} ftData_UnkCallbackPairs0[')
+if ($textureTableName -lt 0) { throw 'Missing fighter texture callback table.' }
+$textureTableStart = $ftDataText.LastIndexOf('struct {', $textureTableName)
+$textureTableEnd = $ftDataText.IndexOf("`n};", $textureTableName)
+if ($textureTableStart -lt 0 -or $textureTableEnd -lt 0) { throw 'Invalid fighter texture callback table.' }
+$ftDataUnit += $ftDataText.Substring($textureTableStart, $textureTableEnd + 4 - $textureTableStart) + "`r`n`r`n"
 $ftDataTablesPath = Join-Path $out 'ftdata_event_tables.c'
 Set-Content -Encoding ASCII $ftDataTablesPath $ftDataUnit
 
@@ -418,7 +424,6 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/it/itdraw.c') },
     @{ Path = (Join-Path $src 'melee/it/itdrop.c') },
     @{ Path = (Join-Path $src 'melee/it/iteffect.c') },
-    @{ Path = (Join-Path $src 'melee/it/item.c') },
     @{ Path = (Join-Path $src 'melee/it/itgroundcoll.c') },
     @{ Path = (Join-Path $src 'melee/it/ithitbox.c') },
     @{ Path = (Join-Path $src 'melee/it/itmaplib.c') },
@@ -714,6 +719,9 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftDonkey/ftdonkeyspecialn.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftDonkey/ftdonkeyspecials.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopa.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftGigaKoopa/ftgkoopa.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftZakoBoy/ftboy.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftZakoGirl/ftgirl.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopaspecialhi.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopaspeciallw.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopaspecialn.c') },
@@ -734,6 +742,16 @@ $units += New-Adapted 'melee/if/ifstatus.c' (@{
     'HSD_TexAnim\* digit_anim = ' = 'digit_anim = '
 }) 'ifstatus'
 $units += New-Adapted 'melee/ef/efasync.c' @{ '(\w+)->ptcl_bank \| \1->tex_bank' = '($1->ptcl_bank || $1->tex_bank)' } 'efasync'
+$itemDiagnostics = @{}
+if ($CallTrace) {
+    $itemDiagnostics['(#include "item.h")'] = '$1' + "`r`nextern volatile unsigned g_m360Dbg[8];"
+    $itemDiagnostics['(efAsync_QueueFlush\(gobj, &item_data->xBC0\);)'] = 'g_m360Dbg[0] = item_data->kind; g_m360Dbg[1] = 1; g_m360Dbg[2] = (unsigned) item_data->xBC0; $1 g_m360Dbg[1] = 2;'
+    $itemDiagnostics['(if \(!\(flags & ITEM_COLANIM_PRESERVE\))'] = 'g_m360Dbg[1] = 3; $1'
+    $itemDiagnostics['(if \(!\(flags & ITEM_SFX_PRESERVE\))'] = 'g_m360Dbg[1] = 4; $1'
+    $itemDiagnostics['(HSD_JObjSetFacingDirItem\(item_jobj, item_data\);)'] = 'g_m360Dbg[1] = 5; $1 g_m360Dbg[1] = 6;'
+    $itemDiagnostics['(temp_r30 = \(new_var = &item_data->xBC_itemStateContainer\[msid\]\);)'] = 'g_m360Dbg[1] = 7; $1 g_m360Dbg[3] = (unsigned) temp_r30;'
+}
+$units += New-Adapted 'melee/it/item.c' $itemDiagnostics 'item'
 $units += New-Slice 'melee/lb/lb_00B0.c' 'bool lb_8000B074(' @('bool lb_8000B074(', 'void lb_8000C07C(', 'void lb_8000C0E8(', 'void memzero(', 'void lb_8000C1C0(', 'void lb_8000C228(', 'void lb_8000C290(', 'void lb_8000C2F8(', 'static inline HSD_RObj* robj_next(', 'void lb_8000C390(', 'bool lb_8000B09C(', 'bool lb_8000B134(', 'void lb_8000B804(', 'static void lb_8000B9D8(HSD_JObj* jobj', 'void lb_8000BA0C(', 'static HSD_JObj* lbFindJObjWithAObj(HSD_JObj* jobj)', 'float lbGetJObjCurrFrame(', 'float lbGetJObjEndFrame(', 'static s32 lbGetFreeColorRegImpl(s32 i0, HSD_TevDesc* tevdesc', 's32 lbGetFreeColorRegister(', 's32 lb_8000CC8C(', 's32 lb_8000CCA4(', 's32 lb_8000CD90(', 's32 lb_8000CDA8(', 'void lb_8000CE30(', 'void lb_8000CE40(') 'lb_00B0_constraint_slice'
 
 $objects = @()

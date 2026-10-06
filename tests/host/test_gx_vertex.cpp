@@ -4,7 +4,10 @@
 // Use the original enum values without pulling in Dolphin's compiler headers.
 #define _DOLPHIN_TYPES_H_
 typedef unsigned char u8;
+typedef unsigned int u32;
 #include <dolphin/gx/GXEnum.h>
+const u32 TEX_LIGHTMAP_DIFFUSE = 1u << 4, TEX_LIGHTMAP_SPECULAR = 1u << 5;
+const u32 TEX_LIGHTMAP_AMBIENT = 1u << 6, TEX_LIGHTMAP_EXT = 1u << 7;
 typedef float Mtx[3][4];
 struct HSD_VtxDescList {
     GXAttr attr; GXAttrType attr_type; GXCompCnt comp_cnt; GXCompType comp_type;
@@ -79,5 +82,16 @@ int main() {
     Transform(&matrices, raw, &vertex, sources);
     assert(vertex.u0 == 7 && vertex.v0 == 8 && vertex.u1 == 4 && vertex.v1 == 5);
     assert(sizeof(vertex) == 56);
+    TexturePasses passes = TexturePassesFor(TEX_LIGHTMAP_SPECULAR, true);
+    assert(!passes.pre && passes.spec && !passes.post);
+    passes = TexturePassesFor(TEX_LIGHTMAP_SPECULAR, false);
+    assert(!passes.pre && !passes.spec && !passes.post);
+    passes = TexturePassesFor(TEX_LIGHTMAP_DIFFUSE | TEX_LIGHTMAP_EXT, true);
+    assert(passes.pre && !passes.spec && passes.post);
+    passes = TexturePassesFor(TEX_LIGHTMAP_AMBIENT | TEX_LIGHTMAP_SPECULAR | TEX_LIGHTMAP_EXT, true);
+    assert(passes.pre && passes.spec && passes.post);
+    passes = TexturePassesFor(0, true);
+    assert(!passes.pre && !passes.spec && !passes.post);
     puts("PASS: NBT3 index8/index16 alignment, truncated tuples, direct normals and TEX0-TEX7 routing");
+    puts("PASS: diffuse/ambient, enabled specular and extended texture pass routing");
 }

@@ -2,7 +2,8 @@
 param(
     [string] $XeniaPath = '',
     [string] $XexPath = '',
-    [switch] $DisableKeyboard
+    [switch] $DisableKeyboard,
+    [switch] $Mute
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,4 +56,5 @@ if (-not $DisableKeyboard -and (Test-Path -LiteralPath $xeniaConfig)) {
 
 Write-Host "[M360][XENIA] emulator: $XeniaPath"
 Write-Host "[M360][XENIA] executable: $XexPath"
-Start-Process -FilePath $XeniaPath -ArgumentList @('--allow_game_relative_writes=true', $XexPath)
+Write-Host "[M360][XENIA] audio enabled: $(-not $Mute.IsPresent)"
+Start-Process -FilePath $XeniaPath -ArgumentList @('--allow_game_relative_writes=true', '--apu=xaudio2', "--mute=$($Mute.IsPresent.ToString().ToLowerInvariant())", "`"$XexPath`"")

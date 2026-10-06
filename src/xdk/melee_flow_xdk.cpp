@@ -100,7 +100,8 @@ void EnterState(MeleeFlow* flow, MeleeFlowState state, MeleeAudioStatus* audio)
         M360_MenuSceneLeave();
         s_menuActive = false;
     }
-    if (flow->state == kFlowMatch && state != kFlowMatch)
+    /* A next round or a restart also replaces the current match scene. */
+    if (flow->state == kFlowMatch)
         M360_MatchLeave();
     M360_HsdRenderClearTextures();
     flow->state = state;
@@ -250,9 +251,9 @@ void UpdateMatch(MeleeFlow* flow, MeleeAudioStatus* audio)
         flow->campaignRound = 0;
         EnterState(flow, kFlowMainMenu, audio);
     } else if (result == M360_MATCH_NEXT_ROUND) {
-        ++flow->campaignRound;
-        if (flow->campaignRound >= kCampaignRounds) {
-            M360_MatchTrace("mode.complete", flow->gameMode);
+        flow->campaignRound = M360_MatchNextCampaignRound();
+        if (flow->campaignRound >= M360_MatchCampaignRounds(flow->gameMode)) {
+            M360_MatchTrace("mode.preview_complete", flow->gameMode);
             flow->gameMode = kGameModeVs;
             flow->campaignRound = 0;
             EnterState(flow, kFlowMainMenu, audio);
@@ -301,6 +302,8 @@ void LoadAutoConfig()
         int value = 0;
         if (*line != '#' && sscanf(line, "%31s %d", key, &value) == 2) {
             if (!strcmp(key, "stage")) config.stage = static_cast<unsigned>(value);
+            else if (!strcmp(key, "mode") && value >= 2 && value <= 4) s_flow->gameMode = static_cast<unsigned>(value);
+            else if (!strcmp(key, "round") && value >= 0) s_flow->campaignRound = static_cast<unsigned>(value);
             else if (!strcmp(key, "p1")) config.kinds[0] = static_cast<unsigned>(value);
             else if (!strcmp(key, "p2")) config.kinds[1] = static_cast<unsigned>(value);
             else if (!strcmp(key, "p3")) config.kinds[2] = static_cast<unsigned>(value);

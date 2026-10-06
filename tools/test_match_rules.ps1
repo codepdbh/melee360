@@ -10,6 +10,9 @@ if (-not $VcVars) {
 }
 $out = Join-Path $root 'build-x360/host-tests/match-rules'
 New-Item -ItemType Directory -Force $out | Out-Null
+& (Join-Path $PSScriptRoot 'generate_classic_matchups.ps1') -OutputPath (Join-Path $out 'melee_classic_matchups.h')
+& python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $out 'melee_adventure_matchups.h')
+if ($LASTEXITCODE -ne 0) { throw 'Adventure generation failed.' }
 $source = (Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')).Replace("`r`n", "`n")
 function Get-MatchFunction([string] $Signature) {
     $start = $source.IndexOf($Signature)
@@ -26,14 +29,24 @@ function Get-MatchFunction([string] $Signature) {
 }
 $extracted = ''
 foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static unsigned TimeMinutes(void)',
+    'unsigned M360_MatchCampaignRounds(', 'static const M360AdventureEncounter* AdventureEncounter(',
+    'unsigned M360_MatchNextCampaignRound(',
+    'static unsigned CampaignSeconds(', 'int M360_MatchIsTeams(', 'int M360_MatchTeam(',
+    'float M360_MatchCombatRatio(',
+    'unsigned M360_MatchCpuLevel(',
+    'unsigned M360_MatchCpuKind(',
+    'static StageParam* MatchStageParam(', 'int M360_MatchBgmId(',
     'static unsigned StartingStocks(', 'static int LoseStock(', 'static int StockResult(',
-    'static void CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
+    'static int ClassicStageIndex(', 'static void CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
+    'void M360_MatchEnter(', 'void M360_MatchLeave(',
     'static int SelectInput(', 'static unsigned P1Slot(', ('static int SelectFrame(void)' + "`n{"),
-    'static int OutsideBlastZone(', 'void M360_MatchSetMode(', 'int M360_MatchFrame(')) {
+    'static int OutsideBlastZone(', 'static void SetCollisionGroupEnabled(', 'static void DisableCollisionGroup(',
+    'static void MazeRoomBounds(', 'unsigned M360_MatchMazeVisited(', 'int M360_MatchMazePoint(', 'static void MazeFrame(', 'static int CollisionGroupHasFloor(', 'static void AdventureFrame(', 'void M360_MatchSetMode(', 'int M360_MatchFrame(')) {
     $extracted += (Get-MatchFunction $signature) + "`r`n"
 }
 $source = (Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')).Replace("`r`n", "`n")
-$extracted = (Get-MatchFunction 'unsigned M360_FighterCostumeCount(') + "`r`n" + $extracted
+$extracted = (Get-MatchFunction 'unsigned M360_FighterCostumeCount(') + "`r`n" +
+    (Get-MatchFunction 'int M360_FighterIndexForKind(') + "`r`n" + $extracted
 Set-Content -LiteralPath (Join-Path $out 'match_rules_original.h') -Encoding ASCII $extracted
 $batch = @"
 @echo off

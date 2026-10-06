@@ -141,7 +141,6 @@ UNPORTED_VOID(ftCo_800C8540, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
 UNPORTED_BOOL(ft_80084BFC, (Fighter_GObj* gobj, int* a, int* b, int* c))
 UNPORTED_BOOL(ft_80084C38, (Fighter_GObj* gobj, int* a, int* b, int* c))
-UNPORTED_VOID(ftAnim_800704F0, (Fighter_GObj* gobj, int tobj_idx, float frame))
 UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
 SILENT_VOID(ft_800880D8, (Fighter* fp))
@@ -333,7 +332,6 @@ u16 plAttack_80037B08(void) {  Report("fighter.unported.plAttack_80037B08"); ret
 bool mpGetSpeed(int a0, Vec3* a1, Vec3* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.mpGetSpeed"); return (bool) 0; }
 bool lb_80014638(struct lb_80014638_arg0_t* a0, struct lb_80014638_arg1_t* a1) { (void) a0; (void) a1; Report("fighter.unported.lb_80014638"); return (bool) 0; }
 bool lb_800144C8(ColorOverlay* a0, struct Fighter_804D653C_t* a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lb_800144C8"); return (bool) 0; }
-void lb_80014498(ColorOverlay* a0) { (void) a0; Report("fighter.unported.lb_80014498");  }
 bool lb_80014258(Fighter_GObj* a0, void* a1, FtCmd2 a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.lb_80014258"); return (bool) 0; }
 void lbRefract_80022BB8(void) {  Report("fighter.unported.lbRefract_80022BB8");  }
 void lbRefract_800225D4(void) {  Report("fighter.unported.lbRefract_800225D4");  }
@@ -344,7 +342,7 @@ s32 ifMagnify_802FB6E8(s32 a0) { (void) a0; Report("fighter.unported.ifMagnify_8
 bool gm_IsCurrently1PMode_inline(void) {  Report("fighter.unported.gm_IsCurrently1PMode_inline"); return (bool) 0; }
 bool gm_GetDbPauseFlag(int a0) { (void) a0; Report("fighter.unported.gm_GetDbPauseFlag"); return (bool) 0; }
 u32 gm_801A4BB8(void) {  Report("fighter.unported.gm_801A4BB8"); return (u32) 0; }
-bool gm_8016B168(void) { return false; }
+bool gm_8016B168(void) { return M360_MatchIsTeams() != 0; }
 bool gm_8016B0D4(void) {  Report("fighter.unported.gm_8016B0D4"); return (bool) 0; }
 bool gm_8016B014(void) {  Report("fighter.unported.gm_8016B014"); return (bool) 0; }
 void gm_80167470(s32 a0, s32 a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167470");  }
@@ -364,7 +362,6 @@ void ftCo_800C703C(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_
 void ftCo_800C2FD8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftCo_800C2FD8");  }
 void ftCh_Init_80156014(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_Init_80156014");  }
 void ftCh_GrabUnk1_8015ADD0(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftCh_GrabUnk1_8015ADD0");  }
-void ftAnim_80070654(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ftAnim_80070654");  }
 void Player_SetTotalCoins(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.Player_SetTotalCoins");  }
 void Player_SetCoins(int a0, int a1) { (void) a0; (void) a1; Report("fighter.unported.Player_SetCoins");  }
 int Player_GetTotalCoins(int a0) { (void) a0; Report("fighter.unported.Player_GetTotalCoins"); return (int) 0; }
@@ -438,7 +435,6 @@ bool mpLib_80056C54(int line_id, Vec3* pos, int* line_id_out, Vec3* vec_out, u32
  * NULL, which the original callers treat as "no item". */
 static plActionStats s_actionStats[6];
 plActionStats* Player_GetActionStats(int slot) { return &s_actionStats[slot >= 0 && slot < 6 ? slot : 0]; }
-void ftParts_800753D4(Fighter* a0, struct Fighter_804D6540_x0_t* a1, HSD_Joint* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.ftParts_800753D4"); }
 void grCorneria_801E2AF4(void) {  Report("fighter.unported.grCorneria_801E2AF4"); }
 bool grCorneria_801E2B80(void) {  Report("fighter.unported.grCorneria_801E2B80"); return (bool) 0; }
 bool grCorneria_801E2C34(void) {  Report("fighter.unported.grCorneria_801E2C34"); return (bool) 0; }
@@ -601,8 +597,6 @@ u8 Player_GetFlagsAEBit1(s32 slot) { (void) slot; Report("fighter.unported.Playe
 s32 Player_GetFlagsBit1(s32 slot) { (void) slot; Report("fighter.unported.Player_GetFlagsBit1"); return (s32) 0; }
 s32 Player_GetUnk4D(s32 slot) { (void) slot; Report("fighter.unported.Player_GetUnk4D"); return (s32) 0; }
 void ftAnim_80070200(Fighter* a0, ftData_x8_x8* a1, CostumeTObjList* a2, DObjList* a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.ftAnim_80070200"); }
-void ftAnim_80070458(Fighter* a0, CostumeTObjList* a1, u32 tobj_idx, float frame) { (void) a0; (void) a1; (void) tobj_idx; (void) frame; Report("fighter.unported.ftAnim_80070458"); }
-void ftAnim_800705E0(CostumeTObjList* tobj_list) { (void) tobj_list; Report("fighter.unported.ftAnim_800705E0"); }
 void ftAnim_GetNextJointInTree(HSD_Joint** a0, s32* pdepth) { (void) a0; (void) pdepth; Report("fighter.unported.ftAnim_GetNextJointInTree"); }
 void ftAnim_GetNextMatAnimJointInTree(HSD_MatAnimJoint** a0, int* a1) { (void) a0; (void) a1; Report("fighter.unported.ftAnim_GetNextMatAnimJointInTree"); }
 void ftCo_8009D074(Fighter* fp) { (void) fp; Report("fighter.unported.ftCo_8009D074"); }
@@ -619,8 +613,6 @@ void ftCo_8009DB50(Fighter* fp) { (void) fp; Report("fighter.unported.ftCo_8009D
 void ftCo_800C737C(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ftCo_800C737C"); }
 void ftCo_800C7414(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ftCo_800C7414"); }
 void ftCo_UnloadDynamicBones(Fighter* fp) { (void) fp; Report("fighter.unported.ftCo_UnloadDynamicBones"); }
-u32 ftParts_8007506C(FighterKind ftkind, int part) { (void) ftkind; (void) part; Report("fighter.unported.ftParts_8007506C"); return (u32) 0; }
-void ftParts_800755E8(Fighter* a0, struct Fighter_804D6540_x0_t* a1) { (void) a0; (void) a1; Report("fighter.unported.ftParts_800755E8"); }
 void lbDvd_800178E8(int a0, const char* name, int a2, int a3, int a4, int a5, int a6, u8 a7, int a8) { (void) a0; (void) name; (void) a2; (void) a3; (void) a4; (void) a5; (void) a6; (void) a7; (void) a8; Report("fighter.unported.lbDvd_800178E8"); }
 HSD_MObjInfo ftMObj;
 
@@ -651,11 +643,10 @@ void M360_StageSetKind(int grkind)
     stage_info.x728 = -10000.0f;
 }
 s32 Ground_801C5794(void) {  Report("fighter.unported.Ground_801C5794"); return (s32) 0; }
-void ftCo_800A0098(Fighter* fp) { (void) fp; Report("fighter.unported.ftCo_800A0098"); }
 bool ft_80087A18(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ft_80087A18"); return (bool) 0; }
 int ft_80087A80(Fighter_GObj* gobj) { (void) gobj; Report("fighter.unported.ft_80087A80"); return (int) 0; }
 /* gmvs.c rule queries: the port has no team battles. */
-bool gm_8016B14C(void) { return true; }
+bool gm_8016B14C(void) { return M360_MatchIsTeams() == 0; }
 int gm_8016C75C(HSD_GObj* a0) { (void) a0; Report("fighter.unported.gm_8016C75C"); return (int) 0; }
 bool grBigBlue_801EF844(enum_t a0) { (void) a0; Report("fighter.unported.grBigBlue_801EF844"); return (bool) 0; }
 bool grCastle_801CDF54(Vec3* a0) { (void) a0; Report("fighter.unported.grCastle_801CDF54"); return (bool) 0; }

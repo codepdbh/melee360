@@ -22,6 +22,8 @@
 #pragma warning(pop)
 
 #include "match_xdk.h"
+#include "melee_classic_matchups.h"
+#include "melee_adventure_matchups.h"
 
 typedef union AnimFn {
     void (*fn)(void);
@@ -130,7 +132,7 @@ enum {
     kLinkLight = 0,
     kLinkStage = 1,
     kLinkFighter = 2,
-    kMaxMapGObjs = 8,
+    kMaxMapGObjs = 16,
     kMaxFighters = 4,
     kRespawnFrames = 60,
     kStartingStocks = 3,
@@ -181,6 +183,10 @@ typedef struct M360GrJoint {
 static const M360GrJoint kLastJoints[] = { { 0, 3, 0 } };
 static const M360GrJoint kIzumiJoints[] = { { 0, 3, 1 }, { 1, 3, 2 }, { 2, 3, 3 } };
 static const M360GrJoint kOldKongoJoints[] = { { 0, 3, 1 }, { 1, 3, 2 } };
+static const M360GrJoint kCastleJoints[] = { { 4, 6, 1 }, { 5, 6, 4 } };
+static const M360GrJoint kKongoJoints[] = { { 2, 10, 19 }, { 3, 10, 22 }, { 5, 10, 43 }, { 6, 10, 44 } };
+static const M360GrJoint kZebesJoints[] = { { 1, 6, 21 }, { 4, 6, 14 }, { 3, 6, 1 } };
+static const M360GrJoint kCorneriaJoints[] = { { 3, 3, 0 }, { 4, 3, 0 } };
 
 typedef struct M360StageDesc {
     const char* name;
@@ -202,6 +208,17 @@ static const M360StageDesc s_stages[] = {
     { "HYRULE TEMPLE", "GrSh.dat", { 0, 1, 2, -1 }, -1, NULL, 0, Gr_Kind_Shrine },
     { "KONGO JUNGLE 64", "GrOk.dat", { 0, 3, 1, 2, -1 }, -1, kOldKongoJoints, 2, Gr_Kind_OldKongo },
     { "JUNGLE JAPES", "GrGd.dat", { 0, 4, 5, 6, 1, 3, 2, -1 }, -1, NULL, 0, Gr_Kind_Garden },
+    { "PEACHS CASTLE", "GrCs.dat", { 0, 4, 3, 6, -1 }, -1, kCastleJoints, 2, Gr_Kind_Castle },
+    { "KONGO JUNGLE", "GrKg.dat", { 0, 10, 5, 3, 6, 4, -1 }, -1, kKongoJoints, 4, Gr_Kind_Kongo },
+    { "BRINSTAR", "GrZe.dat", { 0, 1, 6, 4, 8, -1 }, -1, kZebesJoints, 3, Gr_Kind_Zebes },
+    { "GREEN GREENS", "GrGr.dat", { 0, 2, 6, 5, 4, -1 }, -1, NULL, 0, Gr_Kind_Greens },
+    { "CORNERIA", "GrCn.dat", { 7, 3, 8, 9, 4, 11, -1 }, -1, kCorneriaJoints, 2, Gr_Kind_Corneria },
+    { "POKEMON STADIUM", "GrPs.dat", { 0, 1, 2, -1 }, -1, NULL, 0, Gr_Kind_PStadium },
+    { "ONETT", "GrOt.dat", { 0, 2, 5, 4, 3, -1 }, -1, NULL, 0, Gr_Kind_Onett },
+    { "MUTE CITY", "GrMc.dat", { 0, 30, 36, 37, -1 }, -1, NULL, 0, Gr_Kind_MuteCity },
+    { "MUSHROOM KINGDOM ROUTE", "GrNKr.dat", { 2, 0, 1, 3, -1 }, -1, NULL, 0, Gr_Kind_KinokoRoute },
+    { "BRINSTAR ESCAPE", "GrNZr.dat", { 0, 1, 2, -1 }, -1, NULL, 0, Gr_Kind_ZebesRoute },
+    { "UNDERGROUND MAZE", "GrNSr.dat", { 0, 4, 2, -1 }, -1, NULL, 0, Gr_Kind_ShrineRoute },
 };
 
 enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
@@ -240,6 +257,7 @@ static GroundParam* s_param;
 static DiscU32* s_plit;
 static HSD_JObj* s_points[256];
 static HSD_JObj* s_models[kMaxMapGObjs];
+static int s_modelIds[kMaxMapGObjs];
 static unsigned s_modelCount;
 static HSD_GObj* s_cameraGObj;
 static HSD_CObj* s_cobj;
@@ -257,11 +275,30 @@ static CamTransform s_cam;
 static int s_loaded;
 static int s_active;
 static int s_paused;
+static unsigned s_disconnectedControllers;
+static int s_rematchPending;
 static int s_holdTraced;
 static unsigned s_frame;
 static unsigned s_gameMode = 2;
 static unsigned s_campaignRound;
 static unsigned s_campaignStocks = kStartingStocks;
+static unsigned s_classicMatchups[kCampaignRounds];
+static unsigned s_classicStKind = ~0u;
+static int s_campaignRetryPending;
+static int s_campaignTimedOut;
+static unsigned s_adventureLives[4];
+static unsigned s_campaignClearFrames;
+static unsigned s_adventureElapsedFrames;
+static int s_adventureLuigi;
+static int s_adventureCheckpoint;
+static unsigned s_mazeGoal, s_mazeVisited, s_mazeFinishFrames;
+static int s_mazeRoom = -1;
+static Vec3 s_mazePoints[6], s_mazeSpawns[6];
+static HSD_JObj* s_mazeSymbols[6];
+static float s_mazeRadiusX, s_mazeRadiusY;
+static int InitMaze(void);
+static float s_routeBlast[4], s_routeFightBlast[4];
+static float s_routeCamera[4], s_routeFightCamera[4];
 static unsigned s_loadFailedSlot;
 static float s_scale = 1.0f;
 static float s_tilt, s_pan, s_camX20, s_camX24, s_zoomRate, s_maxDepth;
@@ -383,7 +420,7 @@ static int PointPosition(int slot, Vec3* out)
 /* Collision groups bound to animated map joints (Ground_InitMapColl,
  * mpLib_800552B0/80055E9C): each frame the group's vertices are moved by the
  * joint's world matrix and the native lines are rebuilt from them. */
-enum { kMaxCollBinds = 32, kMaxCollVerts = 2048 };
+enum { kMaxCollBinds = 128, kMaxCollVerts = 2048 };
 typedef struct M360CollBind {
     int group;
     HSD_JObj* jobj;
@@ -528,6 +565,7 @@ static HSD_JObj* CreateMapGObj(const M360StageDesc* stage, int id)
     gobj = GObj_Create(HSD_GOBJ_CLASS_STAGE, 5, 0);
     HSD_GObjObject_80390A70(gobj, HSD_GObj_JObjKind, root);
     GObj_SetupGXLink(gobj, HSD_GObj_JObjCallback, kLinkStage, 0);
+    s_modelIds[s_modelCount] = id;
     s_models[s_modelCount++] = model;
     return root;
 }
@@ -602,6 +640,28 @@ static void LoadBounds(void)
     }
 }
 
+static void SetCollisionGroupEnabled(unsigned group, int enabled)
+{
+    const MapJoint* joint;
+    int starts[5], counts[5], kind, line;
+    if (group >= (unsigned) s_coll->joint_count) return;
+    joint = &s_coll->joints[group];
+    starts[0] = joint->floor_start; counts[0] = joint->floor_count;
+    starts[1] = joint->ceiling_start; counts[1] = joint->ceiling_count;
+    starts[2] = joint->right_wall_start; counts[2] = joint->right_wall_count;
+    starts[3] = joint->left_wall_start; counts[3] = joint->left_wall_count;
+    starts[4] = joint->dynamic_start; counts[4] = joint->dynamic_count;
+    for (kind = 0; kind < 5; ++kind)
+        for (line = starts[kind]; line >= 0 && line < starts[kind] + counts[kind] &&
+             (unsigned) line < s_stage.lineCount; ++line)
+            s_stage.lines[line].kind = enabled ? s_coll->lines[line].hi_flags : 0;
+}
+
+static void DisableCollisionGroup(unsigned group)
+{
+    SetCollisionGroupEnabled(group, 0);
+}
+
 static float CamLeft(void) { return s_stage.camLeft + s_stage.camX; }
 static float CamRight(void) { return s_stage.camRight + s_stage.camX; }
 static float CamTop(void) { return s_stage.camTop + s_stage.camY; }
@@ -623,13 +683,13 @@ static void CamComputeBounds(CamBounds* bounds)
     unsigned i;
     int n = 0;
     for (i = 0; i < s_fighterCount; ++i)
-        if (s_fighters[i] && !s_respawn[i])
+        if (s_fighters[i] && !s_respawn[i] && (s_stocksRemaining[i] || TimeMinutes()))
             ++n;
     mult = (n < 5 ? kTrackWeight[n] : 1.0f) * s_trackRatio;
     for (i = 0; i < s_fighterCount; ++i) {
         Vec3 base, test;
         float left, right, up, down;
-        if (!s_fighters[i] || s_respawn[i])
+        if (!s_fighters[i] || s_respawn[i] || (!s_stocksRemaining[i] && !TimeMinutes()))
             continue;
         M360_FighterCameraBox(s_fighters[i], &base.x, &base.y, &left, &right, &up, &down);
         base.z = 0.0f;
@@ -935,15 +995,29 @@ static void FreeAllGObjs(void)
 
 /* Ground_801C28CC/801C2AE8 over the stage's first StageParam row: per-kind
  * random item weights and the spawn frequency scale. */
+static StageParam* MatchStageParam(void)
+{
+    StageParam* rows;
+    int i;
+    if (!s_param || !s_param->stage_params || s_param->stage_param_count <= 0)
+        return NULL;
+    rows = (StageParam*) (uintptr_t) s_param->stage_params;
+    if (IsCampaign() && s_classicStKind != ~0u) {
+        for (i = 0; i < s_param->stage_param_count; ++i)
+            if ((unsigned) rows[i].stkind == s_classicStKind)
+                return &rows[i];
+        return NULL;
+    }
+    return &rows[0];
+}
+
 static void LoadItemTable(void)
 {
     StageParam* row;
     int j;
     memset(s_itemCounts, 0, sizeof(s_itemCounts));
     s_itemScale = 0.0f;
-    if (!s_param || s_param->stage_param_count <= 0)
-        return;
-    row = (StageParam*) (uintptr_t) s_param->stage_params;
+    row = MatchStageParam();
     if (!row)
         return;
     for (j = 0; j < 35; ++j)
@@ -1025,6 +1099,57 @@ static int BuildStage(unsigned index)
     }
     UpdateMapColl();
     LoadBounds();
+    if (desc->grkind == Gr_Kind_KinokoRoute || desc->grkind == Gr_Kind_ZebesRoute ||
+        desc->grkind == Gr_Kind_ShrineRoute) {
+        float minX = s_stage.spawnX[0], maxX = minX;
+        float minY = s_stage.spawnY[0], maxY = minY;
+        Vec3 marker;
+        s_routeFightCamera[0] = s_stage.camLeft; s_routeFightCamera[1] = s_stage.camRight;
+        s_routeFightCamera[2] = s_stage.camBottom; s_routeFightCamera[3] = s_stage.camTop;
+        /* grKinokoRoute_80207634 establishes blast offsets at 1.5 times
+         * the authored camera offsets. Use those in the fixed Yoshi arena. */
+        s_routeFightBlast[0] = s_stage.camLeft * 1.5f;
+        s_routeFightBlast[1] = s_stage.camRight * 1.5f;
+        s_routeFightBlast[2] = s_stage.camBottom * 1.5f;
+        s_routeFightBlast[3] = s_stage.camTop * 1.5f;
+        for (i = 0; i < s_stage.lineCount; ++i) {
+            const M360StageLine* line = &s_stage.lines[i];
+            if (line->x0 < minX) minX = line->x0;
+            if (line->x1 < minX) minX = line->x1;
+            if (line->x0 > maxX) maxX = line->x0;
+            if (line->x1 > maxX) maxX = line->x1;
+            if (line->y0 < minY) minY = line->y0;
+            if (line->y1 < minY) minY = line->y1;
+            if (line->y0 > maxY) maxY = line->y0;
+            if (line->y1 > maxY) maxY = line->y1;
+        }
+        /* Route archives encode an initial camera window rather than the
+         * whole course. A fixed VS blast window kills P1 at the start. */
+        s_stage.camX = s_stage.camY = 0.0f;
+        s_stage.camLeft = minX - 100.0f; s_stage.camRight = maxX + 100.0f;
+        s_stage.camBottom = minY - 80.0f; s_stage.camTop = maxY + 80.0f;
+        s_stage.blastLeft = minX - 200.0f; s_stage.blastRight = maxX + 200.0f;
+        s_stage.blastBottom = minY - 150.0f; s_stage.blastTop = maxY + 200.0f;
+        s_routeBlast[0] = s_stage.blastLeft; s_routeBlast[1] = s_stage.blastRight;
+        s_routeBlast[2] = s_stage.blastBottom; s_routeBlast[3] = s_stage.blastTop;
+        s_routeCamera[0] = s_stage.camLeft; s_routeCamera[1] = s_stage.camRight;
+        s_routeCamera[2] = s_stage.camBottom; s_routeCamera[3] = s_stage.camTop;
+        if (PointPosition(0xBD, &marker)) M360_MatchTrace("match.adventure.checkpoint_x", (unsigned) (int) marker.x);
+        if (PointPosition(0x99, &marker)) M360_MatchTrace("match.adventure.goal_x", (unsigned) (int) marker.x);
+    }
+    /* Inactive collision groups from each original OnInit; retain indices. */
+    if (desc->grkind == Gr_Kind_Castle) {
+        DisableCollisionGroup(0); DisableCollisionGroup(1); DisableCollisionGroup(2);
+        for (i = 6; i <= 14; ++i) DisableCollisionGroup(i);
+    } else if (desc->grkind == Gr_Kind_Kongo) {
+        DisableCollisionGroup(0); DisableCollisionGroup(1);
+    } else if (desc->grkind == Gr_Kind_Corneria) {
+        for (i = 0; i <= 2; ++i) DisableCollisionGroup(i);
+        for (i = 5; i <= 7; ++i) DisableCollisionGroup(i);
+    } else if (desc->grkind == Gr_Kind_PStadium) {
+        DisableCollisionGroup(0); DisableCollisionGroup(1); DisableCollisionGroup(2);
+        DisableCollisionGroup(3); DisableCollisionGroup(5); DisableCollisionGroup(7);
+    }
     LoadItemTable();
     M360_FighterBuildIslands();
     CreateCamera();
@@ -1062,7 +1187,7 @@ unsigned M360_MatchSlotStocks(unsigned slot)
 
 unsigned M360_MatchStageCount(void)
 {
-    return kStageCount;
+    return kStageCount - 3;
 }
 
 const char* M360_MatchStageName(unsigned index)
@@ -1072,13 +1197,12 @@ const char* M360_MatchStageName(unsigned index)
 
 int M360_MatchBgmId(void)
 {
-    StageParam* rows;
-    if (!s_param || !s_param->stage_params || s_param->stage_param_count <= 0)
+    StageParam* row = MatchStageParam();
+    if (!row)
         return -1;
     /* The base stage row precedes its event/1P variants. Ground_801C24F8
      * selects xC for VS and x4 for 1P; alternate/random tracks remain pending. */
-    rows = (StageParam*) (uintptr_t) s_param->stage_params;
-    return IsCampaign() ? rows[0].x4 : (int) rows[0].xC;
+    return IsCampaign() ? row->x4 : (int) row->xC;
 }
 
 float M360_MatchFixedZoom(void)
@@ -1089,6 +1213,10 @@ float M360_MatchFixedZoom(void)
 void M360_MatchEnter(void)
 {
     unsigned i;
+    const int rematch = s_rematchPending && !IsCampaign();
+    const int retry = s_campaignRetryPending && IsCampaign();
+    s_rematchPending = 0;
+    s_campaignRetryPending = 0;
     if (!M360_MatchLoad())
         return;
     M360_FighterResetMatch();
@@ -1105,24 +1233,36 @@ void M360_MatchEnter(void)
     s_loadFailedSlot = 0;
     s_winner = 0;
     s_draw = 0;
+    s_campaignTimedOut = 0;
     s_suddenDeath = 0;
     s_paused = 0;
+    s_disconnectedControllers = 0;
     s_frame = 0;
     s_active = 1;
     memset(s_selReady, 0, sizeof(s_selReady));
-    s_selHuman[0] = 1;
-    for (i = 1; i < kMaxFighters; ++i)
-        s_selHuman[i] = 0;
+    if (!rematch) {
+        s_selHuman[0] = 1;
+        for (i = 1; i < kMaxFighters; ++i)
+            s_selHuman[i] = 0;
+    }
     if (IsCampaign())
         s_slotCount = 2;
-    s_selProbeP2 = !IsCampaign();
+    s_selProbeP2 = !IsCampaign() && !rematch;
     memset(s_selPrevStick, 0, sizeof(s_selPrevStick));
     s_selPrevSub = 0.0f;
     for (i = 0; i < kMaxFighters; ++i)
         s_selCostume[i] %= M360_FighterCostumeCount(s_selKind[i]);
     s_phase = kPhaseSelect;
-    if (IsCampaign() && s_campaignRound > 0) {
-        s_selReady[0] = s_selReady[1] = 1;
+    if (s_auto.enabled && IsCampaign()) {
+        s_selKind[0] = s_auto.kinds[0] < M360_FighterKindCount() ? s_auto.kinds[0] : 0;
+        s_selCostume[0] = s_auto.costumes[0];
+        s_selHuman[0] = s_auto.humanP1 != 0;
+        s_cpuLevel = s_auto.cpuLevel;
+        M360_FighterSetCpuLevel(s_cpuLevel);
+        StartFight();
+    } else if (rematch || retry || (IsCampaign() && s_campaignRound > 0)) {
+        for (i = 0; i < s_slotCount; ++i)
+            s_selReady[i] = 1;
         StartFight();
     } else if (s_auto.enabled && !IsCampaign()) {
         ApplyAutoConfig();
@@ -1143,9 +1283,96 @@ static int IsCampaign(void)
     return s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure;
 }
 
+unsigned M360_MatchCampaignRounds(unsigned mode)
+{
+    return mode == kGameModeAdventure ? (unsigned) M360_ADVENTURE_ROUNDS :
+           mode == kGameModeClassic ? kCampaignRounds : 0;
+}
+
+static const M360AdventureEncounter* AdventureEncounter(void)
+{
+    return s_gameMode == kGameModeAdventure && s_campaignRound < M360_ADVENTURE_ROUNDS
+               ? &g_m360Adventure[s_campaignRound] : NULL;
+}
+
+unsigned M360_MatchNextCampaignRound(void)
+{
+    unsigned next = s_campaignRound + 1;
+    unsigned elapsed = s_matchOver ? s_campaignClearFrames : M360_HudFightFrames();
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    /* gm_801B4C5C skips Giant Kirby when the team battle took over thirty
+     * whole seconds. Preserve its integer frame-to-second comparison. */
+    if (encounter && encounter->scene == 35 && elapsed / 60 > 30 &&
+        next < M360_ADVENTURE_ROUNDS && g_m360Adventure[next].scene == 37)
+        ++next;
+    /* gm_8017E7FC: Normal or higher, strictly under eighteen minutes. */
+    if (encounter && encounter->scene == 89 && next < M360_ADVENTURE_ROUNDS &&
+        g_m360Adventure[next].scene == 92 &&
+        (s_cpuLevel < 5 || elapsed >= 64800u ||
+         s_adventureElapsedFrames >= 64800u - elapsed))
+        ++next;
+    return next;
+}
+
+static unsigned CampaignSeconds(void)
+{
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    return encounter ? encounter->seconds : s_gameMode == kGameModeClassic ? kClassicNormalSeconds : 0;
+}
+
+int M360_MatchIsTeams(void) { return IsCampaign(); }
+int M360_MatchTeam(unsigned slot) { return IsCampaign() ? (slot == 0 ? 0 : 1) : (int) slot; }
+
+float M360_MatchCombatRatio(unsigned slot, int defense)
+{
+    unsigned difficulty, percent;
+    if (slot == 0 || slot >= s_slotCount || !AdventureEncounter())
+        return 1.0f;
+    /* The current selector exposes CPU levels 1..9. Map pairs to the five
+     * original Adventure difficulties; level 9 selects Very Hard. */
+    difficulty = s_cpuLevel > 0 ? (s_cpuLevel - 1) / 2 : 0;
+    if (difficulty > 4) difficulty = 4;
+    percent = g_m360AdventureRatios[s_campaignRound][difficulty][defense != 0];
+    /* Escape has sentinel rows and Giga has no playable low difficulties. */
+    return percent > 1 ? (float) percent / 100.0f : 1.0f;
+}
+
+unsigned M360_MatchCpuLevel(unsigned slot)
+{
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    unsigned difficulty, enemy;
+    /* Route NPCs are constructed before s_slotCount expands at checkpoint. */
+    if (!encounter || slot == 0 || slot >= kMaxFighters)
+        return s_cpuLevel;
+    difficulty = s_cpuLevel > 0 ? (s_cpuLevel - 1) / 2 : 0;
+    if (difficulty > 4) difficulty = 4;
+    /* gm_8017CE34 uses the first entry for generated teams (flag 8). */
+    enemy = (encounter->scene == 1 || (encounter->flags & 8)) ? 0 : slot - 1;
+    if (enemy > 2) enemy = 2;
+    return g_m360AdventureCpuLevels[s_campaignRound][difficulty][enemy];
+}
+
+unsigned M360_MatchCpuKind(unsigned slot)
+{
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    unsigned difficulty, enemy;
+    if (!encounter || slot == 0 || slot >= kMaxFighters)
+        return 4; /* gm_1601.c: standard VS CPU. */
+    if (encounter->flags & 4)
+        return 27; /* gm_8017CE34: permanent metal behavior. */
+    if (encounter->scene == 1 || (encounter->flags & 8))
+        return HSD_Randi(4) == 3 ? 24 : 23; /* fn_8016A4C8 generator. */
+    difficulty = s_cpuLevel > 0 ? (s_cpuLevel - 1) / 2 : 0;
+    if (difficulty > 4) difficulty = 4;
+    enemy = slot - 1;
+    if (enemy > 2) enemy = 2;
+    return g_m360AdventureCpuKinds[s_campaignRound][difficulty][enemy];
+}
+
 static unsigned StartingStocks(unsigned slot)
 {
-    return IsCampaign() ? (slot == 0 ? s_campaignStocks : 1) : s_stocks;
+    return IsCampaign() ? (slot == 0 ? s_campaignStocks :
+           s_gameMode == kGameModeAdventure ? s_adventureLives[slot] : 1) : s_stocks;
 }
 
 static int LoseStock(unsigned slot)
@@ -1161,6 +1388,17 @@ static int LoseStock(unsigned slot)
 static int StockResult(unsigned* winner, int* draw)
 {
     unsigned i, alive = 0, last = 0;
+    if (IsCampaign()) {
+        unsigned enemies = 0;
+        for (i = 1; i < s_fighterCount; ++i)
+            if (s_fighters[i]) enemies += s_stocksRemaining[i];
+        if (s_stocksRemaining[0] && (enemies ||
+            (AdventureEncounter() && (AdventureEncounter()->scene == 1 || AdventureEncounter()->scene == 17 ||
+                                     AdventureEncounter()->scene == 27)))) return 0;
+        *winner = s_stocksRemaining[0] ? 0 : 1;
+        *draw = !s_stocksRemaining[0] && !enemies;
+        return 1;
+    }
     for (i = 0; i < s_fighterCount; ++i)
         if (s_fighters[i] && s_stocksRemaining[i]) {
             ++alive;
@@ -1173,11 +1411,76 @@ static int StockResult(unsigned* winner, int* draw)
     return 1;
 }
 
-/* Campaign opponents cycle through the roster by round. */
+static int ClassicStageIndex(unsigned matchup)
+{
+    unsigned i;
+    for (i = 0; i < kStageCount; ++i)
+        if (s_stages[i].grkind == g_m360ClassicNormal[matchup].grkind)
+            return (int) i;
+    return -1;
+}
+
+/* Normal Classic encounters use original stage/character pairs. Special
+ * encounters and Adventure still require their own scene implementations. */
 static void CampaignOpponent(void)
 {
-    const unsigned count = M360_FighterKindCount();
-    s_selKind[1] = count ? (s_selKind[0] + 1 + s_campaignRound) % count : 0;
+    const unsigned rosterCount = M360_FighterKindCount();
+    const M360AdventureEncounter* adventure = AdventureEncounter();
+    if (adventure) {
+        unsigned i, slots = 0;
+        memset(s_adventureLives, 0, sizeof(s_adventureLives));
+        s_slotCount = 1;
+        s_classicStKind = adventure->stkind;
+        for (i = 0; i < 3; ++i) {
+            const int fighterKind = adventure->scene == 3 && i == 0 && s_adventureLuigi
+                                        ? M360_ADVENTURE_LUIGI_KIND : adventure->fighters[i];
+            const int kind = M360_FighterIndexForKind(fighterKind);
+            if (kind < 0) continue;
+            s_selKind[++slots] = (unsigned) kind;
+            s_selCostume[slots] = 0;
+        }
+        for (i = 1; i <= slots; ++i)
+            s_adventureLives[i] = adventure->opponents / slots + (i <= adventure->opponents % slots);
+        s_slotCount += slots;
+        /* The Mushroom Kingdom enemies are created at their checkpoint. */
+        if (adventure->scene == 1 || adventure->scene == 17) s_slotCount = 1;
+        return;
+    }
+    if (s_gameMode == kGameModeClassic && s_campaignRound < kCampaignRounds) {
+        unsigned chosen = s_classicMatchups[s_campaignRound];
+        if (chosen == ~0u) {
+            unsigned candidates[sizeof(g_m360ClassicNormal) / sizeof(g_m360ClassicNormal[0])];
+            unsigned count = 0, best = ~0u, i;
+            for (i = 0; i < sizeof(g_m360ClassicNormal) / sizeof(g_m360ClassicNormal[0]); ++i) {
+                const int kind = M360_FighterIndexForKind(g_m360ClassicNormal[i].fighterKind);
+                unsigned previous, repeats = 0;
+                if (ClassicStageIndex(i) < 0 || kind < 0 || (unsigned) kind == s_selKind[0])
+                    continue;
+                for (previous = 0; previous < s_campaignRound; ++previous) {
+                    const unsigned used = s_classicMatchups[previous];
+                    if (used == ~0u)
+                        continue;
+                    repeats += g_m360ClassicNormal[used].grkind == g_m360ClassicNormal[i].grkind;
+                    repeats += g_m360ClassicNormal[used].fighterKind == g_m360ClassicNormal[i].fighterKind;
+                }
+                if (repeats < best) {
+                    best = repeats;
+                    count = 0;
+                }
+                if (repeats == best)
+                    candidates[count++] = i;
+            }
+            if (count)
+                chosen = s_classicMatchups[s_campaignRound] = candidates[HSD_Randi((int) count)];
+        }
+        if (chosen != ~0u) {
+            s_selKind[1] = (unsigned) M360_FighterIndexForKind(g_m360ClassicNormal[chosen].fighterKind);
+            s_classicStKind = g_m360ClassicNormal[chosen].stkind;
+            s_selCostume[1] = 0;
+            return;
+        }
+    }
+    s_selKind[1] = rosterCount ? (s_selKind[0] + 1 + s_campaignRound) % rosterCount : 0;
     s_selCostume[1] = 0;
 }
 
@@ -1203,8 +1506,40 @@ static void ResolveCostumes(void)
 static void StartFight(void)
 {
     unsigned i;
+    s_adventureCheckpoint = 0;
+    s_campaignClearFrames = 0;
     if (IsCampaign())
         CampaignOpponent();
+    if (s_gameMode == kGameModeClassic) {
+        const unsigned chosen = s_campaignRound < kCampaignRounds ? s_classicMatchups[s_campaignRound] : ~0u;
+        const int stage = chosen != ~0u ? ClassicStageIndex(chosen) : -1;
+        if (stage < 0 || (s_builtStage != (unsigned) stage && !BuildStage((unsigned) stage)) ||
+            s_stageIndex != (unsigned) stage || !MatchStageParam()) {
+            M360_MatchTrace("match.classic.encounter_unavailable", s_classicStKind);
+            s_active = 0;
+            return;
+        }
+        LoadItemTable();
+        M360_MatchTrace("match.classic.stkind", s_classicStKind);
+        M360_MatchTrace("match.classic.opponent", s_selKind[1]);
+    }
+    if (s_gameMode == kGameModeAdventure) {
+        const M360AdventureEncounter* encounter = AdventureEncounter();
+        unsigned stage;
+        if (!encounter) { s_active = 0; return; }
+        for (stage = 0; stage < kStageCount; ++stage)
+            if (s_stages[stage].grkind == encounter->grkind) break;
+        if (stage == kStageCount || (s_builtStage != stage && !BuildStage(stage)) ||
+            s_stageIndex != stage || !MatchStageParam()) {
+            M360_MatchTrace("match.adventure.encounter_unavailable", encounter->scene);
+            s_active = 0; return;
+        }
+        M360_MatchTrace("match.adventure.scene", encounter->scene);
+        if (encounter->scene == 17 && !InitMaze()) {
+            M360_MatchTrace("match.adventure.maze_load_failed", 1);
+            s_active = 0; return;
+        }
+    }
     ResolveCostumes();
     s_loadFailedSlot = 0;
     s_fighterCount = 0;
@@ -1235,6 +1570,13 @@ static void StartFight(void)
         s_respawn[i] = 0;
         s_stocksLost[i] = 0;
         s_stocksRemaining[i] = StartingStocks(i);
+        if (s_gameMode == kGameModeAdventure && i > 0) {
+            const M360AdventureEncounter* encounter = AdventureEncounter();
+            /* gm_801B4768 halves the two Donkey Kongs before the giant fight. */
+            M360_FighterSetEncounter(s_fighters[i], encounter->scene == 9 ? 0.5f :
+                                    (encounter->flags & 2) ? 2.0f : 1.0f,
+                                    (encounter->flags & 4) != 0);
+        }
         s_score[i] = 0;
         if (s_fighters[i])
             s_fighterCount = i + 1;
@@ -1253,7 +1595,9 @@ static void StartFight(void)
             GObj_SetupGXLink(debug, DebugRender, 7, 255);
     }
     /* Original in-match HUD (IfAll): damage panels, stocks, timer, "GO!". */
-    M360_HudStart(s_slotCount, IsCampaign() ? s_campaignStocks : s_stocks, TimeMinutes() * 60u);
+    M360_HudStart(s_slotCount, IsCampaign() ? s_campaignStocks : s_stocks,
+                  IsCampaign() ? CampaignSeconds() : TimeMinutes() * 60u,
+                  !TimeMinutes());
     CamUpdate(1);
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
     TraceHeap("match.heap.used", "match.heap.largest_free");
@@ -1288,12 +1632,16 @@ static int SelectInput(unsigned port, unsigned slot)
     if (trig & 0x800u)
         s_selCostume[slot] = (s_selCostume[slot] + M360_FighterCostumeCount(s_selKind[slot]) - 1) % M360_FighterCostumeCount(s_selKind[slot]);
     if (port == 0 && !IsCampaign() && (trig & 0xCu)) {
-        const unsigned next = (s_stageIndex + ((trig & 0x8u) ? kStageCount - 1 : 1)) % kStageCount;
+        const unsigned stageCount = M360_MatchStageCount();
+        const unsigned next = (s_stageIndex + ((trig & 0x8u) ? stageCount - 1 : 1)) % stageCount;
         if (BuildStage(next))
             M360_MatchTrace("match.select.stage", s_stageIndex);
     }
     if (port == 0 && (trig & 0x40u)) {
-        s_cpuLevel = s_cpuLevel >= 9 ? 1 : s_cpuLevel + 1;
+        if (s_gameMode == kGameModeAdventure)
+            s_cpuLevel = s_cpuLevel >= 9 ? 1 : ((s_cpuLevel ? s_cpuLevel - 1 : 0) / 2 + 1) * 2 + 1;
+        else
+            s_cpuLevel = s_cpuLevel >= 9 ? 1 : s_cpuLevel + 1;
         M360_FighterSetCpuLevel(s_cpuLevel);
         M360_MatchTrace("match.select.cpu_level", s_cpuLevel);
     }
@@ -1406,10 +1754,266 @@ static int OutsideBlastZone(float x, float y)
            y > s_stage.blastTop + s_stage.camY || y < s_stage.blastBottom + s_stage.camY;
 }
 
+/* Ground's authored finish markers occupy 0x99..0xB2. KinokoRoute's
+ * Yoshi encounter is at event marker 0xBD, before the finish. */
+static void HideMapJoint(int mapId, int jointIndex)
+{
+    unsigned i;
+    for (i = 0; i < s_modelCount; ++i) {
+        if (s_modelIds[i] == mapId) {
+            HSD_JObj* joint = FindCollJoint(s_models[i], jointIndex);
+            if (joint) HSD_JObjSetFlagsAll(joint, JOBJ_HIDDEN);
+            return;
+        }
+    }
+}
+
+static int CollisionGroupHasFloor(unsigned group, int line)
+{
+    const MapJoint* joint;
+    if (!s_coll || group >= (unsigned) s_coll->joint_count || line < 0) return 0;
+    joint = &s_coll->joints[group];
+    return line >= joint->floor_start && line < joint->floor_start + joint->floor_count;
+}
+
+static void MazeMapJointVisible(int mapId, int jointIndex, int visible)
+{
+    unsigned i;
+    for (i = 0; i < s_modelCount; ++i) {
+        if (s_modelIds[i] == mapId) {
+            HSD_JObj* joint = FindCollJoint(s_models[i], jointIndex);
+            if (joint) {
+                if (visible) HSD_JObjClearFlagsAll(joint, JOBJ_HIDDEN);
+                else HSD_JObjSetFlagsAll(joint, JOBJ_HIDDEN);
+            }
+            return;
+        }
+    }
+}
+
+static void MazeRoomBounds(int room)
+{
+    static const int joints[6] = { 19, 20, 18, 17, 16, 15 };
+    unsigned i;
+    for (i = 0; i < 14; ++i)
+        SetCollisionGroupEnabled(i, room < 0 || i == 8u + (unsigned) room);
+    MazeMapJointVisible(4, 1, room < 0);
+    MazeMapJointVisible(2, 0, room < 0);
+    for (i = 0; i < 6; ++i)
+        MazeMapJointVisible(4, joints[i], room < 0 || i == (unsigned) room);
+    if (room < 0) {
+        s_stage.camX = s_stage.camY = 0.0f;
+        s_stage.camLeft = s_routeCamera[0]; s_stage.camRight = s_routeCamera[1];
+        s_stage.camBottom = s_routeCamera[2]; s_stage.camTop = s_routeCamera[3];
+        s_stage.blastLeft = s_routeBlast[0]; s_stage.blastRight = s_routeBlast[1];
+        s_stage.blastBottom = s_routeBlast[2]; s_stage.blastTop = s_routeBlast[3];
+        s_stage.rebirthX[0] = s_stage.spawnX[0];
+        s_stage.rebirthY[0] = s_stage.spawnY[0] + 40.0f;
+    } else {
+        s_stage.camX = s_mazePoints[room].x;
+        s_stage.camY = s_mazePoints[room].y + 30.0f;
+        s_stage.camLeft = s_routeFightCamera[0]; s_stage.camRight = s_routeFightCamera[1];
+        s_stage.camBottom = s_routeFightCamera[2]; s_stage.camTop = s_routeFightCamera[3];
+        s_stage.blastLeft = s_routeFightBlast[0]; s_stage.blastRight = s_routeFightBlast[1];
+        s_stage.blastBottom = s_routeFightBlast[2]; s_stage.blastTop = s_routeFightBlast[3];
+        s_stage.rebirthX[0] = s_mazeSpawns[room].x;
+        s_stage.rebirthY[0] = s_mazeSpawns[room].y - 10.0f;
+    }
+    M360_FighterBuildIslands();
+}
+
+static int InitMaze(void)
+{
+    const float* params = (const float*) M360_ArchiveFind(s_archive, "yakumono_param");
+    float symbolScale = params ? params[5] : 1.5f;
+    unsigned i;
+    s_mazeRadiusX = params ? params[7] * s_scale : 70.0f;
+    s_mazeRadiusY = params ? params[8] * s_scale : 70.0f;
+    s_mazeGoal = (unsigned) HSD_Randi(6);
+    s_mazeVisited = s_mazeFinishFrames = 0;
+    s_mazeRoom = -1;
+    for (i = 0; i < 6; ++i)
+        if (!PointPosition(0xBD + i, &s_mazePoints[i]) ||
+            !PointPosition(0xB3 + i, &s_mazeSpawns[i])) return 0;
+    for (i = 0; i < 6; ++i) {
+        HSD_JObj* symbol = CreateMapGObj(&s_stages[s_stageIndex], i == s_mazeGoal ? 3 : 1);
+        if (!symbol) return 0;
+        s_mazeSymbols[i] = symbol;
+        HSD_JObjSetTranslate(symbol, &s_mazePoints[i]);
+        HSD_JObjSetScaleX(symbol, symbolScale);
+        HSD_JObjSetScaleY(symbol, symbolScale);
+        HSD_JObjSetScaleZ(symbol, symbolScale);
+    }
+    M360_MatchTrace("match.adventure.maze.goal_room", s_mazeGoal);
+    M360_MatchTrace("match.adventure.maze.symbols", 6);
+    return 1;
+}
+
+unsigned M360_MatchMazeVisited(void) { return s_mazeVisited; }
+
+int M360_MatchMazePoint(unsigned room, float* x, float* y)
+{
+    if (room >= 6 || !AdventureEncounter() || AdventureEncounter()->scene != 17) return 0;
+    *x = s_mazePoints[room].x; *y = s_mazePoints[room].y;
+    return 1;
+}
+
+static void MazeFrame(float x, float y)
+{
+    unsigned i;
+    if (s_mazeFinishFrames) {
+        if (++s_mazeFinishFrames >= 60) {
+            s_campaignClearFrames = M360_HudFightFrames();
+            s_matchOver = 1; s_winner = 0; s_draw = 0;
+            M360_HudGameEnd(0);
+            M360_MatchTrace("match.adventure.maze_goal", s_frame);
+        }
+        return;
+    }
+    if (s_mazeRoom >= 0) {
+        if (!s_stocksRemaining[1]) {
+            s_mazeVisited |= 1u << s_mazeRoom;
+            HSD_JObjSetFlagsAll(s_mazeSymbols[s_mazeRoom], JOBJ_HIDDEN);
+            s_respawn[1] = 0;
+            M360_MatchTrace("match.adventure.maze.link_defeated", (unsigned) s_mazeRoom);
+            s_mazeRoom = -1;
+            MazeRoomBounds(-1);
+        }
+        return;
+    }
+    for (i = 0; i < 6; ++i) {
+        if ((s_mazeVisited & (1u << i)) ||
+            fabsf(x - s_mazePoints[i].x) >= s_mazeRadiusX ||
+            fabsf(y - s_mazePoints[i].y) >= s_mazeRadiusY) continue;
+        if (i == s_mazeGoal) {
+            s_mazeFinishFrames = 1;
+            M360_MatchTrace("match.adventure.maze.triforce", i);
+            return;
+        }
+        s_mazeRoom = (int) i;
+        MazeRoomBounds((int) i);
+        s_slotCount = 2;
+        s_stage.spawnX[1] = s_mazeSpawns[i].x;
+        s_stage.spawnY[1] = s_mazeSpawns[i].y;
+        if (!s_fighters[1]) {
+            unsigned colors = M360_FighterCostumeCount(s_selKind[1]);
+            unsigned costume = s_selKind[0] == s_selKind[1] && colors > 1 ?
+                (s_selCostume[0] + 1) % colors : 0;
+            M360_FighterSelect(1, s_selKind[1], costume);
+            s_fighters[1] = M360_FighterSpawn(1, s_mazeSpawns[i].x, s_mazeSpawns[i].y, -1.0f, -1);
+            if (!s_fighters[1]) {
+                s_active = 0;
+                M360_MatchTrace("match.adventure.maze.link_load_failed", i);
+                return;
+            }
+            s_fighterCount = 2;
+            s_human[1] = 0;
+            M360_HudAddFighter(1);
+            M360_HudRefreshFighterTags();
+        } else {
+            M360_FighterRespawn(s_fighters[1], s_mazeSpawns[i].x, s_mazeSpawns[i].y);
+        }
+        s_stocksRemaining[1] = 1;
+        s_stocksLost[1] = s_respawn[1] = 0;
+        M360_MatchTrace("match.adventure.maze.link_spawned", i);
+        return;
+    }
+}
+
+static void AdventureFrame(void)
+{
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    float x, y, facing;
+    unsigned motion, damage, i;
+    Vec3 point;
+    if (!encounter || !s_fighters[0] ||
+        !s_stocksRemaining[0] || s_respawn[0] || s_matchOver) return;
+    if (encounter->scene == 27) {
+        /* grZebesRoute's fn_8020B4D8 clears the escape when P1 lands on
+         * collision group 1, the top exit platform, before the timer ends. */
+        if (CollisionGroupHasFloor(1, M360_FighterFloorLine(s_fighters[0]))) {
+            s_campaignClearFrames = M360_HudFightFrames();
+            s_matchOver = 1; s_winner = 0; s_draw = 0;
+            M360_HudGameEnd(0);
+            M360_MatchTrace("match.adventure.escape_goal", s_frame);
+        }
+        return;
+    }
+    if (encounter->scene == 17) {
+        M360_FighterGetState(s_fighters[0], &x, &y, &facing, &motion, &damage);
+        MazeFrame(x, y);
+        return;
+    }
+    if (encounter->scene != 1) return;
+    M360_FighterGetState(s_fighters[0], &x, &y, &facing, &motion, &damage);
+    if (!s_adventureCheckpoint && PointPosition(0xBD, &point) &&
+        fabsf(x - point.x) < 30.0f && fabsf(y - point.y) < 5000.0f) {
+        s_adventureCheckpoint = 1;
+        s_stage.camX = point.x; s_stage.camY = point.y + 30.0f;
+        s_stage.camLeft = s_routeFightCamera[0]; s_stage.camRight = s_routeFightCamera[1];
+        s_stage.camBottom = s_routeFightCamera[2]; s_stage.camTop = s_routeFightCamera[3];
+        s_stage.blastLeft = s_routeFightBlast[0]; s_stage.blastRight = s_routeFightBlast[1];
+        s_stage.blastBottom = s_routeFightBlast[2]; s_stage.blastTop = s_routeFightBlast[3];
+        for (i = 1; i < 4; ++i) {
+            M360_FighterSelect((int) i, s_selKind[i], i - 1);
+            s_fighters[i] = M360_FighterSpawn((int) i, point.x + (float) ((int) i - 2) * 20.0f,
+                                             point.y + 30.0f, -1.0f, -1);
+            if (!s_fighters[i]) {
+                s_active = 0;
+                M360_MatchTrace("match.adventure.checkpoint_load_failed", i);
+                return;
+            }
+            s_human[i] = 0;
+            s_respawn[i] = s_stocksLost[i] = 0;
+            s_stocksRemaining[i] = s_adventureLives[i];
+            s_fighterCount = i + 1;
+            M360_HudAddFighter(i);
+        }
+        s_slotCount = 4;
+        M360_HudRefreshFighterTags();
+        s_stage.rebirthX[0] = point.x;
+        s_stage.rebirthY[0] = point.y + 50.0f;
+        M360_MatchTrace("match.adventure.checkpoint", 1);
+    }
+    if (s_adventureCheckpoint == 1 &&
+        !s_stocksRemaining[1] && !s_stocksRemaining[2] && !s_stocksRemaining[3]) {
+        s_adventureCheckpoint = 2;
+        /* grKinokoRoute_8020836C hides the gate joint as well as disabling
+         * its collision. Keep the opened passage visible to the player. */
+        HideMapJoint(3, 0x53);
+        s_stage.camX = s_stage.camY = 0.0f;
+        s_stage.camLeft = s_routeCamera[0]; s_stage.camRight = s_routeCamera[1];
+        s_stage.camBottom = s_routeCamera[2]; s_stage.camTop = s_routeCamera[3];
+        s_stage.blastLeft = s_routeBlast[0]; s_stage.blastRight = s_routeBlast[1];
+        s_stage.blastBottom = s_routeBlast[2]; s_stage.blastTop = s_routeBlast[3];
+        DisableCollisionGroup(0x3C); DisableCollisionGroup(0x33);
+        for (i = 0x0C; i <= 0x0F; ++i) DisableCollisionGroup(i);
+        M360_MatchTrace("match.adventure.checkpoint", 2);
+    }
+    if (s_adventureCheckpoint != 2) return;
+    for (i = 0x99; i < 0xB3; ++i) {
+        if (PointPosition((int) i, &point) && fabsf(x - point.x) < 15.0f &&
+            fabsf(y - point.y) < 5000.0f) {
+            unsigned total = CampaignSeconds() * 60u;
+            unsigned played = M360_HudFightFrames();
+            unsigned remaining = played < total ? (total - played) / 60u : 0;
+            /* gm_801B44A0: the displayed seconds digit selects Luigi. */
+            s_adventureLuigi = remaining % 10u == 2;
+            M360_MatchTrace("match.adventure.luigi_selected", (unsigned) s_adventureLuigi);
+            s_campaignClearFrames = played;
+            s_matchOver = 1; s_winner = 0; s_draw = 0;
+            M360_HudGameEnd(0);
+            M360_MatchTrace("match.adventure.goal", i);
+            return;
+        }
+    }
+}
+
 int M360_MatchFrame(void)
 {
     unsigned i;
-    const unsigned buttons = M360_MatchPadTriggered();
+    unsigned pausePort = 0;
+    unsigned buttons = M360_MatchPadTriggered();
     const unsigned held = M360_MatchPadHeld();
     if (!s_active)
         return M360_MATCH_TO_MENU;
@@ -1441,11 +2045,45 @@ int M360_MatchFrame(void)
         if ((buttons & 0x100u) && !s_draw && s_winner == 0 &&
             (s_gameMode == kGameModeClassic || s_gameMode == kGameModeAdventure))
             return M360_MATCH_NEXT_ROUND;
+        if ((buttons & 0x100u) && s_campaignTimedOut && s_campaignStocks) {
+            s_campaignRetryPending = 1;
+            return M360_MATCH_RESTART;
+        }
+        if ((buttons & 0x100u) && IsCampaign() && (s_draw || s_winner != 0)) {
+            if (!s_campaignStocks) s_campaignStocks = kStartingStocks;
+            s_campaignRetryPending = 1;
+            M360_MatchTrace("match.campaign.continue", s_campaignRound);
+            return M360_MATCH_RESTART;
+        }
+        if ((buttons & 0x100u) && !IsCampaign()) {
+            for (i = 0; i < s_slotCount; ++i)
+                s_selHuman[i] = s_human[i];
+            s_rematchPending = 1;
+            M360_MatchTrace("match.result.rematch", s_slotCount);
+            return M360_MATCH_RESTART;
+        }
         return M360_MATCH_CONTINUE;
     }
-    if ((buttons & 0x1000u) && M360_HudFightStarted()) {
+    s_disconnectedControllers = 0;
+    for (i = 0; i < s_fighterCount; ++i) {
+        if (!s_human[i])
+            continue;
+        if (!M360_MatchControllerConnected(i))
+            s_disconnectedControllers |= 1u << i;
+        if (i > 0) {
+            const unsigned portButtons = M360_MatchPadTriggeredPort(i);
+            if ((portButtons & 0x1000u) && !(buttons & 0x1000u))
+                pausePort = i;
+            buttons |= portButtons;
+        }
+    }
+    if (s_disconnectedControllers && !s_paused && M360_HudFightStarted()) {
+        s_paused = 1;
+        M360_HudPause(1, 0);
+        M360_MatchTrace("match.controller.disconnected", s_disconnectedControllers);
+    } else if ((buttons & 0x1000u) && !s_disconnectedControllers && M360_HudFightStarted()) {
         s_paused = !s_paused;
-        M360_HudPause(s_paused, 0);
+        M360_HudPause(s_paused, (int) pausePort);
         M360_MatchTrace("match.pause", s_paused);
     }
     if (M360_InputScriptHolding()) {
@@ -1524,8 +2162,25 @@ int M360_MatchFrame(void)
                 M360_FighterSleep(nana);
         }
         if (s_respawn[i]) {
-            if (--s_respawn[i] == 0 && (s_stocksRemaining[i] || TimeMinutes()))
-                M360_FighterRebirth(s_fighters[i]);
+            if (--s_respawn[i] == 0 && (s_stocksRemaining[i] || TimeMinutes())) {
+                const M360AdventureEncounter* encounter = AdventureEncounter();
+                Vec3 point;
+                if (i && encounter && encounter->scene == 1 && PointPosition(0xBD, &point)) {
+                    /* Replace a defeated route enemy without the player's
+                     * invulnerable rebirth platform. Three slots carry ten
+                     * opponents until the original generator is integrated. */
+                    M360_FighterRespawn(s_fighters[i], point.x + ((int) i - 2) * 20.0f,
+                                       point.y + 30.0f);
+                    M360_MatchTrace("match.adventure.enemy_replaced", i);
+                } else if (i && encounter && encounter->opponents > 3) {
+                    /* Team encounters also reuse slots for later enemies.
+                     * Bring them into the arena, without a player platform. */
+                    M360_FighterRespawn(s_fighters[i], s_stage.spawnX[i], s_stage.spawnY[i]);
+                    M360_MatchTrace("match.adventure.wave_replaced", i);
+                } else {
+                    M360_FighterRebirth(s_fighters[i]);
+                }
+            }
             continue;
         }
         M360_FighterGetState(s_fighters[i], &x, &y, &facing, &motion, &damage);
@@ -1552,15 +2207,28 @@ int M360_MatchFrame(void)
     }
     /* Resolve after every slot has been checked, so two final falls in the
      * same frame do not declare an already-eliminated player the winner. */
-    if (!TimeMinutes()) {
+    AdventureFrame();
+    if (!s_matchOver && !TimeMinutes()) {
         if (StockResult(&s_winner, &s_draw)) {
+            s_campaignClearFrames = M360_HudFightFrames();
             s_matchOver = 1;
             M360_HudGameEnd(0);
             M360_MatchTrace(s_draw ? "match.result.draw" : "match.result.winner", s_winner);
             if (!s_draw && s_winner == 0 && IsCampaign() &&
-                s_campaignRound + 1 >= kCampaignRounds)
-                M360_MatchTrace("match.campaign.complete", s_gameMode);
+                M360_MatchNextCampaignRound() >= M360_MatchCampaignRounds(s_gameMode))
+                M360_MatchTrace("match.campaign.preview_complete", s_gameMode);
         }
+    }
+    if (!s_matchOver && IsCampaign() &&
+        M360_HudFightFrames() >= CampaignSeconds() * 60u) {
+        LoseStock(0);
+        s_campaignClearFrames = M360_HudFightFrames();
+        s_campaignTimedOut = 1;
+        s_matchOver = 1;
+        s_winner = 1;
+        s_draw = 0;
+        M360_HudGameEnd(1);
+        M360_MatchTrace("match.classic.timeout.lives", s_campaignStocks);
     }
     if (TimeMinutes() && M360_HudFightFrames() >= TimeMinutes() * 60u * 60u) {
         unsigned best = 0;
@@ -1625,6 +2293,16 @@ void M360_MatchRender(void)
 
 void M360_MatchLeave(void)
 {
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    /* gm_8017D7AC excludes flag-0x80 events from total Adventure time.
+     * Saturation preserves eligibility without wrapping on long retries. */
+    if (s_active && s_matchOver && encounter && !(encounter->flags & 0x80)) {
+        if (s_campaignClearFrames >= 64800u ||
+            s_adventureElapsedFrames >= 64800u - s_campaignClearFrames)
+            s_adventureElapsedFrames = 64800u;
+        else
+            s_adventureElapsedFrames += s_campaignClearFrames;
+    }
     FreeAllGObjs();
     s_builtStage = ~0u;
     memset(s_fighters, 0, sizeof(s_fighters));
@@ -1637,8 +2315,16 @@ void M360_MatchSetMode(unsigned gameMode, unsigned round)
 {
     s_gameMode = gameMode;
     s_campaignRound = round;
-    if (IsCampaign() && round == 0)
+    if (!IsCampaign() && s_stageIndex >= M360_MatchStageCount()) s_stageIndex = 0;
+    if (IsCampaign() && round == 0 && !s_campaignRetryPending) {
+        unsigned i;
         s_campaignStocks = kStartingStocks;
+        s_adventureLuigi = 0;
+        s_adventureElapsedFrames = 0;
+        s_classicStKind = ~0u;
+        for (i = 0; i < kCampaignRounds; ++i)
+            s_classicMatchups[i] = ~0u;
+    }
 }
 
 void M360_MatchGetStatus(M360MatchStatus* status)
@@ -1647,6 +2333,21 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     memset(status, 0, sizeof(*status));
     status->loaded = (unsigned) s_loaded;
     status->paused = (unsigned) s_paused;
+    status->disconnectedControllers = s_disconnectedControllers;
+    status->campaignTimedOut = (unsigned) s_campaignTimedOut;
+    if (s_gameMode == kGameModeAdventure && s_campaignRound == 0)
+        status->campaignObjective = (unsigned) s_adventureCheckpoint + 1;
+    if (AdventureEncounter() && AdventureEncounter()->scene == 27)
+        status->campaignObjective = 4;
+    if (AdventureEncounter() && AdventureEncounter()->scene == 17)
+        status->campaignObjective = s_mazeRoom < 0 ? 5 : 6;
+    if (IsCampaign())
+        for (i = 1; i < s_fighterCount; ++i) status->campaignEnemies += s_stocksRemaining[i];
+    if (IsCampaign()) {
+        const unsigned played = s_phase == kPhaseSelect ? 0 : M360_HudFightFrames();
+        const unsigned total = CampaignSeconds() * 60u;
+        status->campaignTimeLeft = played < total ? (total - played + 59u) / 60u : 0;
+    }
     status->frame = s_frame;
     status->fighters = s_fighterCount;
     status->hits = M360_FighterHitCount();
@@ -1655,9 +2356,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->winner = s_winner;
     status->gameMode = s_gameMode;
     status->campaignRound = s_campaignRound;
-    status->campaignRounds = (s_gameMode == kGameModeClassic ||
-                              s_gameMode == kGameModeAdventure)
-                                 ? kCampaignRounds : 0;
+    status->campaignRounds = M360_MatchCampaignRounds(s_gameMode);
     status->inputButtons = M360_MatchPadHeld();
     status->inputTriggered = M360_MatchPadTriggered();
     status->inputX = M360_MatchPadX();

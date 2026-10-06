@@ -4,8 +4,11 @@ MELEE360 has two distinct executable targets:
 
 - `xenon.elf` is the current LibXenon build and runs through XeLL on an
   RGH/JTAG console.
-- `default.xex` will be the XDK build used for Xenia and development-kit style
+- `default.xex` is the XDK build used for Xenia and development-kit style
   loaders.
+
+For the current local VS route, file placement and controller controls, see
+[the play guide](JUGAR_XEX.md). The default build starts at the opening movie.
 
 An ELF cannot simply be renamed or passed directly to `imagexex`. The XEX
 image builder requires an Xbox 360 PowerPC PE produced with the matching C/C++
@@ -163,3 +166,11 @@ The atlas currently contains separate original frames for idle, movement,
 airborne and attack states. The render loop selects a frame from gameplay
 state, flips UV coordinates for facing direction and emits short-lived alpha
 blended particles when the reconstructed segment hit test connects.
+
+### Campaign test evidence
+
+`./tools/test_soak_rules.ps1` checks the actual trace parser and verdict
+functions without starting Xenia. A final match marker alone does not establish
+campaign flow completion; a Giga scene identifier alone does not establish
+successful fighter loading. Per-match frame/hit peaks survive next-round
+resets, and a watchdog hang takes precedence over completion.

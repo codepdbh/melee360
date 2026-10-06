@@ -6,10 +6,13 @@ param(
     [switch] $Build,
     # Overrides every configuration's run time.
     [int] $Seconds = 0,
+    [ValidateRange(0, 2147483647)]
+    [int] $TargetFrame = 0,
     # Output folder for the matrix, traces and logs.
     [string] $OutDir = '',
     # Show the Xenia window instead of running headless.
     [switch] $Visible,
+    [switch] $Audio,
     [string] $XeniaPath = ''
 )
 
@@ -45,6 +48,19 @@ $Fighters = @('Mario', 'Luigi', 'DrMario', 'Peach', 'Yoshi', 'Bowser', 'DK', 'Fa
     'Ness', 'Marth', 'Roy', 'Mewtwo', 'GameWatch', 'Kirby', 'IceClimbers')
 $Stages = @('Battlefield', 'FinalDestination', 'DreamLand', 'YoshisStory', 'FountainOfDreams',
     'YoshisIsland64', 'HyruleTemple', 'KongoJungle64', 'JungleJapes')
+
+$LandingScript = @'
+250 0 0 0 0 -
+15 0 0 0 0 X
+4 0 0 0 0 -
+3 0 127 0 0 B
+300 0 0 0 0 -
+40 30 0 0 0 -
+40 -30 0 0 0 -
+60 0 0 0 0 L
+100 0 0 0 0 -
+loop
+'@
 
 # P1 moveset: waits out the countdown, then ground attacks, tilts, smashes,
 # aerials, the four specials, shield, rolls, spot/air dodges, grabs with all
@@ -144,9 +160,25 @@ $MovesetScript = @'
 loop
 '@
 
+$LifecycleScript = @'
+250 0 0 0 0 -
+240 127 0 0 0 -
+90 0 -127 0 0 -
+60 0 0 0 0 -
+loop
+'@
+
+$RouteScript = @'
+4 127 0 0 0 X
+65 127 0 0 0 -
+4 127 0 0 0 A
+30 127 0 0 0 -
+loop
+'@
+
 function New-Config([string] $Name, [hashtable] $Values) {
     $c = [ordered]@{ Name = $Name; Stage = 0; P1 = 0; P2 = 0; P3 = -1; P4 = -1; Players = 2; Human = 1;
-        CpuLevel = 9; Stocks = 2; Time = 0; Items = -1; Repeat = 1; Seconds = 120; TargetFrame = 5400 }
+        CpuLevel = 9; Stocks = 2; Time = 0; Items = -1; Repeat = 1; Seconds = 120; TargetFrame = 5400; Script = 'moveset'; Mode = 2; Round = 0 }
     foreach ($k in $Values.Keys) { $c[$k] = $Values[$k] }
     [pscustomobject] $c
 }
@@ -173,6 +205,25 @@ function Get-SoakMatrix {
     $list += New-Config 'timed-1min-sudden-death' @{ Human = 0; CpuLevel = 1; Time = 1; P1 = 0; P2 = 9; Seconds = 150; TargetFrame = 99999 }
     # Three chained one-stock matches: teardown and heap reuse.
     $list += New-Config 'repeat-3-matches' @{ Human = 0; Stocks = 1; Repeat = 3; P1 = 9; P2 = 20; Items = 2; Seconds = 240; TargetFrame = 99999 }
+    $list += New-Config 'repeat-3-scripted-falls' @{ Human = 1; CpuLevel = 1; Stocks = 1; Repeat = 3; P1 = 9; P2 = 20; Items = -1; Seconds = 150; TargetFrame = 99999; Script = 'lifecycle' }
+    for ($round = 0; $round -lt 20; ++$round) {
+        $list += New-Config ("adventure-{0:D2}" -f $round) @{ Mode = 4; Round = $round; P1 = 0; TargetFrame = 1800; Seconds = 70 }
+    }
+    $list += New-Config 'adventure-route-traversal' @{ Mode = 4; Round = 0; P1 = 18; Script = 'route'; TargetFrame = 99999; Seconds = 180 }
+    $list += New-Config 'adventure-route-pilot' @{ Mode = 4; Round = 0; P1 = 18; CpuLevel = 3; Script = 'routepilot'; TargetFrame = 99999; Seconds = 240 }
+    $list += New-Config 'adventure-route-pilot-hard' @{ Mode = 4; Round = 0; P1 = 18; CpuLevel = 9; Script = 'routepilot'; TargetFrame = 99999; Seconds = 300 }
+    $list += New-Config 'adventure-maze-pilot' @{ Mode = 4; Round = 4; P1 = 18; CpuLevel = 3; Script = 'mazepilot'; TargetFrame = 99999; Seconds = 520 }
+    $list += New-Config 'adventure-escape-pilot' @{ Mode = 4; Round = 7; P1 = 18; CpuLevel = 3; Script = 'escapepilot'; TargetFrame = 99999; Seconds = 160 }
+    $list += New-Config 'adventure-full-pilot' @{ Mode = 4; Round = 0; P1 = 18; CpuLevel = 3; Script = 'adventurepilot'; TargetFrame = 99999; Seconds = 1800 }
+    $list += New-Config 'adventure-kirby-wave-pilot' @{ Mode = 4; Round = 9; P1 = 18; CpuLevel = 3; Script = 'wavepilot'; TargetFrame = 99999; Seconds = 240 }
+    $list += New-Config 'adventure-pokemon-wave-pilot' @{ Mode = 4; Round = 13; P1 = 18; CpuLevel = 3; Script = 'wavepilot'; TargetFrame = 99999; Seconds = 240 }
+    $list += New-Config 'adventure-wireframe-wave-pilot' @{ Mode = 4; Round = 16; P1 = 18; CpuLevel = 3; Script = 'wavepilot'; TargetFrame = 99999; Seconds = 240 }
+    $list += New-Config 'adventure-bowser-easy-final-pilot' @{ Mode = 4; Round = 18; P1 = 18; CpuLevel = 3; Script = 'adventurepilot'; TargetFrame = 99999; Seconds = 240 }
+    $list += New-Config 'adventure-giga-entry-pilot' @{ Mode = 4; Round = 18; P1 = 18; CpuLevel = 5; Script = 'gigapilot'; TargetFrame = 99999; Seconds = 240 }
+    $list += New-Config 'animation-lengths-peach' @{ P1 = 3; P2 = 16; Stage = 3; Stocks = 8; Seconds = 75; TargetFrame = 1800 }
+    $list += New-Config 'reserved-parts-young-link' @{ P1 = 12; P2 = 24; Stage = 2; Stocks = 8; Seconds = 110; TargetFrame = 3600 }
+    $list += New-Config 'animation-lengths-link' @{ P1 = 11; P2 = 24; Stage = 2; Stocks = 8; Seconds = 75; TargetFrame = 1800 }
+    $list += New-Config 'special-landing-falcon' @{ Mode = 4; Round = 7; P1 = 7; CpuLevel = 3; Script = 'landing'; TargetFrame = 1200; Seconds = 50 }
     $list
 }
 
@@ -180,11 +231,13 @@ function Write-RunFiles([string] $Dir, $Config) {
     $kinds = @($Config.P1, $Config.P2, $Config.P3, $Config.P4) | ForEach-Object { if ($_ -lt 0) { 0 } else { $_ } }
     $text = @(
         "# $($Config.Name)",
+        "mode $($Config.Mode)", "round $($Config.Round)",
         "stage $($Config.Stage)", "p1 $($kinds[0])", "p2 $($kinds[1])", "p3 $($kinds[2])", "p4 $($kinds[3])",
         "players $($Config.Players)", "human $($Config.Human)", "cpu_level $($Config.CpuLevel)",
         "stocks $($Config.Stocks)", "time $($Config.Time)", "items $($Config.Items)", "repeat $($Config.Repeat)", '') -join "`n"
     [IO.File]::WriteAllText((Join-Path $Dir 'match-config.txt'), $text)
-    [IO.File]::WriteAllText((Join-Path $Dir 'input-script.txt'), $MovesetScript.Replace("`r", ''))
+    $inputScript = if ($Config.Script -eq 'lifecycle') { $LifecycleScript } elseif ($Config.Script -eq 'route') { $RouteScript } elseif ($Config.Script -eq 'landing') { $LandingScript } elseif ($Config.Script -in @('routepilot','escapepilot','adventurepilot','wavepilot','gigapilot','mazepilot')) { 'routepilot' } else { $MovesetScript }
+    [IO.File]::WriteAllText((Join-Path $Dir 'input-script.txt'), $inputScript.Replace("`r", ''))
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Dir 'runtime-trace.txt')
 }
 
@@ -216,8 +269,9 @@ function Read-Shared([string] $Path) {
 }
 
 function Read-Trace([string] $Path) {
+    $gigaPending = $false
     $r = [ordered]@{ Lines = 0; MatchFrame = 0; LoopFrame = 0; Hang = $false; AllDone = $false; MatchesDone = 0
-        Winner = ''; SuddenDeath = $false; TimeOver = $false; FrameAvg = 0; FrameMax = 0; Over20 = 0; WorkAvg = 0; WorkMax = 0
+        Winner = ''; PlayerWon = $false; GigaEntered = $false; AdventureGoal = $false; EscapeGoal = $false; CampaignComplete = $false; MazeGoal = $false; SuddenDeath = $false; TimeOver = $false; FrameAvg = 0; FrameMax = 0; Over20 = 0; WorkAvg = 0; WorkMax = 0
         HeapUsed = @(); HeapLargest = 0; Hits = 0; Blast = 0; HangCrumb = ''; HangProc = ''; HangStack = @(); HangCalls = @(); Fighters = 0 }
     if (-not (Test-Path $Path)) { return [pscustomobject] $r }
     $lines = @((Read-Shared $Path) -split "`r?`n" | Where-Object { $_ })
@@ -233,10 +287,17 @@ function Read-Trace([string] $Path) {
             '^loop\.frames_over_20ms$' { $r.Over20 = [int64] $v }
             '^loop\.work_us_avg$' { $r.WorkAvg = [math]::Max($r.WorkAvg, [int64] $v) }
             '^loop\.work_us_max$' { $r.WorkMax = [math]::Max($r.WorkMax, [int64] $v) }
-            '^loop\.match_hits$' { $r.Hits = [int64] $v }
+            # A campaign can enter its next match before the harness samples
+            # the goal marker. Preserve the same per-match peak as MatchFrame.
+            '^loop\.match_hits$' { $r.Hits = [math]::Max($r.Hits, [int64] $v) }
             '^match\.blast_zone\.fighter$' { $r.Blast++ }
-            '^match\.enter\.fighters$' { $r.Fighters = [int64] $v }
-            '^match\.result\.winner$' { $r.Winner = $v }
+            '^match\.enter\.fighters$' { $r.Fighters = [int64] $v; if ($gigaPending -and $r.Fighters -ge 2) { $r.GigaEntered = $true } }
+            '^match\.result\.winner$' { $r.Winner = $v; if ($v -eq '0') { $r.PlayerWon = $true } }
+            '^match\.adventure\.scene$' { $gigaPending = $v -eq '92' }
+            '^match\.adventure\.goal$' { $r.AdventureGoal = $true }
+            '^match\.adventure\.escape_goal$' { $r.EscapeGoal = $true }
+            '^mode\.preview_complete$' { $r.CampaignComplete = $true }
+            '^match\.adventure\.maze_goal$' { $r.MazeGoal = $true }
             '^match\.sudden_death$' { $r.SuddenDeath = $true }
             '^match\.time\.over$' { $r.TimeOver = $true }
             '^auto\.match\.done$' { $r.MatchesDone = [int64] $v }
@@ -255,6 +316,12 @@ function Read-Trace([string] $Path) {
 
 function Get-Verdict($Config, $Trace, [bool] $Exited, [bool] $Stalled) {
     if ($Trace.Hang) { return 'FREEZE' }
+    if ($Config.Script -like 'route*' -and $Trace.AdventureGoal) { return 'OK' }
+    if ($Config.Script -eq 'escapepilot' -and $Trace.EscapeGoal) { return 'OK' }
+    if ($Config.Script -eq 'adventurepilot' -and $Trace.CampaignComplete) { return 'OK' }
+    if ($Config.Script -eq 'mazepilot' -and $Trace.MazeGoal) { return 'OK' }
+    if ($Config.Script -eq 'wavepilot' -and $Trace.PlayerWon) { return 'OK' }
+    if ($Config.Script -eq 'gigapilot' -and $Trace.GigaEntered) { return 'OK' }
     if ($Config.Repeat -gt 1 -and $Trace.AllDone) { return 'OK' }
     if ($Config.Repeat -le 1 -and ($Trace.MatchFrame -ge $Config.TargetFrame -or $Trace.MatchesDone -ge 1)) { return 'OK' }
     if ($Exited) { return 'CRASH' }
@@ -298,9 +365,14 @@ if ($Build -or -not (Test-Path $soakXex)) {
     Write-Host '[M360][SOAK] note: dist\default.xex is now the soak build; rebuild normally afterwards'
 }
 
+$Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $matrix = @(Get-SoakMatrix | Where-Object { $n = $_.Name; @($Only | Where-Object { $n -like $_ }).Count -gt 0 })
 if (-not $matrix.Count) { throw "no configuration matches $($Only -join ', ')" }
+if ($TargetFrame) {
+    foreach ($config in $matrix) { $config.TargetFrame = $TargetFrame }
+}
 Write-Host "[M360][SOAK] $($matrix.Count) configuration(s), one Xenia instance at a time"
+Write-Host "[M360][SOAK] audio enabled: $($Audio.IsPresent)"
 
 # Top-level windows of a process (Xenia's "Unhandled Exception in Xenia"
 # error box included) and their static text, without touching focus/input.
@@ -334,7 +406,9 @@ public static System.Collections.Generic.List<string> Titles(uint pid) {
 
 function Stop-AllXenia {
     for ($i = 0; $i -lt 40; ++$i) {
-        $procs = @(Get-Process -Name xenia_canary -ErrorAction SilentlyContinue)
+        $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'xenia_canary.exe'" |
+            Where-Object { $_.CommandLine -like '*\dist\soak0\default.xex*' } |
+            ForEach-Object { Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue })
         if (-not $procs.Count) { return }
         $procs | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 500
@@ -356,10 +430,12 @@ foreach ($config in $matrix) {
     $xlog = Join-Path $runDir 'xenia.log'
     Remove-Item -Force -ErrorAction SilentlyContinue $xlog, (Join-Path $runDir 'runtime-trace.txt')
     $freeBefore = Get-FreeCommitMB
-    $argsList = @('--allow_game_relative_writes=true', '--discord=false', '--mute=true',
+    $argsList = @('--allow_game_relative_writes=true', '--discord=false', "--mute=$($(-not $Audio.IsPresent).ToString().ToLowerInvariant())",
         "--log_file=`"$xlog`"", "`"$(Join-Path $runDirXex 'default.xex')`"")
+    if ($Audio) { $argsList = @('--apu=xaudio2') + $argsList }
     if (-not $Visible) { $argsList = @('--headless=true') + $argsList }
-    $p = Start-Process -FilePath $XeniaPath -ArgumentList $argsList -PassThru -WindowStyle Minimized
+    $windowStyle = if ($Visible) { 'Normal' } else { 'Hidden' }
+    $p = Start-Process -FilePath $XeniaPath -ArgumentList $argsList -PassThru -WindowStyle $windowStyle
     $start = Get-Date
     $secs = if ($Seconds) { $Seconds } else { $config.Seconds }
     $deadline = $start.AddSeconds($secs + 25)
@@ -386,6 +462,18 @@ foreach ($config in $matrix) {
         $hangDone = ($text -split 'hang\.detail').Count -ge 5
         $finished = ($config.Repeat -gt 1 -and $text -match 'auto\.all\.done') -or
                     ($config.Repeat -le 1 -and $text -match 'auto\.match\.done')
+        if ($config.Script -like 'route*' -and $text -match '(?m)^match\.adventure\.goal:') { $finished = $true }
+        if ($config.Script -eq 'escapepilot' -and $text -match '(?m)^match\.adventure\.escape_goal:') { $finished = $true }
+        if ($config.Script -eq 'adventurepilot' -and $text -match '(?m)^mode\.preview_complete:') { $finished = $true }
+        if ($config.Script -eq 'mazepilot' -and $text -match '(?m)^match\.adventure\.maze_goal:') { $finished = $true }
+        if ($config.Script -eq 'wavepilot' -and $text -match '(?m)^match\.result\.winner: 0\s*$') { $finished = $true }
+        if ($config.Script -eq 'gigapilot' -and $text -match '(?ms)^match\.adventure\.scene: 92\s*\r?\n.*?^match\.enter\.fighters: [2-4]\s*$') { $finished = $true }
+        if ($TargetFrame -and $config.Repeat -le 1) {
+            $frameSamples = [regex]::Matches($text, '(?m)^loop\.match_frame:\s*(\d+)')
+            if ($frameSamples.Count -and [int] $frameSamples[$frameSamples.Count - 1].Groups[1].Value -ge $config.TargetFrame) {
+                $finished = $true
+            }
+        }
         # The main loop traces every 300 frames, so silence means the guest
         # stopped without a watchdog report.
         $quiet = if ($text -match 'loop\.frame') { 45 } else { 120 }
@@ -422,8 +510,8 @@ foreach ($config in $matrix) {
     }
     $heap = if ($t.HeapUsed.Count) { '{0}..{1}' -f ($t.HeapUsed | Measure-Object -Minimum).Minimum, ($t.HeapUsed | Measure-Object -Maximum).Maximum } else { '' }
     $row = [pscustomobject] @{
-        Name = $config.Name; Verdict = $verdict; MatchFrame = $t.MatchFrame; Target = $config.TargetFrame
-        Fighters = $t.Fighters; Hits = $t.Hits; KOs = $t.Blast; Winner = $t.Winner; SuddenDeath = $t.SuddenDeath; Matches = $t.MatchesDone
+        Name = $config.Name; Verdict = $verdict; MatchFrame = $t.MatchFrame; Target = $config.TargetFrame; CpuLevel = $config.CpuLevel
+        Fighters = $t.Fighters; Hits = $t.Hits; KOs = $t.Blast; Winner = $t.Winner; AdventureGoal = $t.AdventureGoal; EscapeGoal = $t.EscapeGoal; CampaignComplete = $t.CampaignComplete; MazeGoal = $t.MazeGoal; SuddenDeath = $t.SuddenDeath; Matches = $t.MatchesDone
         FrameUsAvg = $t.FrameAvg; FrameUsMax = $t.FrameMax; Over20ms = $t.Over20; WorkUsAvgMax = $t.WorkAvg; WorkUsMax = $t.WorkMax
         HeapUsed = $heap; LargestFree = $t.HeapLargest; CommitPeakMB = $commitPeak; CommitMBPerMin = $growth; FreeCommitMB = $freeBefore
         HangCrumb = $t.HangCrumb; HangProc = $(if ($t.HangProc) { Resolve-Address $t.HangProc } else { '' }); HangStack = ($stack -join ' < ')

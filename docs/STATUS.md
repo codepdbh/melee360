@@ -1,5 +1,137 @@
 # Development status
 
+## Underground Maze source progress — 2026-10-06
+
+The current source and diagnostic XEX include a twentieth Adventure phase:
+Underground Maze, using GrNSr.dat, six symbols, a randomized Triforce room,
+Link encounters, room collision switching and a seven-minute timer. Host
+match and flow rules pass. Xenia loaded the course and the input pilot defeated
+one Link and returned to exploration. The pilot then stalled while navigating
+to a lower room; the complete course and subsequent campaign remain unverified.
+Original maze hazards and transition animations are still missing.
+
+The playable `dist/default.xex` remains the preceding nineteen-phase build
+with SHA-256 `E6F9B2A761702F361160919FF6F4BB8F82D1EAB1148462065987C24D8DE1FEC4`.
+Rebuilding from this commit includes the unfinished maze. Existing continuous
+seventeen-phase Easy results below refer to earlier builds without this course.
+
+## Adventure combat rules — 2026-10-06
+
+The playable `dist/default.xex` now applies the original Adventure attack and
+defense percentages per encounter and difficulty. Previously the player ratio
+accessors returned 1.0 for every fighter. The original table makes wave enemies
+easier to launch and adjusts their attack strength. Player 1, VS and Classic
+retain normal ratios. CPU levels 1–2, 3–4, 5–6, 7–8 and 9 currently map to the
+five original Adventure difficulties.
+
+The CPU-3 Jigglypuff route pilot passed again in Xenia: ten Yoshi defeated,
+gate opened, Mushroom Kingdom exit reached, then Mario/Peach loaded. Its last
+pre-clear sample was 3,600 match frames and 26 hits, with eleven total falls
+across the route (ten enemies and one player). Evidence is in
+`build-x360/adventure-original-ratios-20261006/adventure-route-pilot`.
+Host tests cover original ratio values, player isolation and neutral fallbacks.
+Live XEX SHA-256:
+`E6F9B2A761702F361160919FF6F4BB8F82D1EAB1148462065987C24D8DE1FEC4`.
+Enemy CPU levels now come from the original per-slot difficulty table and are
+restored on replacement. Original CPU behavior types and the wave generator's
+three-to-one random behavior choice are also connected. The selector now shows
+the five named Adventure difficulties and LB advances one difficulty.
+The Giga Bowser branch requires Normal or higher
+(current CPU selector level 5+) and total match time strictly below eighteen
+minutes. Time includes finished attempts, excludes flag-0x80 scenes, and is
+captured before results. Host regressions cover the exact time boundary,
+result delay, fresh campaign reset and retry retention. Runtime validation of
+both final branches passed in Xenia: Easy Bowser returns to the menu, while
+Normal Bowser loads Giga with two fighters and CPU level 7. The exact
+eighteen-minute boundary remains a host test. The accumulated time covers
+the ported phases; missing courses do not contribute yet.
+The complete original campaign and physical Xbox execution remain unverified.
+
+The preceding ratio/CPU-level build fully cleared Kirby's fifteen enemies
+(12,600 sampled frames, 94 hits) and Pokemon's twelve (6,300 frames, 76 hits)
+in Xenia. Both runs consumed two player lives. The wireframe pilot remained
+stable but did not win within its allotted time. Current behavior/eligibility
+build validation is recorded separately; these results do not establish a
+complete campaign playthrough.
+
+The preceding original-AI build (`adventure-original-ai-validation-20261006`) passed
+nine cases: four encounter combat runs, Mushroom's complete ten-Yoshi route,
+Kirby's complete fifteen-enemy wave, Pokemon's twelve-enemy wave (after one
+Continue), and both final difficulty branches. Wireframe combat/replacements
+remained stable but its automated pilot did not win. The revised main-floor input pilot then cleared all fifteen wireframes in
+3,900 sampled frames with 43 hits and no player falls
+(`adventure-wireframe-main-floor-20261006`). It uses normal PAD inputs.
+
+A continuous Easy pilot cleared all seventeen mandatory available phases,
+including Mushroom Kingdom, Brinstar escape and final Bowser
+(`adventure-full-main-floor-20261006`): 918 seconds, two Continues and seven
+player falls. Giant Kirby and Giga were skipped by the original eligibility
+rules. This run stopped at the final match completion marker; final menu
+return is independently verified by the Easy Bowser test. It used the
+preceding 0794227E build. The maze, race and mountain courses remain absent.
+
+The current build also restores the original landing, walk and shield
+animation-length initialization and the real cached ftData animation lookup.
+Previously these lengths were zero, causing special landings to last thousands
+of frames. A focused Falcon Xenia run verified three special landings ending
+exactly thirty fight frames later, plus walking and shield transitions
+(`fighter-animation-lengths-runtime-20261006/special-landing-falcon`).
+Host fighter-parts regressions pass. The animation-length build (3EF652AD, before reserved-part creation) passed a continuous
+Easy sequence (`adventure-full-animation-lengths-20261006`): all seventeen
+mandatory available phases, three Continues and ten player falls in 977 seconds.
+Brinstar finished at fight frame 2,287. Both mode.preview_complete: 4 and
+loop.flow_state: 2 confirm completion and menu return in this same run.
+The diagnostic XEX hash is
+`479E2D4464B30CDCC224051EC3B486C3443E39B36DB09FE32C91DE1F28BB0364`;
+it shares the native gameplay objects with the live build and adds ordinary
+PAD input automation. This does not establish all roster behavior or the
+complete original campaign.
+
+
+### Reserved fighter joints and Link shield (2026-10-06)
+
+An extended Link/Kirby test exposed a reproducible panic at fight frame 2,460.
+Link's passive shield used reserved part 68, whose joint remained NULL because
+ftParts_800753D4 was a stub. Young Link uses the corresponding reserved part 72.
+The native bridge now loads the original descriptor, selects its authored
+joint, inserts it with the original attachment type and registers the part.
+The renderer shares the resulting joint between its two animation paths.
+Removal clears appended display references before releasing the joint.
+Host regressions cover all four attachment types, sibling parent relationships,
+preorder descriptor selection and instance guards. Both extended Xenia runs
+passed 3,600 frames: Link recorded 53 hits and Young Link 37
+(`reserved-parts-runtime-20261006`). Peach also passed 5,700 frames with 46 hits
+(`animation-lengths-extended-20261006`); the Link freeze in that earlier matrix
+was the diagnostic evidence for this fix. Final cleanup of display references
+was added after the two successful runs. An actual-function host regression
+passes removal of multiple appended displays, retention of unrelated parts,
+repeated removal and invalid-entry guards; the Link runtime tests do not
+independently exercise that removal path. Complete Kirby hats/copy abilities remain unfinished.
+The final live-input XEX includes this fix; the continuous seventeen-phase
+proof above was recorded in the preceding animation-length build.
+
+## Native campaign work — 2026-10-05
+
+Adventure now uses nineteen phases extracted from the original encounter table,
+including Brinstar escape, enemy teams, retained player lives, Continue,
+giant/metal attributes, wireframes and Giga Bowser. Mushroom Kingdom's full
+route passed in Xenia with ten Yoshis: 9,900 frames, 199 hits and two player
+falls at CPU level 3. The gate opened and the finish was reached with a life
+remaining. Camera/blast bounds and NPC replacement were corrected for that
+checkpoint. Brinstar escape has its original forty-second timer and top-platform
+finish; the complete Xenia climb passed at frame 2,287 without a fall or lost
+life, then loaded the next Kirby encounter. Host tests and a smoke run also pass. Permanent metal and size attributes are reapplied on respawn.
+Team replacements now use arena spawns without player platforms; host regressions
+cover Kirby, Pokemon and wireframes. Samus/Kirby passed 1,800-frame Xenia runs;
+a separate Giga Bowser run cleared the final encounter and returned to the menu.
+The complete original Adventure and physical Xbox 360 execution remain unverified.
+See the October 6 section for the available Easy sequence verification.
+
+Classic remains a five-normal-encounter preview. Original Adventure special
+scenes, enemy generators, cinematic transitions,
+results, unlocks and persistent saving are unfinished. The milestones below
+are historical records, not a claim that those remaining features are complete.
+
 - M0 Workspace prepared: complete
 - M1 Repositories cloned and pinned: complete
 - M2 Toolchain functional: complete (official Free60 Docker image)
@@ -55,6 +187,14 @@
 - M47 Selection and partial-load recovery (2026-10-02): costume cycling and duplicate-fighter color assignment use each character's actual archive count, and the selection UI shows the color count. Entry resets analog edge state, changing player count clears stale confirmations/removed human slots, and a disconnected selection pad becomes a CPU slot. Fighter/costume load failure no longer silently substitutes Mario/default color; a partial match tears down, resets fighters/effects, rebuilds its stage and resumes selection with a failure message. Automated failed loads exit rather than waiting for input. Fighter GObj/JObj allocation is checked before use. `tools/test_match_rules.ps1` passes the actual costume-count, selection and start functions with injected partial failure/successful retry, alongside earlier stock/rules regressions. A read-only ISO audit found all 120 costume archives and their expected model/material-animation roots. The texture-cache cleanup entry point has C linkage for the new C scene caller.
 
 - M48 GX vertex alignment and UV sources (2026-10-02): NBT3 indexed normals consume all three index8/index16 values before following attributes, fixing stream alignment. Truncated tuples, absent indexed arrays and unsupported attribute types reject parsing. Raw vertices retain TEX0-TEX7; the material routes its requested UV source into each of the two existing shader texture slots without expanding the 56-byte GPU vertex layout. Actual parser/transform host regressions pass with earlier cache/CMPR/audio tests. A costume mesh audit found only TEX0/TEX1 and no indexed NBT3 across 9,977 meshes; these fixes do not establish a solution to every reported visual defect. A normal-boot scripted Xenia route reached match frame 4014 with 28 hits, 181 SFX submissions, one SFX miss, pause/resume and zero HPS history mismatches; no hang was observed. The final XEX is relinked with live input and passes the image dump check. Bump mapping, complete texgen/TEV and materials with more than two textures remain pending.
+
+- M49 Material pass routing (2026-10-02): diffuse/ambient, specular and extended texture flags map to independent shader passes, matching upstream `MObjMakeTExp` order. Specular textures now modify the specular term instead of the diffuse base; multi-pass diffuse/extended textures also apply after lighting, and specular-only textures are ignored when specular lighting is disabled. Specular alpha operations carry the shared alpha term. Both model/particle paths upload all 13 boolean constants so routing state does not leak. Host routing/vertex/cache/CMPR/audio tests pass and the updated XDK pixel shader compiles. A read-only Samus model audit found three enabled specular texture entries. A scripted opening/title/VS route loaded Samus vs Mario, reached match frame 901 with four hits, paused and returned to the main menu without an observed hang. The final XEX has normal boot/live input and passes the image dump check. Visual/physical-console correctness, more than two texture slots and full TEV/texgen remain pending.
+
+- M50 Match replacement lifecycle (2026-10-02): next campaign rounds and automated VS restarts now leave the previous match scene before clearing cached textures and entering the replacement. Previously, same-state transitions skipped teardown and match entry reset the built-stage marker, allowing old fighters/cameras/GObjs to survive. `tools/test_flow_rules.ps1` passes both five-round campaign transitions/completion, three VS restarts and menu exits, checking release ordering. `tools/test_match_rules.ps1` passes actual entry/spawn/frame/leave sequences for five rounds of Classic and Adventure with two life losses, respawns, retained lives and new-campaign reset. Host fighters/platform functions are mocked. Xenia's opt-in `dist/campaign-lifecycle-20261002` harness completed three consecutive four-CPU VS matches with zero ADPCM history mismatches and no observed hang. It validates scene replacement, not the full original campaign or long-run memory stability. The final XEX is rebuilt with normal opening boot/live input and passes the image dump check. Original campaign encounters, bonus stages, bosses and results remain pending.
+
+- M51 Local VS usability (2026-10-02): A at VS results starts a direct rematch retaining roster/colors/rules/current human slots. Any human can pause with Start; a disconnected human pad pauses simulation after GO, blocks resume until reconnection, and requires explicit Start to continue. Another connected human can exit the pause via B. The UI identifies a missing pad and records the player who pressed Start in the original pause panel. Actual-function host tests cover four-slot rematch after draw, retained rules/human slots, secondary pause, disconnect freeze, reconnect/resume and other-controller exit. A normal-boot scripted Xenia route reached Mario vs Luigi's one-stock result, rematched, paused and returned to the menu at replacement frame 361 without observed hang or HPS history mismatches. Final XEX: normal opening/live input, image dump checked. Physical console and actual multiple-controller behavior remain unverified. `docs/JUGAR_XEX.md` documents the playable VS route and controls. The build's imagexex banner no longer produces a false nested-PowerShell failure; the extracted actual image-builder block returned exit 0 in a nested invocation.
+
+- M52 Classic normal encounters (2026-10-02): the five-fight combat preview uses generated original normal encounter pairs (38 source rows, eight compatible with current native stages), native fighter mapping, supported-stage filtering and preference for unused opponents/grounds. It uses the selected StKind's StageParam row for 1P BGM/item parameters. Missing variants abort instead of silently using another setup. Classic gets its original 300-second stock timer; timeout removes one life and permits retrying the same encounter while lives remain, including round-zero retry without refilling lives. The original HUD supports stock lives and timer together. Host tests pass original encounter pair/variant lookup and repeated timeout/retry to game over alongside existing rules/flow tests. An ISO audit found all eight supported rows. Xenia traversed normal boot/menu/Classic, loaded StKind 89 Jungle Japes vs Donkey Kong with HUD timer 300 and BGM 50, reached frame 901, paused and exited without observed hang/HPS history mismatch. Final XEX is normal boot/live input and image-dump checked. The five-fight UI/logs identify a preview; original teams/giant/metal/bonus/boss encounters, actual order, cinematic/results flow and Adventure progression remain pending.
 
 The platform test now compiles CPU/endian reporting, aligned memory, a Xenos
 framebuffer and test triangle, full analog controller state, a short synthetic
