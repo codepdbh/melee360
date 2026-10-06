@@ -2,18 +2,90 @@
 
 ## Underground Maze source progress — 2026-10-06
 
-The current source and diagnostic XEX include a twentieth Adventure phase:
+The current playable XEX includes a twentieth Adventure phase:
 Underground Maze, using GrNSr.dat, six symbols, a randomized Triforce room,
-Link encounters, room collision switching and a seven-minute timer. Host
-match and flow rules pass. Xenia loaded the course and the input pilot defeated
-one Link and returned to exploration. The pilot then stalled while navigating
-to a lower room; the complete course and subsequent campaign remain unverified.
+Link encounters, room collision switching and a seven-minute timer. Original
+traversal segments 51, 79, 101, 102, 115, 116 and 131 are disabled outside
+combat, and trigger half extents match Ground_801C3DB4. Symbols hide during
+combat and cleared rooms remain hidden. Host match and flow rules pass.
+The Xenia pilot defeated Link in rooms 5, 4 and 3, timed out while navigating
+to room 2, then reached the Triforce on retry (445 seconds, 50 hits, four falls;
+`build-x360/adventure-maze-drop-pulse-20261006`). This establishes a maze clear
+with retry, not traversal of every room or a complete twenty-phase campaign.
 Original maze hazards and transition animations are still missing.
 
-The playable `dist/default.xex` remains the preceding nineteen-phase build
-with SHA-256 `E6F9B2A761702F361160919FF6F4BB8F82D1EAB1148462065987C24D8DE1FEC4`.
-Rebuilding from this commit includes the unfinished maze. Existing continuous
+The playable `dist/default.xex` now includes the experimental maze, with normal
+boot and live input, SHA-256
+`DBF616E6B00A7C8F3B33CA95B4AF23872250CFDD437B618BED9E0492E7667565`.
+This build also restores the original grab wall-occlusion query. Host tests
+verify ECB centers and both wall directions. A normal-boot Xenia smoke run
+presented 1,449 opening frames with no movie errors or watchdog hang
+(`build-x360/maze-normal-boot-runtime-trace-20261006.txt`); audio counters are
+submission evidence, not a listening test. This does not verify menu input.
+The preceding nineteen-phase E6F9B2A7 build is retained in
+`build-x360/playable-reserved-parts-20261006.xex`. Existing continuous
 seventeen-phase Easy results below refer to earlier builds without this course.
+
+The updated twenty-phase diagnostic build also passed the following Zelda
+encounter (`adventure-maze-followup-smoke-20261006`): 3,900 sampled frames,
+41 hits and two falls. The continuous Easy run in
+`build-x360/adventure-full-maze-20261006` cleared the maze after a retry but
+reported a render watchdog stall on entering scene 18 (Zelda), at loop frame
+42,779. It did not complete the campaign. The isolated scene 25 smoke test
+in `zelda-post-maze-isolation-20261006` actually tests Samus, despite its
+directory name; it does not validate the frozen transition. The maze-to-Zelda
+transition is under investigation.
+
+A second run starting at the maze (`maze-transition-native-20261006`, isolated
+21-phase diagnostic) reported a render watchdog at frame 11,413 before clearing
+the maze. The counter subsequently advanced to 11,417, so the alert alone does
+not establish a permanent lock. The harness still classifies this as FREEZE;
+the instrumented follow-up observes recovery without weakening that verdict.
+The instrumented run `maze-render-detail-20261006` subsequently reached 18,900
+sampled maze frames without a watchdog, but did not reach the Triforce before
+its time budget: verdict SHORT. This does not reproduce or resolve the earlier
+stalls. The diagnostic pilot now ignores roofs above the destination's head,
+with a regression based on the maze's upper corridor; native validation follows.
+
+## F-Zero course prototype — 2026-10-06
+
+The current source adds scene 58 as a twenty-first phase, using original
+GrNBr.dat terrain and markers, solo start, a 240-second timer, rebirth
+checkpoints 4-7 and the original 15/2000 finish half extents. Host match/flow
+rules pass and the XDK diagnostic prototype compiles. Losing the final life
+in a solo course now loses the attempt instead of showing a draw; host tests
+verify Continue restores three lives in Mushroom, maze, escape and race.
+Dynamic cars and traffic
+collisions remain absent. Native traversal reached all three checkpoints and
+the finish in Xenia (`build-x360/race-native-20261006`): goal at match frame
+3,974, 70 seconds, one fall and recovery, no watchdog stall. This establishes
+the terrain/checkpoint/finish path, not the missing traffic gameplay. This prototype
+is isolated in `build-x360/race-prototype-objects/race.xex` and has not replaced
+the current twenty-phase `dist/default.xex` or its active campaign test.
+
+A normal-boot/live-input candidate also links successfully at
+`build-x360/race-prototype-objects/playable.xex`, SHA-256
+`AAF314B0DDA823E42D49718CD8DD0EBB072FF9E71C92BECA3CF8E41FA6E2338A`.
+It has not been promoted while the maze render stalls are being investigated.
+
+Do not treat the preliminary inspection of floor 62 (a high boundary ledge)
+as the starting floor. Authored floor 63 spans the player start at approximately
+y=49, below spawn y=51.5; its archive geometry is retained without a substitute.
+
+## Storage cleanup — 2026-10-06
+
+Removed fifteen obsolete diagnostic ISO hardlinks and fifteen superseded
+diagnostic XEX files, retaining their traces. Removed four generated ASAN
+emulator build directories (1.63 GiB).
+Removed fifteen obsolete October 5 executable/map snapshots (35.7 MiB),
+retaining current and October 6 reference builds. Source, Git repositories, the current
+XEX and recent evidence remain. A subsequent full file scan measured
+5.70 GiB across 20,239 files; subtracting the two repeated ISO directory entries
+gives 2.98 GiB. This is a sum of file lengths, not allocated disk clusters.
+Three ISO paths remain: the source image, normal runtime
+and current diagnostic slot; these refer to one physical NTFS file. The removed
+ISO links reduced Explorer's summed size, not physical ISO storage. The manifest
+is `build-x360/storage-cleanup-20261006.csv`.
 
 ## Adventure combat rules — 2026-10-06
 

@@ -1723,8 +1723,17 @@ bool ft_80084C74(Fighter_GObj* gobj, int* arg1, int* arg2, int* arg3)
 
 bool ft_80084CE4(Fighter* attacker, Fighter* victim)
 {
-    (void) attacker; (void) victim;
-    return false;
+    /* Original grab occlusion test: compare the ECB centers against the
+     * wall facing the attacker, rather than grabbing through stage walls. */
+    const float ax = attacker->cur_pos.x;
+    const float ay = attacker->cur_pos.y +
+        (attacker->coll_data.ecb.top.y + attacker->coll_data.ecb.bottom.y) * 0.5f;
+    const float bx = victim->cur_pos.x;
+    const float by = victim->cur_pos.y +
+        (victim->coll_data.ecb.top.y + victim->coll_data.ecb.bottom.y) * 0.5f;
+    if (ax > bx)
+        return mpCheckRightWall(ax, ay, bx, by, NULL, NULL, NULL, NULL, -1, -1);
+    return mpCheckLeftWall(ax, ay, bx, by, NULL, NULL, NULL, NULL, -1, -1);
 }
 
 bool ft_800827A0(Fighter_GObj* gobj)

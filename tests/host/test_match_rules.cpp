@@ -9,7 +9,7 @@
 enum { kMaxFighters = 4, kStartingStocks = 3, kCampaignRounds = 5,
        kGameModeClassic = 3, kGameModeAdventure = 4,
        kPhaseSelect = 0, kPhaseFight = 1, kRespawnFrames = 60,
-       kMaxCostumes = 6, kKindCount = 11, kSelectableKinds = 6, kStageCount = 20, kTimeOptionCount = 2,
+       kMaxCostumes = 6, kKindCount = 11, kSelectableKinds = 6, kStageCount = 21, kTimeOptionCount = 2,
        HSD_GOBJ_CLASS_STAGE = 1 };
 struct CostumeDesc { const char* costumeDat[6]; const char* costumeJoint[6]; int kind; };
 const CostumeDesc s_kinds[] = {
@@ -21,7 +21,7 @@ const CostumeDesc s_kinds[] = {
     { { "a" }, { "a" }, 29 }, { { "a" }, { "a" }, 30 }
 };
 struct StageDesc { int grkind; };
-const StageDesc s_stages[] = { {36}, {37}, {28}, {10}, {12}, {29}, {7}, {30}, {5}, {2}, {4}, {8}, {13}, {14}, {16}, {20}, {18}, {31}, {33}, {32} };
+const StageDesc s_stages[] = { {36}, {37}, {28}, {10}, {12}, {29}, {7}, {30}, {5}, {2}, {4}, {8}, {13}, {14}, {16}, {20}, {18}, {31}, {33}, {32}, {34} };
 struct StageParam { unsigned stkind; int x4; unsigned xC; };
 struct GroundParam { StageParam* stage_params; int stage_param_count; };
 StageParam mockStageParams[64];
@@ -46,7 +46,13 @@ float s_routeCamera[4] = {-170, 170, -60, 120};
 float s_routeFightCamera[4] = {-60, 60, -60, 60};
 struct Vec3 { float x, y, z; };
 bool routePoints;
+bool racePoints;
 int PointPosition(int index, Vec3* out) {
+    if (racePoints && ((index >= 5 && index <= 7) || index == 0x99)) {
+        out->x = index == 0x99 ? 80.0f : (index - 5) * 20.0f + 10.0f;
+        out->y = index == 0x99 ? 0.0f : (index - 4) * 20.0f; out->z = 0;
+        return 1;
+    }
     if (!routePoints || (index != 0xBD && index != 0x99)) return 0;
     out->x = index == 0xBD ? 0.0f : 80.0f; out->y = out->z = 0;
     return 1;
@@ -59,7 +65,7 @@ void M360_FighterSetEncounter(void* object, float scale, int) {
 
 unsigned gateHidden;
 void HideMapJoint(int map, int joint) { assert(map == 3 && joint == 0x53); ++gateHidden; }
-unsigned M360_MatchStageCount() { return kStageCount - 3; }
+unsigned M360_MatchStageCount() { return kStageCount - 4; }
 struct MapJoint { int floor_start, floor_count, ceiling_start, ceiling_count, right_wall_start, right_wall_count, left_wall_start, left_wall_count, dynamic_start, dynamic_count; };
 MapJoint mockGroups[14];
 struct MapLine { unsigned hi_flags; } mockLines[64];
@@ -85,16 +91,17 @@ int s_rematchPending;
 unsigned s_modelCount, s_collBindCount, s_timeOption, g_m360Crumb;
 const unsigned kTimeOptions[] = { 0, 1 };
 void* s_models[8];
-struct HSD_JObj {};
+struct HSD_JObj { unsigned flags; };
 enum { JOBJ_HIDDEN = 0x10 };
 unsigned s_mazeGoal, s_mazeVisited, s_mazeFinishFrames;
 int s_mazeRoom = -1;
 Vec3 s_mazePoints[6], s_mazeSpawns[6];
 HSD_JObj mockSymbols[6];
 HSD_JObj* s_mazeSymbols[6];
-float s_mazeRadiusX = 70, s_mazeRadiusY = 70;
+float s_mazeRadiusX = 35, s_mazeRadiusY = 35;
 unsigned mazeHidden, mazeVisibility;
-void HSD_JObjSetFlagsAll(void*, unsigned) { ++mazeHidden; }
+void HSD_JObjSetFlagsAll(HSD_JObj* joint, unsigned flags) { ++mazeHidden; joint->flags |= flags; }
+void HSD_JObjClearFlagsAll(HSD_JObj* joint, unsigned flags) { joint->flags &= ~flags; }
 void MazeMapJointVisible(int, int, int) { ++mazeVisibility; }
 void M360_FighterBuildIslands() {}
 int InitMaze() {
@@ -281,7 +288,7 @@ int main() {
     assert(M360_MatchCpuLevel(2) == 4);
     assert(M360_MatchCpuKind(1) == 16);
     assert(M360_MatchCpuKind(2) == 4);
-    s_campaignRound = 17;
+    s_campaignRound = 18;
     assert(M360_MatchCpuLevel(1) == 5);
     assert(M360_MatchCpuLevel(2) == 3);
     assert(M360_MatchCpuKind(1) == 27);
@@ -497,7 +504,7 @@ int main() {
     }
     puts("PASS: Classic entry, respawns, retained lives and fresh campaign reset");
 
-    assert(M360_MatchCampaignRounds(kGameModeAdventure) == 20);
+    assert(M360_MatchCampaignRounds(kGameModeAdventure) == 21);
     Reset(2);
     M360_MatchSetMode(kGameModeAdventure, 0);
     M360_MatchEnter();
@@ -537,7 +544,7 @@ int main() {
     M360_MatchSetMode(kGameModeAdventure, 1); M360_MatchEnter();
     assert(s_kinds[s_selKind[1]].kind == M360_ADVENTURE_LUIGI_KIND);
     M360_MatchLeave();
-    const unsigned waveRounds[] = {9, 13, 16};
+    const unsigned waveRounds[] = {9, 13, 17};
     for (unsigned round = 0; round < 3; ++round) {
         Reset(4);
         M360_MatchSetMode(kGameModeAdventure, waveRounds[round]);
@@ -563,16 +570,16 @@ int main() {
     M360_MatchSetMode(kGameModeAdventure, 8);
     assert(M360_MatchNextCampaignRound() == 9);
     puts("PASS: original Team Kirby time rule retains or skips Giant Kirby at whole-second boundary");
-    M360_MatchSetMode(kGameModeAdventure, 18);
+    M360_MatchSetMode(kGameModeAdventure, 19);
     s_cpuLevel = 3; s_frame = 300;
-    assert(M360_MatchNextCampaignRound() == 20);
+    assert(M360_MatchNextCampaignRound() == 21);
     s_cpuLevel = 5; s_adventureElapsedFrames = 64499;
-    assert(M360_MatchNextCampaignRound() == 19);
-    s_adventureElapsedFrames = 64500;
     assert(M360_MatchNextCampaignRound() == 20);
+    s_adventureElapsedFrames = 64500;
+    assert(M360_MatchNextCampaignRound() == 21);
     s_adventureElapsedFrames = 64499;
     s_matchOver = 1; s_campaignClearFrames = 300; s_frame = 450;
-    assert(M360_MatchNextCampaignRound() == 19);
+    assert(M360_MatchNextCampaignRound() == 20);
     s_active = 1;
     M360_MatchLeave();
     assert(s_adventureElapsedFrames == 64799);
@@ -581,7 +588,7 @@ int main() {
     s_active = 1; s_campaignClearFrames = ~0u;
     M360_MatchLeave();
     assert(s_adventureElapsedFrames == 64800);
-    assert(M360_MatchNextCampaignRound() == 20);
+    assert(M360_MatchNextCampaignRound() == 21);
     s_adventureElapsedFrames = 64799;
     s_campaignRetryPending = 1;
     M360_MatchSetMode(kGameModeAdventure, 0);
@@ -616,14 +623,25 @@ int main() {
     assert(s_fighterCount == 1 && s_stageIndex == 19 && hudTimeLimit == 420);
     s_routeBlast[0] = s_routeBlast[2] = -2000;
     s_routeBlast[1] = s_routeBlast[3] = 2000;
+    s_stage.lineCount = 132;
+    const unsigned mazeWalls[] = { 51, 79, 101, 102, 115, 116, 131 };
+    for (unsigned i = 0; i < 7; ++i) s_stage.lines[mazeWalls[i]].kind = 1;
+    MazeRoomBounds(-1);
+    for (unsigned i = 0; i < 7; ++i) assert(s_stage.lines[mazeWalls[i]].kind == 0);
+    fighters[0].x = 35; M360_MatchFrame(); assert(s_mazeRoom == -1);
+    fighters[0].x = 34; M360_MatchFrame(); assert(s_mazeRoom == 0);
     fighters[0].x = 0; M360_MatchFrame();
     assert(s_mazeRoom == 0 && s_fighterCount == 2 && s_stocksRemaining[1] == 1);
+    for (unsigned i = 0; i < 6; ++i) assert(mockSymbols[i].flags & JOBJ_HIDDEN);
     for (unsigned group = 0; group < 14; ++group)
         assert((s_stage.lines[mockGroups[group].floor_start].kind != 0) == (group == 8));
     fighters[1].x = 200; M360_MatchFrame();
     assert(s_mazeVisited == 1 && s_mazeRoom == -1 && !s_matchOver);
+    assert(mockSymbols[0].flags & JOBJ_HIDDEN);
+    for (unsigned i = 1; i < 6; ++i) assert(!(mockSymbols[i].flags & JOBJ_HIDDEN));
     for (unsigned group = 0; group < 14; ++group)
-        assert(s_stage.lines[mockGroups[group].floor_start].kind == mockLines[mockGroups[group].floor_start].hi_flags);
+        assert(s_stage.lines[mockGroups[group].floor_start].kind ==
+               (mockGroups[group].floor_start == 51 ? 0 : mockLines[mockGroups[group].floor_start].hi_flags));
     fighters[0].x = 0; M360_MatchFrame(); assert(s_mazeRoom == -1);
     fighters[0].x = 300; M360_MatchFrame();
     assert(s_mazeRoom == 1 && s_stocksRemaining[1] == 1 && !fighters[1].rebirths);
@@ -643,6 +661,35 @@ int main() {
     s_routeBlast[0] = s_routeBlast[2] = -100;
     s_routeBlast[1] = s_routeBlast[3] = 100;
     puts("PASS: maze starts solo, confines Link rooms, restores traversal, reuses enemies and clears at the Triforce");
+
+    Reset(2); racePoints = true;
+    M360_MatchSetMode(kGameModeAdventure, 14); M360_MatchEnter();
+    assert(s_fighterCount == 1 && s_stageIndex == 20 && hudTimeLimit == 240);
+    mockButtons = 0;
+    fighters[0].x = 10; M360_MatchFrame(); assert(s_adventureCheckpoint == 0 && !s_matchOver);
+    fighters[0].x = 11; M360_MatchFrame();
+    assert(s_adventureCheckpoint == 1 && s_stage.rebirthX[0] == 10 && s_stage.rebirthY[0] == 20);
+    fighters[0].x = 31; M360_MatchFrame(); assert(s_adventureCheckpoint == 2);
+    fighters[0].x = 51; M360_MatchFrame();
+    assert(s_adventureCheckpoint == 3 && s_stage.rebirthX[0] == 50 && s_stage.rebirthY[0] == 60);
+    fighters[0].x = 65; M360_MatchFrame(); assert(!s_matchOver);
+    fighters[0].x = 66; M360_MatchFrame(); assert(s_matchOver && s_winner == 0);
+    mockButtons = 0x100; assert(M360_MatchFrame() == M360_MATCH_NEXT_ROUND);
+    M360_MatchLeave(); racePoints = false;
+    puts("PASS: experimental race starts solo, uses the original timer, advances authored checkpoints and finishes within original half extents");
+
+    const unsigned courseRounds[] = { 0, 4, 7, 14 };
+    for (unsigned i = 0; i < 4; ++i) {
+        Reset(2); M360_MatchSetMode(kGameModeAdventure, courseRounds[i]); M360_MatchEnter();
+        if (!courseRounds[i]) { mockButtons = 0x100; M360_MatchFrame(); M360_MatchFrame(); }
+        mockButtons = 0; s_stocksRemaining[0] = s_campaignStocks = 1;
+        fighters[0].x = 200; M360_MatchFrame();
+        assert(s_matchOver && s_winner == 1 && !s_draw && s_campaignStocks == 0);
+        mockButtons = 0x100; assert(M360_MatchFrame() == M360_MATCH_RESTART);
+        assert(s_campaignStocks == 3 && s_campaignRetryPending);
+        M360_MatchLeave();
+    }
+    puts("PASS: final-life course falls lose the attempt, then Continue restores lives without declaring a draw");
 
     Reset(3);
     M360_MatchSetMode(kGameModeAdventure, 2);

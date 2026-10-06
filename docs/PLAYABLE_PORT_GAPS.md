@@ -11,6 +11,23 @@ The normal build starts at the opening movie, then title, original menu,
 native fighter/stage selection and match. Diagnostic `-BootToMatch` and
 `-InputScript` builds are opt-in and must not replace the live-input release.
 
+### Experimental Underground Maze (2026-10-06)
+
+The current normal XEX adds a twentieth Adventure phase with the original
+GrNSr.dat course, six symbols, randomized Triforce room, Link encounters and
+seven-minute timer. Collision switching restores original disabled traversal
+segments, and entrance trigger dimensions use the original half extents.
+Xenia verified three Link-room victories and a Triforce clear after a timeout
+and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
+attempt and the full updated campaign remain unverified. Maze hazards and
+transition animations remain missing; F-Zero race and mountain climb are absent.
+Current normal SHA-256:
+`DBF616E6B00A7C8F3B33CA95B4AF23872250CFDD437B618BED9E0492E7667565`.
+It also uses the original grab wall-occlusion query; host tests verify the
+ECB center coordinates and wall-side choice. The complete runtime grab
+interaction across all stages remains unverified.
+The nineteen-phase results below describe preceding builds.
+
 ## Fighter and item fixes (2026-10-05)
 
 ### Adventure route implementation and validation

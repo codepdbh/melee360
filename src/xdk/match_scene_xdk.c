@@ -219,6 +219,8 @@ static const M360StageDesc s_stages[] = {
     { "MUSHROOM KINGDOM ROUTE", "GrNKr.dat", { 2, 0, 1, 3, -1 }, -1, NULL, 0, Gr_Kind_KinokoRoute },
     { "BRINSTAR ESCAPE", "GrNZr.dat", { 0, 1, 2, -1 }, -1, NULL, 0, Gr_Kind_ZebesRoute },
     { "UNDERGROUND MAZE", "GrNSr.dat", { 0, 4, 2, -1 }, -1, NULL, 0, Gr_Kind_ShrineRoute },
+    /* Original road and finish/checkpoint markers. Dynamic cars are pending. */
+    { "F-ZERO GRAND PRIX", "GrNBr.dat", { 0, 32, -1 }, -1, NULL, 0, Gr_Kind_BigBlueRoute },
 };
 
 enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
@@ -1100,7 +1102,7 @@ static int BuildStage(unsigned index)
     UpdateMapColl();
     LoadBounds();
     if (desc->grkind == Gr_Kind_KinokoRoute || desc->grkind == Gr_Kind_ZebesRoute ||
-        desc->grkind == Gr_Kind_ShrineRoute) {
+        desc->grkind == Gr_Kind_ShrineRoute || desc->grkind == Gr_Kind_BigBlueRoute) {
         float minX = s_stage.spawnX[0], maxX = minX;
         float minY = s_stage.spawnY[0], maxY = minY;
         Vec3 marker;
@@ -1187,7 +1189,7 @@ unsigned M360_MatchSlotStocks(unsigned slot)
 
 unsigned M360_MatchStageCount(void)
 {
-    return kStageCount - 3;
+    return kStageCount - 4;
 }
 
 const char* M360_MatchStageName(unsigned index)
@@ -1390,13 +1392,14 @@ static int StockResult(unsigned* winner, int* draw)
     unsigned i, alive = 0, last = 0;
     if (IsCampaign()) {
         unsigned enemies = 0;
+        const M360AdventureEncounter* encounter = AdventureEncounter();
+        const int course = encounter && (encounter->scene == 1 || encounter->scene == 17 ||
+                                         encounter->scene == 27 || encounter->scene == 58);
         for (i = 1; i < s_fighterCount; ++i)
             if (s_fighters[i]) enemies += s_stocksRemaining[i];
-        if (s_stocksRemaining[0] && (enemies ||
-            (AdventureEncounter() && (AdventureEncounter()->scene == 1 || AdventureEncounter()->scene == 17 ||
-                                     AdventureEncounter()->scene == 27)))) return 0;
+        if (s_stocksRemaining[0] && (enemies || course)) return 0;
         *winner = s_stocksRemaining[0] ? 0 : 1;
-        *draw = !s_stocksRemaining[0] && !enemies;
+        *draw = !s_stocksRemaining[0] && !enemies && !course;
         return 1;
     }
     for (i = 0; i < s_fighterCount; ++i)
@@ -1443,7 +1446,7 @@ static void CampaignOpponent(void)
             s_adventureLives[i] = adventure->opponents / slots + (i <= adventure->opponents % slots);
         s_slotCount += slots;
         /* The Mushroom Kingdom enemies are created at their checkpoint. */
-        if (adventure->scene == 1 || adventure->scene == 17) s_slotCount = 1;
+        if (adventure->scene == 1 || adventure->scene == 17 || adventure->scene == 58) s_slotCount = 1;
         return;
     }
     if (s_gameMode == kGameModeClassic && s_campaignRound < kCampaignRounds) {
@@ -1797,10 +1800,22 @@ static void MazeRoomBounds(int room)
     unsigned i;
     for (i = 0; i < 14; ++i)
         SetCollisionGroupEnabled(i, room < 0 || i == 8u + (unsigned) room);
+    if (room < 0) {
+        /* grShrineRoute_8020B0AC opens these authored traversal walls. */
+        static const unsigned walls[7] = { 51, 79, 101, 102, 115, 116, 131 };
+        for (i = 0; i < 7; ++i)
+            if (walls[i] < s_stage.lineCount) s_stage.lines[walls[i]].kind = 0;
+    }
     MazeMapJointVisible(4, 1, room < 0);
     MazeMapJointVisible(2, 0, room < 0);
-    for (i = 0; i < 6; ++i)
+    for (i = 0; i < 6; ++i) {
         MazeMapJointVisible(4, joints[i], room < 0 || i == (unsigned) room);
+        if (s_mazeSymbols[i]) {
+            if (room >= 0 || (s_mazeVisited & (1u << i)))
+                HSD_JObjSetFlagsAll(s_mazeSymbols[i], JOBJ_HIDDEN);
+            else HSD_JObjClearFlagsAll(s_mazeSymbols[i], JOBJ_HIDDEN);
+        }
+    }
     if (room < 0) {
         s_stage.camX = s_stage.camY = 0.0f;
         s_stage.camLeft = s_routeCamera[0]; s_stage.camRight = s_routeCamera[1];
@@ -1827,8 +1842,9 @@ static int InitMaze(void)
     const float* params = (const float*) M360_ArchiveFind(s_archive, "yakumono_param");
     float symbolScale = params ? params[5] : 1.5f;
     unsigned i;
-    s_mazeRadiusX = params ? params[7] * s_scale : 70.0f;
-    s_mazeRadiusY = params ? params[8] * s_scale : 70.0f;
+    /* Ground_801C3DB4 stores half of the authored trigger dimensions. */
+    s_mazeRadiusX = params ? params[7] * s_scale * 0.5f : 35.0f;
+    s_mazeRadiusY = params ? params[8] * s_scale * 0.5f : 35.0f;
     s_mazeGoal = (unsigned) HSD_Randi(6);
     s_mazeVisited = s_mazeFinishFrames = 0;
     s_mazeRoom = -1;
@@ -1844,6 +1860,7 @@ static int InitMaze(void)
         HSD_JObjSetScaleY(symbol, symbolScale);
         HSD_JObjSetScaleZ(symbol, symbolScale);
     }
+    MazeRoomBounds(-1);
     M360_MatchTrace("match.adventure.maze.goal_room", s_mazeGoal);
     M360_MatchTrace("match.adventure.maze.symbols", 6);
     return 1;
@@ -1942,6 +1959,24 @@ static void AdventureFrame(void)
     if (encounter->scene == 17) {
         M360_FighterGetState(s_fighters[0], &x, &y, &facing, &motion, &damage);
         MazeFrame(x, y);
+        return;
+    }
+    if (encounter->scene == 58) {
+        M360_FighterGetState(s_fighters[0], &x, &y, &facing, &motion, &damage);
+        /* grBigBlueRoute_8020BF38 advances rebirth points 4-7 by crossing
+         * points 5-7, independent of height. Preserve progress after a fall. */
+        if (s_adventureCheckpoint < 3 && PointPosition(5 + s_adventureCheckpoint, &point) && x > point.x) {
+            ++s_adventureCheckpoint;
+            s_stage.rebirthX[0] = point.x; s_stage.rebirthY[0] = point.y;
+            M360_MatchTrace("match.adventure.race.checkpoint", (unsigned) s_adventureCheckpoint);
+        }
+        /* Ground_801C3D44(0,30,4000) stores 15/2000 half extents. */
+        if (PointPosition(0x99, &point) && fabsf(x - point.x) < 15.0f && fabsf(y - point.y) < 2000.0f) {
+            s_campaignClearFrames = M360_HudFightFrames();
+            s_matchOver = 1; s_winner = 0; s_draw = 0;
+            M360_HudGameEnd(0);
+            M360_MatchTrace("match.adventure.race_goal", s_frame);
+        }
         return;
     }
     if (encounter->scene != 1) return;
@@ -2341,6 +2376,8 @@ void M360_MatchGetStatus(M360MatchStatus* status)
         status->campaignObjective = 4;
     if (AdventureEncounter() && AdventureEncounter()->scene == 17)
         status->campaignObjective = s_mazeRoom < 0 ? 5 : 6;
+    if (AdventureEncounter() && AdventureEncounter()->scene == 58)
+        status->campaignObjective = 7;
     if (IsCampaign())
         for (i = 1; i < s_fighterCount; ++i) status->campaignEnemies += s_stocksRemaining[i];
     if (IsCampaign()) {

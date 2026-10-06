@@ -112,7 +112,7 @@ typedef struct M360MatchStatus {
     unsigned disconnectedControllers; /* Bit per human slot awaiting its pad. */
     unsigned campaignTimeLeft;
     unsigned campaignTimedOut;
-    unsigned campaignObjective; /* 0: fight, 1: travel, 2: checkpoint, 3: finish, 4: escape, 5: maze, 6: Link room */
+    unsigned campaignObjective; /* 0: fight, 1: travel, 2: checkpoint, 3: finish, 4: escape, 5: maze, 6: Link room, 7: race */
     unsigned campaignEnemies;
 } M360MatchStatus;
 

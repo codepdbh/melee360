@@ -693,7 +693,7 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     } else {
         AddText(g_dynamic, 250, 570, match.gameMode == 4 ? "LB: DIFFICULTY" : "LB: CPU LEVEL", 2);
         AddText(g_dynamic, 250, 610, match.gameMode == 4
-            ? "MUSHROOM KINGDOM, UNDERGROUND MAZE, BRINSTAR ESCAPE AND BATTLES"
+            ? "MUSHROOM KINGDOM, MAZE, BRINSTAR ESCAPE, F-ZERO AND BATTLES"
             : "COMBAT PREVIEW - SPECIAL STAGES AND BOSSES PENDING", 2);
     }
     RenderBatch(renderer, g_dynamic);
@@ -715,7 +715,8 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
             match.campaignObjective == 3 ? "REACH THE FINISH" :
             match.campaignObjective == 4 ? "ESCAPE TO THE TOP" :
             match.campaignObjective == 5 ? "FIND THE TRIFORCE" :
-            match.campaignObjective == 6 ? "DEFEAT LINK TO OPEN THE ROOM" : "DEFEAT THE ENEMY TEAM";
+            match.campaignObjective == 6 ? "DEFEAT LINK TO OPEN THE ROOM" :
+            match.campaignObjective == 7 ? "REACH THE RACE FINISH" : "DEFEAT THE ENEMY TEAM";
         _snprintf(progress, sizeof(progress), "%u/%u  %s", match.campaignRound + 1,
                   match.campaignRounds, objective);
         progress[sizeof(progress) - 1] = 0;

@@ -7,7 +7,7 @@ $tokens = $null
 $parseErrors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($source, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw 'Soak harness parse failed.' }
-foreach ($name in @('Read-Shared', 'Read-Trace', 'Get-Verdict')) {
+foreach ($name in @('Read-Shared', 'Read-Trace', 'Get-Verdict', 'Test-RunComplete', 'New-Config', 'Get-SoakMatrix', 'Resolve-Address')) {
     $function = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $true)
     if (-not $function) { throw "Missing harness function: $name" }
     Invoke-Expression $function.Extent.Text
@@ -22,13 +22,22 @@ function Read-Fixture([string] $text) {
 function Assert-Rule([bool] $condition, [string] $message) {
     if (-not $condition) { throw $message }
 }
-$config = [pscustomobject]@{ Script = 'adventurepilot'; Repeat = 1; TargetFrame = 99999 }
+$soakMap = Join-Path $out 'resolver.map'
+[IO.File]::WriteAllText($soakMap, " 0003:00000000 00000100H .text CODE`n 0003:00000000 First 82060000 f fixture.obj`n 0003:00000040 Next 82060040 f fixture.obj`n")
+$script:MapSymbols = $null; $script:MapCodeEnd = 0
+Assert-Rule ((Resolve-Address '0x82060048') -eq 'Next+0x8') 'Valid code address did not resolve.'
+Assert-Rule ((Resolve-Address '0x82060120') -eq '0x82060120') 'Heap/data pointer was mislabeled as the last function.'
+Assert-Rule ((Resolve-Address '0x8205FFFF') -eq '0x8205FFFF') 'Address before code was mislabeled.'
+$config = [pscustomobject]@{ Script = 'adventurepilot'; Repeat = 1; TargetFrame = 99999; Mode = 4 }
 $trace = Read-Fixture "match.campaign.preview_complete: 4`n"
 Assert-Rule (-not $trace.CampaignComplete) 'Final match marker must not establish flow completion.'
 Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Incomplete flow incorrectly passed.'
 $trace = Read-Fixture "mode.preview_complete: 4`nloop.flow_state: 2`n"
 Assert-Rule $trace.CampaignComplete 'Flow completion marker was missed.'
 Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Completed flow failed.'
+$trace = Read-Fixture "mode.preview_complete: 3`n"
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Classic completion must not establish an Adventure clear.'
+Assert-Rule (-not (Test-RunComplete $config "mode.preview_complete: 3`n" $false)) 'Wrong campaign mode stopped the Adventure run.'
 $trace = Read-Fixture "loop.match_frame: 5100`nloop.match_hits: 26`nloop.match_frame: 0`nloop.match_hits: 0`n"
 Assert-Rule ($trace.MatchFrame -eq 5100 -and $trace.Hits -eq 26) 'Next-match reset lost campaign evidence.'
 $trace = Read-Fixture "match.adventure.scene: 92`nmatch.load.failed: 1`n"
@@ -45,4 +54,50 @@ Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Prior wave vi
 $trace = Read-Fixture "mode.preview_complete: 4`nhang.frame: 123`n"
 $config.Script = 'adventurepilot'
 Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'FREEZE') 'Hang must take precedence over completion.'
-Write-Host '[M360][HOST] Soak evidence rules PASS'
+$trace = Read-Fixture "hang.frame: 123`nhang.detail: 4098`nloop.frame: 900`n"
+Assert-Rule ($trace.HangDetail -eq '0x1002') 'Renderer operation detail was not preserved.'
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'FREEZE') 'Progress after a watchdog must not silently pass.'
+$config.Script = 'mazepilot'
+Assert-Rule (-not (Test-RunComplete $config "auto.match.done: 1`n" $false)) 'Maze must keep running after an ordinary match-end marker.'
+Assert-Rule (Test-RunComplete $config "match.adventure.maze_goal: 123`n" $false) 'Maze goal must stop the run.'
+$config.Script = 'gigapilot'
+Assert-Rule (-not (Test-RunComplete $config "match.adventure.scene: 92`nmatch.adventure.scene: 89`nmatch.enter.fighters: 2`n" $false)) 'Polling mixed another scene with Giga entry.'
+Assert-Rule (Test-RunComplete $config "match.adventure.scene: 92`nmatch.enter.fighters: 2`n" $false) 'Polling missed valid Giga entry.'
+$config.Script = 'mazepilot'
+$trace = Read-Fixture "match.adventure.maze.triforce: 0`n"
+Assert-Rule (-not $trace.MazeGoal) 'Touching the Triforce must not establish completed results.'
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Maze transition incorrectly passed before completion.'
+$trace.MatchesDone = 1
+$trace.MatchFrame = 100000
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Ended match or frame target must not prove a maze clear.'
+Assert-Rule ((Get-Verdict $config $trace $true $false) -eq 'CRASH') 'Incomplete maze exit must be reported.'
+foreach ($pilot in @('routepilot', 'escapepilot', 'adventurepilot', 'wavepilot', 'gigapilot')) {
+    $config.Script = $pilot
+    Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') "$pilot incorrectly passed without its objective marker."
+}
+$config.Script = 'mazepilot'
+$trace = Read-Fixture "match.adventure.maze_goal: 123`n"
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Completed maze was missed.'
+$trace = Read-Fixture "match.adventure.maze_goal: 123`nhang.frame: 124`n"
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'FREEZE') 'Maze completion must not mask a hang.'
+$config.Script = 'racepilot'
+$trace = Read-Fixture "match.adventure.race.checkpoint: 3`nauto.match.done: 1`n"
+Assert-Rule (-not $trace.RaceGoal) 'Race checkpoint must not establish completion.'
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Race timeout incorrectly passed.'
+Assert-Rule (-not (Test-RunComplete $config "auto.match.done: 1`n" $false)) 'Race must continue until its goal.'
+$trace = Read-Fixture "match.adventure.race_goal: 123`n"
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Race completion was missed.'
+Assert-Rule (Test-RunComplete $config "match.adventure.race_goal: 123`n" $false) 'Race goal must stop the run.'
+$Fighters = @('Mario', 'Link'); $Stages = @('Battlefield', 'Temple')
+$AdventurePhaseCount = 20
+$matrix20 = @(Get-SoakMatrix)
+Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-from-maze-pilot').Round -eq 4) 'Maze transition campaign must start at the maze.'
+Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-from-maze-pilot').Script -eq 'adventurepilot') 'Maze transition campaign must require campaign completion, not just a maze clear.'
+Assert-Rule (($matrix20 | Where-Object Name -eq 'adventure-wireframe-wave-pilot').Round -eq 16) 'Twenty-phase wireframe round shifted.'
+Assert-Rule (-not ($matrix20 | Where-Object Name -eq 'adventure-race-pilot')) 'Twenty-phase build must not select the race.'
+$AdventurePhaseCount = 21
+$matrix21 = @(Get-SoakMatrix)
+Assert-Rule (($matrix21 | Where-Object Name -eq 'adventure-wireframe-wave-pilot').Round -eq 17) 'Twenty-one-phase wireframe round did not shift.'
+Assert-Rule (($matrix21 | Where-Object Name -eq 'adventure-bowser-easy-final-pilot').Round -eq 19) 'Twenty-one-phase final round did not shift.'
+Assert-Rule (($matrix21 | Where-Object Name -eq 'adventure-race-pilot').Round -eq 14) 'Race pilot selects the wrong round.'
+Write-Host '[M360][HOST] Soak evidence and phase matrix rules PASS'

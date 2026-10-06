@@ -79,6 +79,14 @@ For unattended testing, `./tools/build_xex.ps1 -BootToMatch -InputScript
 -CallTrace` starts straight in a match configured by `game:\match-config.txt`
 and driven by `game:\input-script.txt`; `-CallTrace` adds `/Gh` to the C
 units so the hang watchdog can report the last function entries.
+It also enables scoped renderer details in `hang.detail`: `0x1001` is texture
+resolution, `0x1002` is geometry submission, `0x1003` is material rendering,
+and `0x1004` is light/channel setup. These are active-operation markers,
+not a reconstructed call stack. Normal builds omit this instrumentation.
+`soak_xenia.ps1 -ObserveAfterWatchdogSeconds 30` observes thirty more seconds
+after an alert to distinguish recovery from a permanent stall. The verdict
+remains FREEZE even if progress resumes. Stack-address resolution leaves
+pointers beyond the image's code range undecorated.
 `./tools/soak_xenia.ps1` runs a whole matrix of such matches (see
 [remaining gameplay gaps](PLAYABLE_PORT_GAPS.md)).
 
@@ -174,3 +182,17 @@ functions without starting Xenia. A final match marker alone does not establish
 campaign flow completion; a Giga scene identifier alone does not establish
 successful fighter loading. Per-match frame/hit peaks survive next-round
 resets, and a watchdog hang takes precedence over completion.
+Maze validation requires the completed goal marker, not the Triforce contact
+or a finished match. Objective pilots cannot pass merely by reaching a frame
+target or an automatic match-end counter.
+
+`./tools/test_route_pilot.ps1` extracts the diagnostic navigation helpers and
+checks connected ceiling spans, reversed endpoints, inactive geometry and
+corner selection. These helpers produce ordinary PAD input and are excluded
+from the normal live-input build.
+
+To test a separately linked prototype without replacing the default diagnostic
+XEX/map, pass `-DiagnosticXexPath <path>`; the matching `.map` is selected beside
+it. `-AdventurePhaseCount 21` shifts the later encounter cases and enables the
+race pilot. The saved twenty-phase diagnostic uses the default count of 20.
+An explicit prototype path cannot be combined with `-Build`.
