@@ -70,8 +70,17 @@ restoration is now included in the normal twenty-phase XEX above. Diagnostic
 navigation uses the entrance's 35-unit half extent with a five-unit margin;
 the Very Easy test `maze-margin-very-easy-20261006` finished SHORT, with
 25,080 sampled frames, 48 hits, 36 falls and no recorded watchdog. It did not
-clear the maze. A reproducible original-RNG diagnostic is now running at
-`maze-seeded-campaign-20261006`, seed 12000; this does not cover all six rooms.
+clear the maze. The reproducible original-RNG diagnostic
+`maze-seeded-campaign-20261006` applied seed 12000, selected room 3, cleared
+the maze at frame 3502 and entered Zelda. Zelda advanced to 9900 sampled
+frames without a watchdog, but the diagnostic pilot stayed on a side ledge.
+The run was intentionally stopped; its CRASH verdict is owned process
+termination, not an observed game crash. The pilot now chooses connected
+floor spans rather than isolated segments; host tests cover reversed endpoints,
+disconnected ledges, inactive surfaces and excluded pass-through platforms.
+Native follow-up: `maze-connected-floor-campaign-20261006`, diagnostic SHA-256
+`4B847DE445051706B4248C7B5A3CB1617D277E62C95F11B3AA8C8E4259BDE2CB`.
+This seeded route does not cover all six rooms.
 The continuous
 campaign and the earlier maze-to-Zelda watchdog remain unvalidated.
 

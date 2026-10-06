@@ -107,6 +107,25 @@ static void PilotSurfaceSpan(const M360MatchStage* stage, unsigned seed,
     }
 }
 
+static bool PilotCombatFloor(const M360MatchStage* stage, float* left,
+                             float* right, float* height)
+{
+    float widest = 20.0f;
+    bool found = false;
+    for (unsigned i = 0; i < stage->lineCount; ++i) {
+        const M360StageLine& line = stage->lines[i];
+        if (!(line.kind & M360_LINE_FLOOR) || (line.flags & M360_LINE_PLATFORM)) continue;
+        float lx, ly, rx, ry;
+        PilotSurfaceSpan(stage, i, M360_LINE_FLOOR, &lx, &ly, &rx, &ry);
+        if (rx - lx <= widest) continue;
+        widest = rx - lx;
+        *left = lx + 8.0f; *right = rx - 8.0f;
+        *height = (ly + ry) * 0.5f;
+        found = true;
+    }
+    return found;
+}
+
 static int PilotCeilingDetour(const M360MatchStage* stage, float x, float y,
                               float goalX, float goalY, float* detourX, float* detourY)
 {
@@ -334,20 +353,12 @@ void ApplyRoutePilot(PADStatus* pad)
             g_routeArenaY = (match.posY[1] + match.posY[2] + match.posY[3]) / 3.0f - 30.0f;
             if (match.campaignObjective == 0 || match.campaignObjective == 6) {
                 const M360MatchStage* stage = M360_MatchStageData();
-                float widest = 0.0f;
                 g_routeArenaLeft = g_routeArenaX - 35.0f;
                 g_routeArenaRight = g_routeArenaX + 35.0f;
-                for (unsigned i = 0; i < stage->lineCount; ++i) {
-                    const M360StageLine& line = stage->lines[i];
-                    if (!(line.kind & M360_LINE_FLOOR) || (line.flags & M360_LINE_PLATFORM)) continue;
-                    const float width = line.x1 > line.x0 ? line.x1 - line.x0 : line.x0 - line.x1;
-                    if (width <= widest || width < 20.0f) continue;
-                    widest = width;
-                    g_routeArenaX = (line.x0 + line.x1) * 0.5f;
-                    g_routeArenaY = (line.y0 + line.y1) * 0.5f;
-                    g_routeArenaLeft = (line.x0 < line.x1 ? line.x0 : line.x1) + 8.0f;
-                    g_routeArenaRight = (line.x0 > line.x1 ? line.x0 : line.x1) - 8.0f;
-                }
+                // A floor can contain many short segments. Choosing one
+                // isolated segment trapped the pilot on Temple's side ledge.
+                if (PilotCombatFloor(stage, &g_routeArenaLeft, &g_routeArenaRight, &g_routeArenaY))
+                    g_routeArenaX = (g_routeArenaLeft + g_routeArenaRight) * 0.5f;
             }
             g_routeArena = true;
         }
