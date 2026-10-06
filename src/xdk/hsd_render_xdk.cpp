@@ -918,6 +918,19 @@ void SetLightsAndChannels(const HSD_MObj* mobj, float* vs)
     }
 }
 
+struct TexturePasses {
+    bool pre, spec, post;
+};
+
+TexturePasses TexturePassesFor(u32 lightmap, bool specularEnabled)
+{
+    TexturePasses passes;
+    passes.pre = (lightmap & (TEX_LIGHTMAP_DIFFUSE | TEX_LIGHTMAP_AMBIENT)) != 0;
+    passes.spec = specularEnabled && (lightmap & TEX_LIGHTMAP_SPECULAR) != 0;
+    passes.post = (lightmap & TEX_LIGHTMAP_EXT) != 0;
+    return passes;
+}
+
 void BindSampler(DWORD stage, const HSD_TObj* tobj)
 {
     static const DWORD modes[4] = { D3DTADDRESS_CLAMP, D3DTADDRESS_WRAP,
@@ -955,7 +968,7 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
 
     float ps[54 * 4];
     memset(ps, 0, sizeof(ps));
-    BOOL flags[11];
+    BOOL flags[13];
     memset(flags, 0, sizeof(flags));
 
     HSD_TObj* slots[2] = { NULL, NULL };
@@ -966,14 +979,17 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
             continue;
         const u32 lm = t->flags & (TEX_LIGHTMAP_DIFFUSE | TEX_LIGHTMAP_AMBIENT |
                                    TEX_LIGHTMAP_SPECULAR | TEX_LIGHTMAP_EXT);
-        if (!lm || tobj_coord(t) == TEX_COORD_TOON || tobj_bump(t))
+        const TexturePasses passes = TexturePassesFor(lm, (rm & RENDER_SPECULAR) != 0);
+        if ((!passes.pre && !passes.spec && !passes.post) ||
+            tobj_coord(t) == TEX_COORD_TOON || tobj_bump(t))
             continue;
         TevStage* tev = reinterpret_cast<TevStage*>(ps + used * 24 * 4);
         TevStage* map = reinterpret_cast<TevStage*>(ps + (used * 24 + 12) * 4);
         flags[4 + used] = BuildTObjTev(t, tev);
         BuildColorMap(t, map);
-        const bool post = (lm & TEX_LIGHTMAP_EXT) && !(lm & (TEX_LIGHTMAP_DIFFUSE | TEX_LIGHTMAP_AMBIENT));
-        flags[(post ? 2 : 0) + used] = TRUE;
+        flags[used] = passes.pre;
+        flags[2 + used] = passes.post;
+        flags[11 + used] = passes.spec;
         TextureMatrix(t, vs + (8 + used * 2) * 4);
         const unsigned coord = tobj_coord(t);
         if (coord == TEX_COORD_REFLECTION)
@@ -1023,7 +1039,7 @@ void RenderDObj(HSD_JObj* jobj, HSD_DObj* dobj, MtxPtr vmtx, MtxPtr pmtx)
     s_device->SetVertexDeclaration(s_declaration);
     s_device->SetVertexShaderConstantF(0, vs, 64);
     s_device->SetPixelShaderConstantF(0, ps, 54);
-    s_device->SetPixelShaderConstantB(0, flags, 11);
+    s_device->SetPixelShaderConstantB(0, flags, 13);
     BindSampler(0, slots[0]);
     BindSampler(1, slots[1]);
     s_device->SetRenderState(D3DRS_ALPHABLENDENABLE, pe.blend);
@@ -1427,7 +1443,7 @@ void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleT
     stage->wa[0][1] = 1.0f;             /* alpha in1 = prev.a */
     stage->wa[1][2] = 1.0f;             /* alpha in2 = texture.a */
     ps[48 * 4 + 0] = ps[48 * 4 + 1] = ps[48 * 4 + 2] = ps[48 * 4 + 3] = 1.0f;
-    BOOL flags[11];
+    BOOL flags[13];
     memset(flags, 0, sizeof(flags));
     flags[0] = TRUE;                    /* slot0Pre */
     flags[6] = TRUE;                    /* vertexBase */
@@ -1438,7 +1454,7 @@ void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleT
     s_device->SetVertexDeclaration(s_declaration);
     s_device->SetVertexShaderConstantF(0, vs, 64);
     s_device->SetPixelShaderConstantF(0, ps, 54);
-    s_device->SetPixelShaderConstantB(0, flags, 11);
+    s_device->SetPixelShaderConstantB(0, flags, 13);
     s_device->SetTexture(0, texture ? texture : s_white);
     s_device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
     s_device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);

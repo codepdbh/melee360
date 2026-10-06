@@ -632,11 +632,18 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
     AddText(g_dynamic, 400, 120, "CHOOSE YOUR FIGHTER", 4);
     {
         char line[64];
-        _snprintf(line, sizeof(line), "STAGE: %s", M360_MatchStageName(match.stageIndex));
+        if (match.gameMode == 3)
+            _snprintf(line, sizeof(line), "STAGE: DRAWN AFTER CONFIRM");
+        else
+            _snprintf(line, sizeof(line), "STAGE: %s", M360_MatchStageName(match.stageIndex));
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 200, 190, line, 2);
         static const char* const itemNames[6] = { "OFF", "VERY LOW", "LOW", "MEDIUM", "HIGH", "VERY HIGH" };
-        if (match.timeMinutes)
+        if (match.gameMode == 4) {
+            static const char* const difficulties[5] = { "VERY EASY", "EASY", "NORMAL", "HARD", "VERY HARD" };
+            const unsigned difficulty = match.cpuLevel ? (match.cpuLevel - 1) / 2 : 0;
+            _snprintf(line, sizeof(line), "DIFFICULTY: %s", difficulties[difficulty < 5 ? difficulty : 4]);
+        } else if (match.timeMinutes)
             _snprintf(line, sizeof(line), "TIME: %u MIN   CPU LV: %u", match.timeMinutes, match.cpuLevel);
         else
             _snprintf(line, sizeof(line), "STOCKS: %u   CPU LV: %u", match.stocks, match.cpuLevel);
@@ -684,7 +691,10 @@ void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& matc
         AddText(g_dynamic, 250, 610, "DPAD UP/DOWN: STAGE  RB: STOCKS  LB: CPU LV  RT: PLAYERS  START: ITEMS", 2);
         AddText(g_dynamic, 250, 640, "RIGHT STICK UP/DOWN: STOCK OR TIME MATCH", 2);
     } else {
-        AddText(g_dynamic, 250, 570, "LB: CPU LEVEL", 2);
+        AddText(g_dynamic, 250, 570, match.gameMode == 4 ? "LB: DIFFICULTY" : "LB: CPU LEVEL", 2);
+        AddText(g_dynamic, 250, 610, match.gameMode == 4
+            ? "MUSHROOM KINGDOM, UNDERGROUND MAZE, BRINSTAR ESCAPE AND BATTLES"
+            : "COMBAT PREVIEW - SPECIAL STAGES AND BOSSES PENDING", 2);
     }
     RenderBatch(renderer, g_dynamic);
 }
@@ -698,6 +708,22 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
     /* Damage panels, stock icons and the timer come from the original IfAll
      * HUD (hud_xdk.c); the controls reminder only shows while paused. */
     g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+    if (match.campaignRounds && !match.matchOver && !match.paused) {
+        char progress[96];
+        const char* objective = match.campaignObjective == 1 ? "RUN RIGHT" :
+            match.campaignObjective == 2 ? "DEFEAT THE YOSHIS" :
+            match.campaignObjective == 3 ? "REACH THE FINISH" :
+            match.campaignObjective == 4 ? "ESCAPE TO THE TOP" :
+            match.campaignObjective == 5 ? "FIND THE TRIFORCE" :
+            match.campaignObjective == 6 ? "DEFEAT LINK TO OPEN THE ROOM" : "DEFEAT THE ENEMY TEAM";
+        _snprintf(progress, sizeof(progress), "%u/%u  %s", match.campaignRound + 1,
+                  match.campaignRounds, objective);
+        progress[sizeof(progress) - 1] = 0;
+        DrawRect(renderer, 290, 16, 700, 36, D3DCOLOR_XRGB(0, 0, 0), 0.45f);
+        g_dynamic.count = 0;
+        AddText(g_dynamic, 305, 24, progress, 2);
+        RenderBatch(renderer, g_dynamic);
+    }
     if (match.suddenDeath && !match.matchOver) {
         DrawRect(renderer, 470, 16, 340, 54, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
         g_dynamic.count = 0;
@@ -714,20 +740,41 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
             AddText(g_dynamic, 588, 230, "TIME", 5);
         if (match.draw)
             _snprintf(line, sizeof(line), "DRAW");
+        else if (match.campaignTimedOut && match.stocks)
+            _snprintf(line, sizeof(line), "TIME UP");
         else if (match.campaignRounds)
-            _snprintf(line, sizeof(line), match.winner == 0 ? "ROUND CLEAR" : "GAME OVER");
+            _snprintf(line, sizeof(line), match.winner == 0
+                ? (match.campaignRound + 1 >= match.campaignRounds
+                    ? (match.gameMode == 4 ? "ROUTE CLEAR" : "PREVIEW CLEAR") : "ROUND CLEAR")
+                : "GAME OVER");
         else
             _snprintf(line, sizeof(line), "%s WINS", PlayerTag(match.winner, match.human[match.winner & 3] != 0));
         line[sizeof(line) - 1] = '\0';
         AddText(g_dynamic, 548, 300, line, 6);
         AddText(g_dynamic, 400, 382,
-                match.campaignRounds && !match.draw && match.winner == 0
+                match.campaignTimedOut && match.stocks
+                    ? "A: RETRY ENCOUNTER   B: MAIN MENU"
+                    : match.campaignRounds && !match.draw && match.winner == 0
                     ? (match.campaignRound + 1 >= match.campaignRounds
                         ? "A: FINISH   B: MAIN MENU" : "A: NEXT FIGHT   B: MAIN MENU")
-                    : "B: RETURN TO MAIN MENU", 2);
+                    : (match.campaignRounds ? "A: CONTINUE   B: MAIN MENU"
+                                            : "A: REMATCH   B: MAIN MENU"), 2);
         RenderBatch(renderer, g_dynamic);
     }
     if (match.paused) {
+        if (match.disconnectedControllers) {
+            char line[80];
+            unsigned missing = 0;
+            while (missing < 4 && !(match.disconnectedControllers & (1u << missing)))
+                ++missing;
+            _snprintf(line, sizeof(line), "RECONNECT P%u CONTROLLER, THEN PRESS START", missing + 1);
+            line[sizeof(line) - 1] = 0;
+            DrawRect(renderer, 250, 580, 780, 50, D3DCOLOR_XRGB(0, 0, 0), 0.75f);
+            g_dynamic.count = 0;
+            g_dynamic.color = D3DCOLOR_XRGB(255, 220, 90);
+            AddText(g_dynamic, 265, 594, line, 2);
+            RenderBatch(renderer, g_dynamic);
+        }
         /* The original GmPause panel shows the pauser and the L+R+A+START,
          * Z and stick hints; the port adds its own shortcuts underneath. */
         DrawRect(renderer, 300, 668, 680, 30, D3DCOLOR_XRGB(0, 0, 0), 0.45f);

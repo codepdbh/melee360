@@ -3,6 +3,9 @@
 #include <string.h>
 
 #include "controller_xdk_compat.h"
+#ifdef M360_INPUT_SCRIPT
+#include "match_xdk.h"
+#endif
 
 extern "C" void M360_MatchTrace(const char* stage, unsigned value);
 
@@ -56,6 +59,237 @@ unsigned g_scriptHold;
 bool g_scriptLoaded;
 bool g_scriptLoop;
 unsigned g_scriptPasses;
+bool g_routePilot;
+unsigned g_routePilotTick;
+unsigned g_routeJumpCooldown;
+float g_routePreviousY;
+bool g_routeArena;
+float g_routeArenaX;
+float g_routeArenaY;
+float g_routeArenaLeft, g_routeArenaRight;
+int g_escapeTargetLine = -1;
+unsigned g_routePreviousFrame;
+unsigned g_routeArenaObjective;
+int g_mazeTargetRoom = -1;
+
+/* Diagnostic input only: follow the collision surface with normal controller
+ * commands. No position, damage, stocks or encounter state is modified. */
+void ApplyRoutePilot(PADStatus* pad)
+{
+    M360MatchStatus match;
+    M360_MatchGetStatus(&match);
+    if (match.frame < g_routePreviousFrame) {
+        g_escapeTargetLine = -1; g_routeArena = false;
+        g_routeJumpCooldown = 0; g_mazeTargetRoom = -1;
+    }
+    g_routePreviousFrame = match.frame;
+    pad->err = 0;
+    const unsigned tick = ++g_routePilotTick;
+    if (match.matchOver) {
+        if (tick % 60 == 0) pad->button |= PAD_BUTTON_A;
+        return;
+    }
+    if (!match.loaded || match.selecting || match.motion[0] == 12 || match.motion[0] == 13)
+        return;
+    if (match.campaignObjective != g_routeArenaObjective) {
+        g_routeArena = false;
+        g_routeArenaObjective = match.campaignObjective;
+    }
+    const float x = match.posX[0], y = match.posY[0];
+    const float dy = y - g_routePreviousY;
+    g_routePreviousY = y;
+    if (g_routeJumpCooldown) --g_routeJumpCooldown;
+    float targetX = x + 50.0f;
+    float targetY = y;
+    float escapeHeight = y;
+    if (match.campaignObjective == 5) {
+        const unsigned visited = M360_MatchMazeVisited();
+        const M360MatchStage* stage = M360_MatchStageData();
+        void* fighter = M360_FighterActive(0);
+        if (g_mazeTargetRoom >= 0 && (visited & (1u << g_mazeTargetRoom))) g_mazeTargetRoom = -1;
+        if (g_mazeTargetRoom < 0) {
+            float best = 1.0e30f;
+            for (unsigned room = 0; room < 6; ++room) {
+                float px, py;
+                if ((visited & (1u << room)) || !M360_MatchMazePoint(room, &px, &py)) continue;
+                const float score = fabsf(px - x) + fabsf(py - y) * 0.6f;
+                if (score < best) { best = score; g_mazeTargetRoom = static_cast<int>(room); }
+            }
+        }
+        if (g_mazeTargetRoom >= 0) M360_MatchMazePoint(g_mazeTargetRoom, &targetX, &targetY);
+        const int floor = fighter ? M360_FighterFloorLine(fighter) : -1;
+        if (floor >= 0 && static_cast<unsigned>(floor) < stage->lineCount && targetY < y - 70.0f) {
+            const M360StageLine& ground = stage->lines[floor];
+            if (!(ground.flags & M360_LINE_PLATFORM)) {
+                float left = ground.x0, leftY = ground.y0, right = ground.x1, rightY = ground.y1;
+                if (left > right) { left = ground.x1; leftY = ground.y1; right = ground.x0; rightY = ground.y0; }
+                // Follow connected solid floor segments to a real edge.
+                for (unsigned pass = 0; pass < stage->lineCount; ++pass) {
+                    bool changed = false;
+                    for (unsigned line = 0; line < stage->lineCount; ++line) {
+                        const M360StageLine& candidate = stage->lines[line];
+                        if (!(candidate.kind & M360_LINE_FLOOR) || (candidate.flags & M360_LINE_PLATFORM)) continue;
+                        const float lx = candidate.x0 < candidate.x1 ? candidate.x0 : candidate.x1;
+                        const float rx = candidate.x0 < candidate.x1 ? candidate.x1 : candidate.x0;
+                        const float ly = candidate.x0 < candidate.x1 ? candidate.y0 : candidate.y1;
+                        const float ry = candidate.x0 < candidate.x1 ? candidate.y1 : candidate.y0;
+                        if (fabsf(rx - left) < 1.0f && fabsf(ry - leftY) < 1.0f && lx < left - 0.1f) {
+                            left = lx; leftY = ly; changed = true;
+                        }
+                        if (fabsf(lx - right) < 1.0f && fabsf(ly - rightY) < 1.0f && rx > right + 0.1f) {
+                            right = rx; rightY = ry; changed = true;
+                        }
+                    }
+                    if (!changed) break;
+                }
+                const float leftCost = fabsf(x - left) + fabsf(targetX - left);
+                const float rightCost = fabsf(x - right) + fabsf(targetX - right);
+                targetX = leftCost < rightCost ? left - 15.0f : right + 15.0f;
+            }
+        }
+        int steer = static_cast<int>((targetX - x) * 4.0f);
+        if (steer > 127) steer = 127;
+        if (steer < -127) steer = -127;
+        pad->stickX = static_cast<s8>(steer);
+        if (targetY > y + 25.0f && tick % 8 != 0) pad->button |= PAD_BUTTON_X;
+        if (targetY < y - 35.0f) pad->stickY = -127;
+        if (match.frame % 300 == 0) {
+            M360_MatchTrace("pilot.maze.target_room", static_cast<unsigned>(g_mazeTargetRoom));
+            M360_MatchTrace("pilot.maze.target_x", static_cast<unsigned>(targetX));
+            M360_MatchTrace("pilot.maze.floor", static_cast<unsigned>(floor));
+        }
+        return;
+    }
+    if (match.campaignObjective != 4) g_escapeTargetLine = -1;
+    if (match.campaignObjective == 4) {
+        const M360MatchStage* stage = M360_MatchStageData();
+        float best = 1.0e30f;
+        int selected = -1;
+        targetX = x;
+        void* fighter = M360_FighterActive(0);
+        const int landedLine = fighter ? M360_FighterFloorLine(fighter) : -1;
+        if (landedLine >= 0) g_escapeTargetLine = -1;
+        if (g_escapeTargetLine >= 0 &&
+            (static_cast<unsigned>(g_escapeTargetLine) >= stage->lineCount ||
+             (fighter && M360_FighterFloorLine(fighter) == g_escapeTargetLine)))
+            g_escapeTargetLine = -1;
+        if (g_escapeTargetLine >= 0 && y < stage->lines[g_escapeTargetLine].y0 - 200.0f)
+            g_escapeTargetLine = -1;
+        for (unsigned i = 0; landedLine >= 0 && g_escapeTargetLine < 0 && i < stage->lineCount; ++i) {
+            const M360StageLine& line = stage->lines[i];
+            if (!(line.kind & M360_LINE_FLOOR)) continue;
+            const float height = (line.y0 + line.y1) * 0.5f;
+            const float center = (line.x0 + line.x1) * 0.5f;
+            const float distance = center > x ? center - x : x - center;
+            if (height < y + 8.0f || height > y + 100.0f || distance > 100.0f) continue;
+            const float score = (height - y) * 2.0f + distance;
+            if (score < best) {
+                best = score; targetX = center; escapeHeight = height;
+                selected = static_cast<int>(i);
+            }
+        }
+        if (g_escapeTargetLine < 0) g_escapeTargetLine = selected;
+        if (g_escapeTargetLine >= 0) {
+            const M360StageLine& line = stage->lines[g_escapeTargetLine];
+            escapeHeight = (line.y0 + line.y1) * 0.5f;
+            targetX = (line.x0 + line.x1) * 0.5f;
+        }
+        if (match.frame % 300 == 0) {
+            M360_MatchTrace("pilot.escape.target", static_cast<unsigned>(g_escapeTargetLine));
+            M360_MatchTrace("pilot.escape.height", static_cast<unsigned>(escapeHeight));
+            M360_MatchTrace("pilot.escape.floor", static_cast<unsigned>(fighter ? M360_FighterFloorLine(fighter) : -1));
+        }
+    }
+    if (match.campaignObjective != 2 && match.campaignObjective != 0 && match.campaignObjective != 6) g_routeArena = false;
+    if (match.campaignObjective == 2 || match.campaignObjective == 0 || match.campaignObjective == 6) {
+        if (!g_routeArena) {
+            g_routeArenaX = (match.posX[1] + match.posX[2] + match.posX[3]) / 3.0f;
+            /* The route enemies enter thirty units above their checkpoint. */
+            g_routeArenaY = (match.posY[1] + match.posY[2] + match.posY[3]) / 3.0f - 30.0f;
+            if (match.campaignObjective == 0 || match.campaignObjective == 6) {
+                const M360MatchStage* stage = M360_MatchStageData();
+                float widest = 0.0f;
+                g_routeArenaLeft = g_routeArenaX - 35.0f;
+                g_routeArenaRight = g_routeArenaX + 35.0f;
+                for (unsigned i = 0; i < stage->lineCount; ++i) {
+                    const M360StageLine& line = stage->lines[i];
+                    if (!(line.kind & M360_LINE_FLOOR) || (line.flags & M360_LINE_PLATFORM)) continue;
+                    const float width = line.x1 > line.x0 ? line.x1 - line.x0 : line.x0 - line.x1;
+                    if (width <= widest || width < 20.0f) continue;
+                    widest = width;
+                    g_routeArenaX = (line.x0 + line.x1) * 0.5f;
+                    g_routeArenaY = (line.y0 + line.y1) * 0.5f;
+                    g_routeArenaLeft = (line.x0 < line.x1 ? line.x0 : line.x1) + 8.0f;
+                    g_routeArenaRight = (line.x0 > line.x1 ? line.x0 : line.x1) - 8.0f;
+                }
+            }
+            g_routeArena = true;
+        }
+        float best = 1.0e30f;
+        for (unsigned i = 1; i < match.fighters && i < 4; ++i) {
+            if (!match.stocksRemaining[i]) continue;
+            const float distance = match.posX[i] - x;
+            if (distance * distance < best) {
+                best = distance * distance;
+                targetX = match.posX[i];
+                targetY = match.posY[i];
+            }
+        }
+        /* Fight on the checkpoint platform rather than chasing an enemy
+         * already falling into a pit. The native CPU can return to us. */
+        if (match.campaignObjective == 2) {
+            if (targetX < g_routeArenaX - 35.0f) targetX = g_routeArenaX - 35.0f;
+            if (targetX > g_routeArenaX + 35.0f) targetX = g_routeArenaX + 35.0f;
+        } else {
+            if (targetX < g_routeArenaLeft) targetX = g_routeArenaLeft;
+            if (targetX > g_routeArenaRight) targetX = g_routeArenaRight;
+        }
+        if (tick % 40 < 3) pad->button |= PAD_BUTTON_A;
+        if (tick % 90 < 3) pad->substickX = targetX < x ? -127 : 127;
+        if (y < g_routeArenaY - 25.0f) {
+            targetX = g_routeArenaX;
+            pad->button &= ~PAD_BUTTON_A;
+            pad->substickX = 0;
+        }
+    }
+    const int direction = targetX < x ? -1 : 1;
+    if (targetX - x > 10.0f || targetX - x < -10.0f)
+        pad->stickX = static_cast<s8>(direction * 127);
+    if ((match.campaignObjective == 2 || match.campaignObjective == 0 || match.campaignObjective == 6) && y < g_routeArenaY - 25.0f) {
+        if (tick % 8 < 7) pad->button |= PAD_BUTTON_X;
+        return;
+    }
+    if (match.campaignObjective == 0 || match.campaignObjective == 6) {
+        /* Ordinary combat stays on the main solid floor. Use native full
+         * hops/multijumps to reach an opponent on a higher platform. */
+        if (targetY > y + 16.0f && targetX - x < 60.0f && targetX - x > -60.0f && tick % 8 < 7)
+            pad->button |= PAD_BUTTON_X;
+        return;
+    }
+    if (match.campaignObjective == 4) {
+        float steer = (targetX - x) * 16.0f;
+        if (steer > 127.0f) steer = 127.0f;
+        if (steer < -127.0f) steer = -127.0f;
+        pad->stickX = static_cast<s8>(steer);
+        /* Hold through jump squat for a full hop. Multijump characters can
+         * request their next jump when the original animation permits it. */
+        if (escapeHeight > y && tick % 8 < 7) pad->button |= PAD_BUTTON_X;
+        return;
+    }
+    float nearY, aheadY;
+    unsigned nearLine, aheadLine;
+    const bool groundNear = M360_MatchGroundBelow(x, y + 4.0f, 12.0f, &nearY, &nearLine) != 0;
+    const bool ahead = M360_MatchGroundBelow(x + direction * 22.0f, y + 100.0f,
+                                           150.0f, &aheadY, &aheadLine) != 0;
+    const bool jump = match.campaignObjective == 4 ?
+        (escapeHeight > y && (groundNear || dy <= 0.0f)) :
+        groundNear ? (!ahead || aheadY > y + 4.0f)
+                           : (dy <= 0.0f && (!ahead || y < aheadY + 12.0f));
+    if (jump && !g_routeJumpCooldown) {
+        pad->button |= PAD_BUTTON_X;
+        g_routeJumpCooldown = 20;
+    }
+}
 
 u16 ParseButtons(const char* text)
 {
@@ -106,7 +340,9 @@ void LoadScript()
             unsigned frames = 0;
             int sx = 0, sy = 0, cx = 0, cy = 0;
             char buttons[32] = "-";
-            if (!strncmp(line, "loop", 4)) {
+            if (!strcmp(line, "routepilot")) {
+                g_routePilot = true;
+            } else if (!strncmp(line, "loop", 4)) {
                 g_scriptLoop = true;
             } else if (sscanf(line, "snap %d %u", &snap, &frames) == 2) {
                 step.snap = snap;
@@ -131,6 +367,10 @@ void ApplyScript(PADStatus* status)
 {
     if (!g_scriptLoaded)
         LoadScript();
+    if (g_routePilot) {
+        ApplyRoutePilot(status);
+        return;
+    }
     while (g_scriptIndex < g_scriptCount && !g_scriptLeft && !g_scriptHold) {
         const ScriptStep& step = g_script[g_scriptIndex];
         if (step.snap) {
