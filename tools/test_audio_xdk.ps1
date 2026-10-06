@@ -55,12 +55,12 @@ foreach ($signature in @('bool TextureMatches(', 'void CacheTexture(', 'void M36
 }
 Set-Content -LiteralPath (Join-Path $out 'texture_cache_original.h') -Encoding ASCII $cache
 $vertex = ''
-foreach ($signature in @('struct HsdVertex {', 'struct MatrixSet {', 'struct RawVertex {')) {
+foreach ($signature in @('struct HsdVertex {', 'struct MatrixSet {', 'struct RawVertex {', 'struct TexturePasses {')) {
     $vertex += (Get-SoundFunction $renderText $signature) + ";`r`n"
 }
 foreach ($signature in @('unsigned Read16(', 'unsigned Read32(', 'unsigned ComponentSize(',
     'float ReadComponent(', 'unsigned DirectSize(', 'unsigned Expand4(', 'void DecodeColor(',
-    'bool ParseVertex(', 'void Transform(')) {
+    'bool ParseVertex(', 'void Transform(', 'TexturePasses TexturePassesFor(')) {
     $vertex += (Get-SoundFunction $renderText $signature) + "`r`n"
 }
 Set-Content -LiteralPath (Join-Path $out 'gx_vertex_original.h') -Encoding ASCII $vertex

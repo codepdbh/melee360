@@ -14,6 +14,7 @@
 #include <melee/ft/ftcolanim.h>
 #include <melee/ft/ftcamera.h>
 #include <melee/ft/ftcoll.h>
+#include <melee/ft/ftcmdscript.h>
 #include <melee/ft/ftcommon.h>
 #include <melee/ft/ftdata.h>
 #include <melee/ft/ftparts.h>
@@ -175,6 +176,9 @@
 #include <melee/ft/kinds/ftDonkey/ftdonkeyspecialn.h>
 #include <melee/ft/kinds/ftDonkey/ftdonkeyspecials.h>
 #include <melee/ft/kinds/ftKoopa/ftkoopa.h>
+#include <melee/ft/kinds/ftGigaKoopa/ftgkoopa.h>
+#include <melee/ft/kinds/ftZakoBoy/ftboy.h>
+#include <melee/ft/kinds/ftZakoGirl/ftgirl.h>
 #include <melee/ft/kinds/ftKoopa/ftkoopaspecialhi.h>
 #include <melee/ft/kinds/ftKoopa/ftkoopaspeciallw.h>
 #include <melee/ft/kinds/ftKoopa/ftkoopaspecialn.h>
@@ -199,6 +203,7 @@
 #include <sysdolphin/baselib/mtx.h>
 #include <sysdolphin/baselib/archive.h>
 #include <sysdolphin/baselib/mobj.h>
+#include <sysdolphin/baselib/tobj.h>
 #pragma warning(pop)
 
 #include "match_xdk.h"
@@ -264,6 +269,8 @@ typedef struct M360Fighter {
     HSD_GObj* gobj;
     HSD_JObj* joints[kMaxJoints];
     HSD_Joint* jointDescs[kMaxJoints];
+    unsigned jointParts[kMaxJoints];
+    unsigned partCount;
     unsigned jointCount;
     HSD_DObj* dobjs[kMaxDObjs];
     unsigned dobjCount;
@@ -468,16 +475,35 @@ static const M360KindDesc s_kinds[] = {
       { "PlyPopo5K_Share_matanim_joint", "PlyPopo5KGr_Share_matanim_joint", "PlyPopo5KOr_Share_matanim_joint", "PlyPopo5KRe_Share_matanim_joint", NULL, NULL },
       ftPp_Init_MotionStateTable, sizeof(ftPp_Init_MotionStateTable) / sizeof(MotionState), ftPp_Init_OnLoad, ftPp_Init_OnDeath,
       { ftPp_SpecialN_Enter, ftPp_SpecialS_Enter, ftPp_SpecialHi_Enter, ftPp_SpecialLw_Enter, ftPp_SpecialAirN_Enter, ftPp_SpecialAirS_Enter, ftPp_SpecialAirHi_Enter, ftPp_SpecialAirLw_Enter } },
-    /* Hidden entries (not selectable): Ice Climbers partner. */
+    /* Hidden entries (not selectable): Ice Climbers partner and Adventure boss. */
     { Ft_Kind_Nana, "NANA", "PlNn.dat", "ftDataNana", "PlNnAJ.dat",
       { "PlNnNr.dat", "PlNnYe.dat", "PlNnAq.dat", "PlNnWh.dat", NULL, NULL },
       { "PlyNana5K_Share_joint", "PlyNana5KYe_Share_joint", "PlyNana5KAq_Share_joint", "PlyNana5KWh_Share_joint", NULL, NULL },
       { "PlyNana5K_Share_matanim_joint", "PlyNana5KYe_Share_matanim_joint", "PlyNana5KAq_Share_matanim_joint", "PlyNana5KWh_Share_matanim_joint", NULL, NULL },
       ftNn_Init_MotionStateTable, sizeof(ftNn_Init_MotionStateTable) / sizeof(MotionState), ftNn_Init_OnLoad, ftNn_Init_OnDeath,
       { ftPp_SpecialN_Enter, NULL, NULL, ftPp_SpecialLw_Enter, ftPp_SpecialAirN_Enter, NULL, NULL, ftPp_SpecialAirLw_Enter } },
+    { Ft_Kind_Boy, "MALE WIREFRAME", "PlBo.dat", "ftDataBoy", "PlBoAJ.dat",
+      { "PlBoNr.dat", NULL, NULL, NULL, NULL, NULL },
+      { "PlyBoy_Share_joint", NULL, NULL, NULL, NULL, NULL },
+      { NULL, NULL, NULL, NULL, NULL, NULL },
+      NULL, 0, ftBo_Init_OnLoad, ftBo_Init_OnDeath,
+      { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { Ft_Kind_Girl, "FEMALE WIREFRAME", "PlGl.dat", "ftDataGirl", "PlGlAJ.dat",
+      { "PlGlNr.dat", NULL, NULL, NULL, NULL, NULL },
+      { "PlyGirl_Share_joint", NULL, NULL, NULL, NULL, NULL },
+      { NULL, NULL, NULL, NULL, NULL, NULL },
+      NULL, 0, ftGl_Init_OnLoad, ftGl_Init_OnDeath,
+      { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL } },
+    { Ft_Kind_GKoops, "GIGA BOWSER", "PlGk.dat", "ftDataGkoopa", "PlGkAJ.dat",
+      { "PlGkNr.dat", NULL, NULL, NULL, NULL, NULL },
+      { "PlyGkoopa5K_Share_joint", NULL, NULL, NULL, NULL, NULL },
+      { "PlyGkoopa5K_Share_matanim_joint", NULL, NULL, NULL, NULL, NULL },
+      ftGk_Init_MotionStateTable, sizeof(ftGk_Init_MotionStateTable) / sizeof(MotionState), ftGk_Init_OnLoad, ftGk_Init_OnDeath,
+      { ftKp_SpecialN_Enter, ftKp_SpecialS_Enter, ftKp_SpecialHi_Enter, ftKp_SpecialLw_Enter,
+        ftKp_SpecialAirN_Enter, ftKp_SpecialAirS_Enter, ftKp_SpecialAirHi_Enter, ftKp_SpecialAirLw_Enter } },
 };
 
-enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]), kSelectableKinds = kKindCount - 1 };
+enum { kKindCount = sizeof(s_kinds) / sizeof(s_kinds[0]), kSelectableKinds = kKindCount - 4 };
 
 static M360LoadedKind s_loaded[kKindCount];
 ftData* gFtDataList[Ft_Kind_Max];
@@ -629,6 +655,15 @@ unsigned M360_FighterCostumeCount(unsigned kindIndex)
     return count ? count : 1;
 }
 
+int M360_FighterIndexForKind(int kind)
+{
+    unsigned i;
+    for (i = 0; i < kKindCount; ++i)
+        if ((int) s_kinds[i].kind == kind)
+            return (int) i;
+    return -1;
+}
+
 const char* M360_FighterKindName(unsigned index)
 {
     return index < kKindCount ? s_kinds[index].name : "";
@@ -638,7 +673,7 @@ void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume)
 {
     if (slot < 0 || slot >= kMaxFighters)
         return;
-    s_selectKind[slot] = kindIndex < kSelectableKinds ? kindIndex : 0;
+    s_selectKind[slot] = kindIndex < kKindCount ? kindIndex : 0;
     s_selectCostume[slot] = costume % M360_FighterCostumeCount(s_selectKind[slot]);
 }
 
@@ -741,6 +776,286 @@ static void CollectJoints(M360Fighter* f, HSD_JObj* jobj, HSD_Joint* desc)
     }
 }
 
+u32 ftParts_8007506C(FighterKind kind, int part)
+{
+    Fighter_804D6540_t* table;
+    Fighter_804D6540_x0_t* entries;
+    int entry;
+    if (!Fighter_804D6540)
+        return 0;
+    table = (Fighter_804D6540_t*) (uintptr_t) Fighter_804D6540[kind].v;
+    if (!table)
+        return 0;
+    entries = DP(Fighter_804D6540_x0_t, table->x0);
+    for (entry = 0; entry < table->x4 && entry < 32; ++entry)
+        if (entries[entry].x0 == part)
+            return 1u << entry;
+    return 0;
+}
+
+static int SetupFighterParts(M360Fighter* fighter, FighterKind kind)
+{
+    unsigned joint, part = 0;
+    for (joint = 0; joint < fighter->jointCount; ++joint) {
+        while (part < kMaxJoints && ftParts_8007506C(kind, (int) part))
+            ++part;
+        if (part >= kMaxJoints)
+            return 0;
+        fighter->jointParts[joint] = part;
+        fighter->parts[part].joint = fighter->joints[joint];
+        fighter->parts[part].x4_jobj2 = fighter->joints[joint];
+        fighter->parts[part].flags_b1 = true;
+        ++part;
+    }
+    fighter->partCount = part;
+    return 1;
+}
+
+static void AttachReservedJoint(unsigned type, HSD_JObj* root, HSD_JObj* joint)
+{
+    HSD_JObj* displaced;
+    if (type < 2) {
+        displaced = root->child;
+        joint->parent = root;
+        root->child = joint;
+    } else {
+        displaced = root->next;
+        joint->parent = root->parent;
+        root->next = joint;
+    }
+    if (type == 0 || type == 2) {
+        joint->child = displaced;
+        while (displaced) {
+            displaced->parent = joint;
+            displaced = displaced->next;
+        }
+    } else {
+        joint->next = displaced;
+    }
+    HSD_JObjSetMtxDirty(root);
+    HSD_JObjSetMtxDirty(joint);
+}
+
+static HSD_Joint* ReservedJointDescriptor(HSD_Joint* joint, unsigned* index)
+{
+    while (joint) {
+        HSD_Joint* found;
+        if (!*index)
+            return joint;
+        --*index;
+        if (!(joint->flags & JOBJ_INSTANCE)) {
+            found = ReservedJointDescriptor(DP(HSD_Joint, joint->child), index);
+            if (found)
+                return found;
+        }
+        joint = DP(HSD_Joint, joint->next);
+    }
+    return NULL;
+}
+
+void ftParts_800753D4(Fighter* fp, struct Fighter_804D6540_x0_t* entry,
+                     HSD_Joint* descriptor)
+{
+    HSD_Joint copy;
+    HSD_JObj* root;
+    HSD_JObj* joint;
+    HSD_DObj* dobj;
+    M360Fighter* fighter = Owner(fp->gobj);
+    unsigned index;
+    if (!entry || !descriptor || entry->x0 >= kMaxJoints ||
+        entry->x1 >= kMaxJoints || entry->x2 > 3)
+        return;
+    root = fp->parts[entry->x1].joint;
+    if (!root || fp->parts[entry->x0].joint)
+        return;
+    if (entry->x3 != 0xFF) {
+        index = entry->x3;
+        descriptor = ReservedJointDescriptor(descriptor, &index);
+        if (!descriptor)
+            return;
+    }
+    copy = *descriptor;
+    copy.child = copy.next = 0;
+    joint = HSD_JObjLoadJoint(&copy);
+    if (!joint)
+        return;
+    AttachReservedJoint(entry->x2, root, joint);
+    /* The native renderer uses one skeleton for both animation paths. */
+    fp->parts[entry->x0].joint = joint;
+    fp->parts[entry->x0].x4_jobj2 = joint;
+    fp->parts[entry->x0].flags_b1 = true;
+    fp->parts[entry->x0].flags_b2 = true;
+    fp->parts[entry->x0].xC = fp->parts[entry->x1].xC + (entry->x2 < 2);
+    if (fighter->partCount <= entry->x0)
+        fighter->partCount = entry->x0 + 1;
+    for (dobj = joint->u.dobj; dobj && fighter->dobjCount < kMaxDObjs;
+         dobj = dobj->next)
+        fighter->dobjs[fighter->dobjCount++] = dobj;
+    fp->dobj_list.count = fighter->dobjCount;
+    M360_MatchTrace("fighter.reserved_part.created", entry->x0);
+}
+
+void ftParts_800755E8(Fighter* fp, struct Fighter_804D6540_x0_t* entry)
+{
+    HSD_JObj* joint;
+    M360Fighter* fighter = Owner(fp->gobj);
+    HSD_DObj* dobj;
+    unsigned index, kept;
+    if (!entry || entry->x0 >= kMaxJoints)
+        return;
+    joint = fp->parts[entry->x0].joint;
+    if (joint) {
+        /* Remove appended display references before freeing their owner. */
+        for (dobj = joint->u.dobj; dobj; dobj = dobj->next) {
+            kept = 0;
+            for (index = 0; index < fighter->dobjCount; ++index)
+                if (fighter->dobjs[index] != dobj)
+                    fighter->dobjs[kept++] = fighter->dobjs[index];
+            fighter->dobjCount = kept;
+        }
+        fp->dobj_list.count = fighter->dobjCount;
+        HSD_JObjRemove(joint);
+    }
+    fp->parts[entry->x0].joint = NULL;
+    fp->parts[entry->x0].x4_jobj2 = NULL;
+    fp->parts[entry->x0].flags_b1 = false;
+    fp->parts[entry->x0].flags_b2 = false;
+}
+
+void lb_80014498(ColorOverlay* overlay)
+{
+    overlay->x8_ptr1 = NULL;
+    overlay->x4_pri = 0;
+    overlay->x28_colanim.ptr = NULL;
+    overlay->x7C_color_enable = false;
+    overlay->x7C_flag2 = false;
+}
+
+void ftCo_800A0098(Fighter* fighter)
+{
+    ftCo_800B46B8(fighter, CpuCmd_SetLstickX, 0);
+    ftCo_800B46B8(fighter, CpuCmd_SetLstickY, 0);
+    ftCo_800B46B8(fighter, CpuCmd_WaitFor, 1);
+    ftCo_800B46B8(fighter, CpuCmd_LstickXForward, (arg_t) -80);
+    ftCo_800B46B8(fighter, CpuCmd_WaitFor, 1);
+    ftCo_800B46B8(fighter, CpuCmd_SetLstickY, 0);
+    ftCo_800B46B8(fighter, CpuCmd_WaitFor, 10);
+    ftCo_800B46B8(fighter, CpuCmd_SetLstickX, 0);
+    ftCo_800B463C(fighter, CpuCmd_Done);
+}
+
+static HSD_TObj* FindFighterTexture(M360Fighter* fighter, unsigned index)
+{
+    unsigned display;
+    for (display = 0; display < fighter->dobjCount; ++display) {
+        HSD_DObj* dobj = fighter->dobjs[display];
+        HSD_TObj* texture = dobj && dobj->mobj ? dobj->mobj->tobj : NULL;
+        for (; texture; texture = texture->next) {
+            if (!index)
+                return texture;
+            --index;
+        }
+    }
+    return NULL;
+}
+
+static int SetupCostumeTextures(M360Fighter* fighter)
+{
+    Fighter* fp = &fighter->fighter;
+    struct ftData_x8_x8* data = &DP(struct ftData_x8, fp->ft_data->x8)->x8;
+    DiscU32* costumes;
+    DiscU16* indices;
+    HSD_TObj* textures[5];
+    unsigned index;
+    fp->tobj_list.n_costume_tobjs = 0;
+    if (!data->x8)
+        return 1;
+    if (data->x8 > ARRAY_SIZE(fp->tobj_list.costume_tobjs) || !data->xC)
+        return 0;
+    costumes = DP(DiscU32, data->xC);
+    indices = DP(DiscU16, costumes[fp->x619_costume_id].v ?
+        costumes[fp->x619_costume_id].v : costumes[0].v);
+    if (!indices)
+        return 0;
+    for (index = 0; index < data->x8; ++index) {
+        textures[index] = FindFighterTexture(fighter, indices[index].v);
+        if (!textures[index] || !textures[index]->aobj)
+            return 0;
+    }
+    fp->tobj_list.x5D0 = indices;
+    fp->tobj_list.n_costume_tobjs = data->x8;
+    for (index = 0; index < data->x8; ++index) {
+        fp->tobj_list.costume_tobjs[index] = textures[index];
+        HSD_AObjSetRate(textures[index]->aobj, 0.0f);
+    }
+    return 1;
+}
+
+extern struct {
+    HSD_GObjEvent x0;
+    void (*x4)(Fighter_GObj*, int, float);
+} ftData_UnkCallbackPairs0[Ft_Kind_Max];
+
+void ftAnim_80070458(Fighter* fp, CostumeTObjList* textures, u32 index, float frame)
+{
+    HSD_TObj* texture;
+    if (index >= textures->n_costume_tobjs) {
+        M360_MatchTrace("fighter.texture_anim.unavailable", fp->player_id);
+        return;
+    }
+    texture = textures->costume_tobjs[index];
+    if (!texture || !texture->aobj)
+        return;
+    HSD_AObjReqAnim(texture->aobj, frame);
+    HSD_TObjAnim(texture);
+}
+
+void ftAnim_800704F0(Fighter_GObj* gobj, int index, float frame)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    ftAnim_80070458(fp, &fp->tobj_list, (u32) index, frame);
+    if (ftData_UnkCallbackPairs0[fp->kind].x4)
+        ftData_UnkCallbackPairs0[fp->kind].x4(gobj, index, frame);
+    fp->x221E_b7 = true;
+}
+
+void ftAnim_800705E0(CostumeTObjList* textures)
+{
+    unsigned index;
+    for (index = 0; index < textures->n_costume_tobjs; ++index) {
+        HSD_TObj* texture = textures->costume_tobjs[index];
+        if (texture && texture->aobj) {
+            HSD_AObjReqAnim(texture->aobj, 0.0f);
+            HSD_TObjAnim(texture);
+        }
+    }
+}
+
+void ftAnim_80070654(Fighter_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    ftAnim_800705E0(&fp->tobj_list);
+    if (ftData_UnkCallbackPairs0[fp->kind].x0)
+        ftData_UnkCallbackPairs0[fp->kind].x0(gobj);
+    fp->x221E_b7 = false;
+}
+
+static void SetupCostumeVisibility(M360Fighter* f, const FtPartsDesc* desc, unsigned costume)
+{
+    DiscU32(*table)[4] = (DiscU32(*)[4]) desc->vis_table;
+    unsigned i;
+    /* Character callbacks need the same lookup used by the render bridge. */
+    f->fighter.x5AC.model_num = desc->model_num;
+    for (i = 0; i < 4; ++i) {
+        f->vis[i] = table ? (FtPartsVisLookup*) (uintptr_t)
+            (table[costume][i].v ? table[costume][i].v : table[0][i].v) : NULL;
+        f->fighter.x5AC.xC[i] = f->vis[i];
+        f->fighter.x5AC.cleared[i] = true;
+    }
+    f->fighter.x5AC.xC[4] = f->vis[4] = NULL;
+    f->fighter.x5AC.cleared[4] = true;
+}
+
 static void SetVisGroup(M360Fighter* f, int idx, int showIndex)
 {
     FtPartsVisLookup* lookup = f->vis[idx];
@@ -786,7 +1101,7 @@ static void ResetJoints(M360Fighter* f)
         j->rotate.x = d->rotation.x;
         j->rotate.y = d->rotation.y;
         j->rotate.z = d->rotation.z;
-        if (i == special) {
+        if (f->jointParts[i] == special) {
             const float s = 1.0f / f->fighter.co_attrs.model_scaling;
             j->scale.x = j->scale.y = j->scale.z = s;
         } else {
@@ -850,7 +1165,7 @@ static void AnimAdvance(M360Fighter* f)
     }
     HSD_AObjInvokeCallBacks();
     for (i = 0; i < f->jointCount; ++i)
-        if (f->joints[i]->aobj && !f->parts[i].flags_b5) {
+        if (f->joints[i]->aobj && !f->parts[f->jointParts[i]].flags_b5) {
             fp->cur_anim_frame = f->joints[i]->aobj->curr_frame;
             break;
         }
@@ -879,7 +1194,7 @@ bool ftAnim_IsFramesRemaining(Fighter_GObj* gobj)
     unsigned i;
     for (i = 0; i < f->jointCount; ++i) {
         HSD_AObj* aobj = f->joints[i]->aobj;
-        if (aobj && !f->parts[i].flags_b5 && !(aobj->flags & AOBJ_NO_ANIM))
+        if (aobj && !f->parts[f->jointParts[i]].flags_b5 && !(aobj->flags & AOBJ_NO_ANIM))
             return true;
     }
     return false;
@@ -907,7 +1222,7 @@ float ftAnim_8006F484(Fighter_GObj* gobj)
     M360Fighter* f = Owner(gobj);
     unsigned i;
     for (i = 0; i < f->jointCount; ++i)
-        if (f->joints[i]->aobj && !f->parts[i].flags_b5)
+        if (f->joints[i]->aobj && !f->parts[f->jointParts[i]].flags_b5)
             return f->joints[i]->aobj->end_frame;
     return 0.0f;
 }
@@ -1003,7 +1318,11 @@ void ftAnim_ApplyPartAnim(Fighter_GObj* gobj, s32 arg1, s32 arg2, f32 arg3)
     fp->x8B0[arg1].xC = 0.0f;
     animjoint = (HSD_AnimJoint*) (uintptr_t) DP(DiscU32, data->x8)[arg2].v;
     i = data->x0;
-    while (animjoint && i < (int) f->jointCount) {
+    while (animjoint && i < (int) f->partCount) {
+        while (i < (int) f->partCount && ftParts_8007506C(fp->kind, i))
+            ++i;
+        if (i >= (int) f->partCount)
+            break;
         if (!fp->parts[i].flags_b0 && animjoint->aobjdesc) {
             HSD_JObj* jobj = fp->parts[i].joint;
             HSD_JObjAddAnim(jobj, animjoint, NULL, NULL);
@@ -1069,13 +1388,14 @@ void ftAnim_80070CC4(Fighter_GObj* gobj, int arg)
         FigaTrack* tracks = tree->tracks;
         unsigned i;
         for (i = 0; i < f->jointCount && *nodes != -1; ++i) {
-            if (f->parts[i].flags_b5 && i >= data->x0) {
+            const unsigned part = f->jointParts[i];
+            if (f->parts[part].flags_b5 && part >= data->x0) {
                 HSD_JObj* j = f->joints[i];
                 HSD_JObjRemoveAnimByFlags(j, 1);
                 lbAnim_8001E6D8(j, tree, tracks, *nodes);
                 HSD_JObjReqAnimByFlags(j, 1, fp->cur_anim_frame);
                 HSD_JObjAnim(j);
-                f->parts[i].flags_b5 = false;
+                f->parts[part].flags_b5 = false;
             }
             tracks += *nodes;
             ++nodes;
@@ -1157,8 +1477,24 @@ void ftAnim_80070710(HSD_JObj* jobj, float frame)
 
 FigaTree* ftData_80085E50(Fighter* fp, enum_t msid)
 {
-    (void) fp; (void) msid;
-    return NULL;
+    M360LoadedKind* kind;
+    KindDesc(fp->kind, &kind);
+    return LoadTree(kind, msid);
+}
+
+static void SetupAnimationLengths(Fighter* fp)
+{
+    /* Fighter_Create_Inline2: these lengths drive special landing lag,
+     * walk playback rates and shield animation ratios. */
+    if (fp->no_normal_motion)
+        return;
+    fp->x2EC = lbAnim_8001E8F8(ftData_80085E50(fp, 0x23));
+    if (!fp->is_sandbag) {
+        fp->x2DC = lbAnim_8001E8F8(ftData_80085E50(fp, 7));
+        fp->x2E0 = lbAnim_8001E8F8(ftData_80085E50(fp, 8));
+        fp->x2E4 = lbAnim_8001E8F8(ftData_80085E50(fp, 9));
+        fp->x2E8 = lbAnim_8001E8F8(ftData_80085E50(fp, 0x25));
+    }
 }
 
 
@@ -1510,11 +1846,36 @@ static void AirWalls(Fighter* fp)
     }
 }
 
+/* ft_80081B38 supplies these six authored ECB bones to mpColl_LoadECB_JObj.
+ * Camera framing bounds are unrelated to the fighter's collision height. */
+static float FighterCollisionTop(Fighter* fp)
+{
+    const ftData_x44_t* source = fp->ft_data ? DP(ftData_x44_t, fp->ft_data->x44) : NULL;
+    M360Fighter* owner = fp->gobj ? Owner(fp->gobj) : NULL;
+    float top = 0.0f;
+    Vec3 origin, point;
+    s16 indices[6];
+    unsigned i;
+    if (!source || !owner || !fp->parts || !fp->parts[0].joint)
+        return 12.0f * fp->x34_scale.y;
+    indices[0] = source->unk0; indices[1] = source->unk2;
+    indices[2] = source->unk4; indices[3] = source->unk6;
+    indices[4] = source->unk8; indices[5] = source->unkA;
+    lb_8000B1CC(fp->parts[0].joint, NULL, &origin);
+    for (i = 0; i < 6; ++i) {
+        int index = indices[i];
+        if (index < 0 || (unsigned) index >= owner->partCount || !fp->parts[index].joint)
+            continue;
+        lb_8000B1CC(fp->parts[index].joint, NULL, &point);
+        if (point.y - origin.y > top) top = point.y - origin.y;
+    }
+    return top > 0.0f ? top + 2.0f : 12.0f * fp->x34_scale.y;
+}
+
 static void AirCeilings(Fighter* fp)
 {
     const M360MatchStage* st = M360_MatchStageData();
-    const float height = fp->ft_data && fp->ft_data->x3C
-        ? fp->ft_data->x3C->xC.x * fp->x34_scale.y : 12.0f;
+    const float height = FighterCollisionTop(fp);
     unsigned i;
     if (fp->cur_pos.y <= fp->prev_pos.y)
         return;
@@ -2790,6 +3151,8 @@ static void ProcFinish(HSD_GObj* gobj)
     if (f->port == 0 && f->traceMotion != (int) fp->motion_id) {
         f->traceMotion = (int) fp->motion_id;
         M360_MatchTrace("fighter.p1.motion", (unsigned) fp->motion_id);
+        M360_MatchTrace("fighter.p1.fight_frame", M360_HudFightFrames());
+        M360_MatchTrace("fighter.p1.anim_rate_x100", (unsigned) (fp->frame_speed_mul * 100.0f));
     }
     HSD_JObjSetRotationY(gobj->hsd_obj, (float) M_PI_2 * fp->facing_dir);
     HSD_JObjSetTranslate(gobj->hsd_obj, &fp->cur_pos);
@@ -2841,16 +3204,12 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     f->gobj = gobj;
     f->port = port;
     CollectJoints(f, root, kind->costumeJoint[costume]);
-    for (i = 0; i < (int) f->jointCount; ++i) {
-        f->parts[i].joint = f->joints[i];
-        f->parts[i].x4_jobj2 = f->joints[i];
-        f->parts[i].flags_b1 = true;
+    if (!SetupFighterParts(f, desc->kind)) {
+        HSD_GObjFree(gobj);
+        return NULL;
     }
     fp->parts = f->parts;
-    for (i = 0; i < 4; ++i) {
-        DiscU32(*table)[4] = (DiscU32(*)[4]) kind->data->x8->x0.vis_table;
-        f->vis[i] = (FtPartsVisLookup*) (uintptr_t) table[0][i].v;
-    }
+    SetupCostumeVisibility(f, &kind->data->x8->x0, (unsigned) costume);
     SetVisGroup(f, 0, -1);
     SetVisGroup(f, 1, -1);
     fp->ft_data = kind->data;
@@ -2861,11 +3220,13 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     fp->kind = desc->kind;
     fp->x597_bits = desc->kind;
     fp->x619_costume_id = (u8) costume;
+    fp->dobj_list.count = f->dobjCount;
+    fp->dobj_list.data = f->dobjs;
     fp->player_id = (u8) slot;
     fp->is_sub_fighter = sub != 0;
     fp->x618_player_id = (u8) (port < 0 ? 0 : port);
     fp->x61A_controller_index = (u8) slot;
-    fp->team = (u8) slot;
+    fp->team = (u8) M360_MatchTeam((unsigned) slot);
     fp->cpu.kind = 0;
     s_playerCpu[slot] = port < 0 ? Gm_PKind_Cpu : Gm_PKind_Human;
     s_playerPos[slot].x = x;
@@ -2879,13 +3240,19 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     fp->x20_actionStateList = kind->states;
     fp->anim_id = -1;
     fp->gobj = gobj;
+    if (!SetupCostumeTextures(f))
+        M360_MatchTrace("fighter.texture_anim.load_failed", kindIndex);
     fp->dat_attrs_backup = f->datAttrs;
     fp->x890_cameraBox = &f->cameraSubject;
     if ((s8) ftData_UnkBytePerCharacter[desc->kind] >= 0)
         efAsync_LoadSync(ftData_UnkBytePerCharacter[desc->kind]);
     if (desc->onLoad)
         desc->onLoad(gobj);
-    ftCo_800A101C(fp, 4, (int) s_cpuLevel, 0);
+    SetupAnimationLengths(fp);
+    M360_MatchTrace("fighter.anim.landing_frames_x100", (unsigned) (fp->x2EC * 100.0f));
+    ftCo_800A101C(fp, (int) M360_MatchCpuKind(fp->player_id), (int) M360_MatchCpuLevel(fp->player_id), 0);
+    M360_MatchTrace("fighter.cpu.kind", (unsigned) fp->cpu.kind);
+    M360_MatchTrace("fighter.cpu.level", (unsigned) fp->cpu.level);
     fp->x21FC_flag.byte = 1;
     fp->smash_attrs.x2135 = -1;
     fp->coll_data.floor.index = -1;
@@ -3023,6 +3390,12 @@ void M360_FighterSetDead(void* handle)
     }
 }
 
+int M360_FighterFloorLine(void* handle)
+{
+    Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    return fp->ground_or_air == GA_Ground ? fp->coll_data.floor.index : -1;
+}
+
 void M360_FighterSetDamage(void* handle, float percent)
 {
     Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
@@ -3125,6 +3498,8 @@ void M360_FighterRespawn(void* handle, float x, float y)
     Fighter_UnkInitReset_80067C98(fp);
     Fighter_ResetInputData_80068854(gobj);
     OnDeath(gobj);
+    if (Owner(gobj)->port < 0)
+        ftCo_800A101C(fp, (int) M360_MatchCpuKind(fp->player_id), (int) M360_MatchCpuLevel(fp->player_id), 0);
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
     fp->gr_vel = 0.0f;
@@ -3142,8 +3517,14 @@ void M360_FighterRespawn(void* handle, float x, float y)
 void Fighter_UnkProcessDeath_80068354(Fighter_GObj* gobj)
 {
     Fighter* fp = GET_FIGHTER(gobj);
+    M360_MatchTrace("fighter.life_reset.begin", fp->player_id);
     Fighter_UnkInitReset_80067C98(fp);
+    M360_MatchTrace("fighter.life_reset.attributes", fp->player_id);
     HSD_JObjSetTranslate(GET_JOBJ(gobj), &fp->cur_pos);
+    /* The common life reset clears temporary metal. Adventure's permanent
+     * metal flag and scaled attributes must be applied again each life. */
+    fp->is_metal = fp->is_always_metal;
+    ftCo_800D105C(gobj);
     ftCommon_8007D5D4(fp);
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
@@ -3155,8 +3536,10 @@ void Fighter_UnkProcessDeath_80068354(Fighter_GObj* gobj)
     ftColl_8007AFF8(gobj);
     ftColl_8007B0C0(gobj, HurtCapsule_Enabled);
     OnDeath(gobj);
-    /* Player cpu_kind 4 is the VS CPU (gm_1601.c). */
-    ftCo_800A101C(fp, 4, (int) s_cpuLevel, 0);
+    M360_MatchTrace("fighter.life_reset.on_death", fp->player_id);
+    /* Restore the encounter behavior as well as its per-slot CPU level. */
+    ftCo_800A101C(fp, (int) M360_MatchCpuKind(fp->player_id), (int) M360_MatchCpuLevel(fp->player_id), 0);
+    M360_MatchTrace("fighter.life_reset.done", fp->player_id);
 }
 
 /* fn_8016719C: rebirth above the stage's first rebirth point, offset 16
@@ -3184,6 +3567,7 @@ void M360_FighterRebirth(void* handle)
     fp->facing_dir = s_playerFacing[slot];
     Fighter_ResetInputData_80068854(gobj);
     fp->x1968_jumpsUsed = 1;
+    M360_MatchTrace("fighter.rebirth.begin", fp->player_id);
     ftCo_800D4FF4(gobj);
     M360_MatchTrace("fighter.rebirth.player", fp->player_id);
     if (fp->kind == Ft_Kind_Popo && slot < kMaxFighters && s_nanaCpu[slot] &&
@@ -3294,7 +3678,32 @@ int Player_GetPlayerId(int slot)
 
 int Player_GetTeam(int slot)
 {
-    return slot;
+    return M360_MatchTeam((unsigned) slot);
+}
+
+void ftCo_800C74AC(Fighter_GObj* gobj) { ft_8008521C(gobj); }
+
+void ft_8008521C(Fighter_GObj* gobj)
+{
+    Fighter* fp = GET_FIGHTER(gobj);
+    Vec3 pos;
+    HSD_JObjGetTranslation(gobj->hsd_obj, &pos);
+    fp->self_vel.x = pos.x - fp->cur_pos.x;
+    fp->self_vel.y = pos.y - fp->cur_pos.y;
+    fp->self_vel.z = pos.z - fp->cur_pos.z;
+}
+
+void M360_FighterSetEncounter(void* handle, float size, int metal)
+{
+    Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    Vec3 scale;
+    fp->x34_scale.x = fp->x34_scale.y = fp->x34_scale.z = size;
+    fp->is_metal = fp->is_always_metal = metal != 0;
+    fp->metal_timer = fp->metal_health = 0;
+    ftCo_800D105C(handle);
+    ft_80081C88(handle, size);
+    scale.x = scale.y = scale.z = ModelScale(fp);
+    HSD_JObjSetScale(((HSD_GObj*) handle)->hsd_obj, &scale);
 }
 
 int Player_GetRemainingHP(s32 slot)
@@ -3340,14 +3749,12 @@ Gm_PKind Player_8003248C(s32 slot, bool arg1)
 
 f32 Player_GetAttackRatio(int slot)
 {
-    (void) slot;
-    return 1.0f;
+    return M360_MatchCombatRatio((unsigned) slot, 0);
 }
 
 f32 Player_GetDefenseRatio(int slot)
 {
-    (void) slot;
-    return 1.0f;
+    return M360_MatchCombatRatio((unsigned) slot, 1);
 }
 
 void M360_FighterSetCpuLevel(unsigned level)
@@ -3405,6 +3812,18 @@ float M360_MatchPadSubStickYPort(unsigned port)
 void M360_FighterHangInfo(void* handle, unsigned* out)
 {
     Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
+    M360_MatchTrace("hang.fighter.kind", fp->kind);
+    M360_MatchTrace("hang.shield.active", fp->x221B_b0);
+    M360_MatchTrace("hang.shield.bone", (unsigned) (uintptr_t) fp->shield_hit.bone);
+    M360_MatchTrace("hang.shield.common_bone", DP(struct ftData_x8, fp->ft_data->x8)->x11);
+    M360_MatchTrace("hang.shield.part_count", Owner((HSD_GObj*) handle)->partCount);
+    if (fp->kind == Ft_Kind_Link || fp->kind == Ft_Kind_CLink) {
+        unsigned bone;
+        memcpy(&bone, (char*) fp->dat_attrs + 0xC4, sizeof(bone));
+        M360_MatchTrace("hang.shield.link_bone", bone);
+        if (bone < kMaxJoints)
+            M360_MatchTrace("hang.shield.link_joint", (unsigned) (uintptr_t) fp->parts[bone].joint);
+    }
     out[0] = (unsigned) fp->player_id << 16 | (unsigned) fp->motion_id;
     out[1] = (unsigned) (uintptr_t) fp->input_cb;
     out[2] = (unsigned) (uintptr_t) fp->anim_cb;

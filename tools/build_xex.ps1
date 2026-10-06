@@ -187,6 +187,9 @@ $audioMetadata = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/
 $bgmTable = [regex]::Match($audioMetadata, '(?s)static const char\* hps_files\[\] = \{.*?\n\};')
 if (-not $bgmTable.Success) { throw 'Original HPS file table not found.' }
 Set-Content -Encoding ASCII (Join-Path $build 'melee_bgm_files.h') ($bgmTable.Value.Replace('hps_files', 'g_m360BgmFiles'))
+& (Join-Path $PSScriptRoot 'generate_classic_matchups.ps1') -OutputPath (Join-Path $build 'melee_classic_matchups.h')
+& python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $build 'melee_adventure_matchups.h')
+if ($LASTEXITCODE -ne 0) { throw 'Adventure encounter generation failed.' }
 
 # -CallTrace also instruments the C units compiled here (HSD baselib and
 # original lb/menu code) with /Gh; C++ bridges stay uninstrumented.
@@ -674,7 +677,7 @@ foreach ($scene in $sceneSources) {
     & $compiler (@('/nologo', '/c', '/TC', '/O2', '/MT', '/GS-', $level,
         '/D_XBOX', '/DXBOX', '/DNDEBUG',
         "/I$(Join-Path $root 'build-x360/gameplay-probe/include')", "/I$($scene.Dir)",
-        "/I$(Join-Path $root 'src/xdk')", "/FI$sceneCompat", "/Fo$sceneObject",
+        "/I$(Join-Path $root 'src/xdk')", "/I$build", "/FI$sceneCompat", "/Fo$sceneObject",
         $scene.Source) + $hsdCommonInc)
     if ($LASTEXITCODE -ne 0) { throw "Scene source compilation failed: $($scene.Source)" }
     $sceneObjects += $sceneObject
@@ -710,16 +713,16 @@ Set-Content -Encoding ASCII $linkResponse ($linkArgs | ForEach-Object { '"' + $_
 if ($LASTEXITCODE -ne 0) { throw 'XDK PE link failed.' }
 
 Write-Host '[M360][XEX] building dist/default.xex'
-# imagexex writes its normal version banner to stderr. Windows PowerShell
-# wraps that as NativeCommandError when the caller captures all streams;
-# check the process exit code instead of treating the banner as a build error.
-$imageErrorPreference = $ErrorActionPreference
-try {
-    $ErrorActionPreference = 'Continue'
-    & $imagexex "/IN:$pe" "/OUT:$xex"
-    $imageExitCode = $LASTEXITCODE
-} finally {
-    $ErrorActionPreference = $imageErrorPreference
+# Capture the normal stderr banner without emitting a PowerShell error record,
+# which otherwise makes a successful nested PowerShell build return exit 1.
+$imageStdout = Join-Path $build 'imagexex.stdout.log'
+$imageStderr = Join-Path $build 'imagexex.stderr.log'
+$imageProcess = Start-Process -FilePath $imagexex -WindowStyle Hidden -Wait -PassThru `
+    -ArgumentList @("/IN:`"$pe`"", "/OUT:`"$xex`"") `
+    -RedirectStandardOutput $imageStdout -RedirectStandardError $imageStderr
+$imageExitCode = $imageProcess.ExitCode
+foreach ($imageLog in @($imageStdout, $imageStderr)) {
+    Get-Content -LiteralPath $imageLog | ForEach-Object { Write-Host $_ }
 }
 if ($imageExitCode -ne 0 -or -not (Test-Path -LiteralPath $xex)) {
     throw 'imagexex failed.'

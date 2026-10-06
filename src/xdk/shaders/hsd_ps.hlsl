@@ -18,6 +18,8 @@ bool diffuseLit : register(b7);
 bool specular : register(b8);
 bool alphaTest : register(b9);
 bool fogEnabled : register(b10);
+bool slot0Spec : register(b11);
+bool slot1Spec : register(b12);
 
 float4 Stage(int b, float4 prev, float4 x)
 {
@@ -75,8 +77,15 @@ float4 main(float4 ras0 : COLOR0, float4 ras1 : COLOR1, float4 uv : TEXCOORD0,
         c = ApplySlot1(c, uv.zw);
     if (diffuseLit)
         c = saturate(c * ras0);
-    if (specular)
-        c.rgb = saturate(c.rgb + specColor.rgb * ras1.rgb);
+    if (specular) {
+        float4 s = float4(specColor.rgb, c.a);
+        if (slot0Spec)
+            s = ApplySlot0(s, uv.xy);
+        if (slot1Spec)
+            s = ApplySlot1(s, uv.zw);
+        c.rgb = saturate(c.rgb + s.rgb * ras1.rgb);
+        c.a = s.a;
+    }
     if (slot0Post)
         c = ApplySlot0(c, uv.xy);
     if (slot1Post)
