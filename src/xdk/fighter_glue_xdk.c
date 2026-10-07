@@ -2180,17 +2180,92 @@ void mpCollSetFacingDir(CollData* coll, int dir)
     coll->facing_dir = dir;
 }
 
-/* Battlefield-style stages have no moving collision joints. */
-static bool NoSurfaceSpeed(Vec3* speed)
+/* Original mpRemap2d; fabs replaces the source ABS macro. The native
+ * line endpoints provide the original previous/current vertex positions. */
+static void mpRemap2d(float* x_out, float* y_out, float ax0, float ay0,
+                      float ax1, float ay1, float bx0, float by0, float bx1,
+                      float by1, float px, float py)
 {
-    speed->x = speed->y = speed->z = 0.0f;
-    return false;
+    double dx;
+    double dy;
+    double dist2;
+    float f30;
+    float f29;
+    dx = ax1 - ax0;
+    dy = ay1 - ay0;
+    f30 = px - ax0;
+    f29 = py - ay0;
+    dist2 = (dy * dy) + (dx * dx);
+    if (fabs(dist2) > 0.0001) {
+        // how far along line a is point p
+        double t = (dy * f29 + dx * f30) / dist2;
+        if (t > 1.0) {
+            t = 1.0;
+        } else if (t < 0.0) {
+            t = 0.0;
+        }
+
+        *x_out = px + (1.0 - t) * (bx0 - ax0) + t * (bx1 - ax1);
+        *y_out = py + (1.0 - t) * (by0 - ay0) + t * (by1 - ay1);
+    } else {
+        *x_out = px + (bx0 - ax0) + (bx1 - ax0);
+        *y_out = py + (by0 - ay0) + (by1 - ay0);
+    }
 }
 
-bool mpCollGetSpeedFloor(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
-bool mpCollGetSpeedCeiling(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
-bool mpCollGetSpeedLeftWall(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
-bool mpCollGetSpeedRightWall(CollData* coll, Vec3* speed) { (void) coll; return NoSurfaceSpeed(speed); }
+bool mpGetSpeed(int line_id, Vec3* pos, Vec3* speed)
+{
+    const M360StageLine* line;
+    float new_x, new_y;
+    if (!mpLib_80054ED8(line_id)) return false;
+    line = &M360_MatchStageData()->lines[line_id];
+    mpRemap2d(&new_x, &new_y, line->px0, line->py0, line->px1, line->py1,
+              line->x0, line->y0, line->x1, line->y1, pos->x, pos->y);
+    speed->x = new_x - pos->x;
+    speed->y = new_y - pos->y;
+    speed->z = 0.0F;
+    return true;
+}
+
+bool mpCollGetSpeedCeiling(CollData* coll, Vec3* speed)
+{
+    int index = coll->ceiling.index;
+    Vec3 top; // sp10
+    top.x = coll->ecb.top.x;
+    top.y = coll->ecb.top.y;
+    top.z = 0.0F;
+    return mpGetSpeed(index, &top, speed);
+}
+
+bool mpCollGetSpeedLeftWall(CollData* coll, Vec3* speed)
+{
+    int index = coll->left_facing_wall.index;
+    Vec3 top; // sp10
+    top.x = coll->ecb.top.x;
+    top.y = coll->ecb.top.y;
+    top.z = 0.0F;
+    return mpGetSpeed(index, &top, speed);
+}
+
+bool mpCollGetSpeedRightWall(CollData* coll, Vec3* speed)
+{
+    int index = coll->right_facing_wall.index;
+    Vec3 top; // sp10
+    top.x = coll->ecb.top.x;
+    top.y = coll->ecb.top.y;
+    top.z = 0.0F;
+    return mpGetSpeed(index, &top, speed);
+}
+
+bool mpCollGetSpeedFloor(CollData* coll, Vec3* speed)
+{
+    int index = coll->floor.index;
+    Vec3 top;
+    top.x = coll->ecb.top.x;
+    top.y = coll->ecb.top.y;
+    top.z = 0.0F;
+    return mpGetSpeed(index, &top, speed);
+}
 
 void mpColl_SetECBSource_Fixed(CollData* cd, HSD_GObj* gobj, float up, float down, float front,
                                float back)
@@ -2929,7 +3004,9 @@ bool mpColl_80048654(CollData* coll)
 
 bool mpLib_80054ED8(int line_id)
 {
-    return line_id >= 0 && (unsigned) line_id < M360_MatchStageData()->lineCount;
+    const M360MatchStage* stage = M360_MatchStageData();
+    return line_id >= 0 && (unsigned) line_id < stage->lineCount &&
+        stage->lines[line_id].kind != 0;
 }
 
 int mpLib_8005199C_Floor(Vec3* vec, int joint_id_skip, int joint_id_only)

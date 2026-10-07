@@ -21,6 +21,7 @@ cargo el siguiente combate contra Kirby. En Underground Maze, busca la
 Trifuerza entre seis salas: los simbolos falsos inician un combate con Link.
 Al derrotarlo puedes seguir explorando; tienes siete minutos por intento.
 Esta version corrige el paso entre salas despues de vencer a Link.
+Tambien restaura el calculo original de velocidad de las superficies para los objetos.
 Una prueba de Xenia completo el laberinto despues de un timeout y reintento.
 Faltan sus enemigos del recorrido y animaciones de transicion. La carrera
 y la escalada originales siguen pendientes.
