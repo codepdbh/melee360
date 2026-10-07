@@ -44,6 +44,8 @@ typedef struct M360MatchAutoConfig {
 void M360_MatchSetAutoConfig(const M360MatchAutoConfig* config);
 int M360_MatchBgmId(void);
 int M360_MatchGroundKind(void);
+struct MapLine;
+const struct MapLine* M360_MatchMapLine(int line_id);
 unsigned M360_MatchCampaignRounds(unsigned mode);
 unsigned M360_MatchNextCampaignRound(void);
 int M360_MatchTeam(unsigned slot);

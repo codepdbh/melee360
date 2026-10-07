@@ -22,9 +22,9 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`516B2F8DC625ED7F9C688C5DFFECCB93361D2144E546A1D14D6C8266A78E7538`.
+`37F3220CC41008951A84096CA6AEFDCF6194565DB7972553B9AD08E935B068A3`.
 This build restores only traversal groups 0-7 after a maze fight, preserving
-the original disabled state of other arena groups. A normal-boot smoke test
+the original disabled state of other arena groups. The preceding camera build
 reached loop frame 10,200 and presented 1,922 opening frames without movie
 errors, ADPCM history mismatches or a watchdog alert
 (`normal-fighter-camera-runtime-trace-20261007.txt`).
@@ -43,6 +43,19 @@ Original fighter camera callbacks and model scaling now run, including
 independent width handling. Link/Young Link, small DK and the Easy Bowser
 final pass native tests. Camera subject framing/easing, visual parity and a
 complete campaign with these latest changes remain unverified.
+Authored next/previous floor links now replace constant-minus-one queries;
+338,688 host comparisons match the original selection math. Native collision
+toggles still collapse hidden/disabled state, and the original collision
+engine is unfinished. Original stage identity lookup now includes all 286
+entries and preserves campaign variants. The combined diagnostic passes
+Fountain/Team Kirby at frame 1800, finishes a short Ness/DK match, and clears
+the seeded maze and Brinstar escape goals at frames 4190 and 2287.
+These goal tests cover individual phases, not the full campaign or all maze
+variants (`stage-identity-final-courses-20261007`).
+The current normal XEX reaches loop frame 4500 and presents 2338 opening
+frames with no movie errors, ADPCM history mismatches or watchdog alert;
+its image dump succeeds (`normal-stage-identity-runtime-trace-20261007.txt`).
+Physical console behavior and visual comparison remain unverified.
 The nineteen-phase results below describe preceding builds.
 
 ## Fighter and item fixes (2026-10-05)

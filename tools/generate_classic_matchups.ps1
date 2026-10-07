@@ -53,5 +53,13 @@ foreach ($entry in $normal) {
     if (-not $grValues.ContainsKey($grName) -or -not $ftValues.ContainsKey($ftName)) { throw 'Unmapped Classic ground/fighter.' }
     $lines += "    { $stage, $($grValues[$grName]), $($ftValues[$ftName]) }, // $grName / $ftName"
 }
+$lines += @('};', '// Full original StKind -> GrKind mapping, including campaign variants.',
+    'static const int g_m360StageGroundKinds[] = {')
+if (-not $stageTable.Success -or $stageMap.Count -ne 286) { throw 'Expected 286 original stage identities.' }
+foreach ($entry in $stageMap) {
+    $grName = $entry.Groups[1].Value
+    if (-not $grValues.ContainsKey($grName)) { throw "Unmapped stage identity: $grName" }
+    $lines += "    $($grValues[$grName]), // $grName"
+}
 $lines += @('};', '#endif')
 Set-Content -LiteralPath $OutputPath -Encoding ASCII $lines

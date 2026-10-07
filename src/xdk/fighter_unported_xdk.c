@@ -173,8 +173,6 @@ bool ftCo_8009E714(Fighter_GObj* gobj, Fighter_Part part, int a, float x, float 
     (void) gobj; (void) part; (void) a; (void) x; (void) y; (void) b; (void) c; (void) d;
     return false;
 }
-int mpLineGetNext(int line_id) { (void) line_id; return -1; }
-int mpLineGetPrev(int line_id) { (void) line_id; return -1; }
 
 
 
@@ -572,8 +570,6 @@ u8 ftData_UnkBytePerCharacter[Ft_Kind_Max] = {
 };
 bool lbLang_IsSettingUS(void) { return true; }
 bool lbLang_IsSettingJP(void) { return false; }
-StKind Stage_80225194(void) { return (StKind) 0; }
-GrKind Stage_8022519C(StKind stkind) { (void) stkind; return (GrKind) 0; }
 
 /* Dynamics, part-animation, stat and ground hooks of the item states. */
 bool Ground_801C4DD0(void) {  Report("fighter.unported.Ground_801C4DD0"); return (bool) 0; }
