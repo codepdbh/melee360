@@ -176,10 +176,12 @@ $fighterSpawn = $fighterSource.Substring($globalsStart, $globalsEnd - $globalsSt
 $fighterSlice = (Get-CPrologue $fighterSource 'const Vec3 Fighter_803B7488') + $fighterConsts + "`r`n" + $fighterSpawn + "`r`n" +
     (Get-CFunction $fighterSource 'void Fighter_UnkInitReset_80067C98(') + "`r`n" +
     (Get-CFunction $fighterSource 'void Fighter_ResetInputData_80068854(') + "`r`n" +
+    (Get-CFunction $fighterSource 'void Fighter_UpdateModelScale(') + "`r`n" +
     (Get-CFunction $fighterSource 'static void Fighter_UnkInitLoad_80068914_Inner1(') + "`r`n" +
     (Get-CFunction $fighterSource 'u32 Fighter_NewSpawn_80068E40(') + "`r`n" +
     (Get-CFunction $fighterSource 'void Fighter_ChangeMotionState(') + "`r`n" +
-    $fighterSource.Substring($rangeStart, $rangeStop - $rangeStart) + "`r`n"
+    $fighterSource.Substring($rangeStart, $rangeStop - $rangeStart) + "`r`n" +
+    (Get-CFunction $fighterSource 'void Fighter_UnkCallCameraCallback_8006D9EC(') + "`r`n"
 $fighterSlicePath = Join-Path $out 'fighter_frame_slice.c'
 Set-Content -Encoding ASCII $fighterSlicePath $fighterSlice
 
@@ -430,6 +432,7 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/it/itmaterial.c') },
     @{ Path = (Join-Path $src 'melee/it/itspawn.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftlib.c') },
+    @{ Path = (Join-Path $src 'melee/ft/ftcamera.c') },
     @{ Path = (Join-Path $src 'melee/it/kinds/itmariofireball.c') },
     @{ Path = (Join-Path $src 'melee/it/kinds/it_2ADA.c') },
     @{ Path = (Join-Path $src 'melee/it/kinds/it_2E5A.c') },
