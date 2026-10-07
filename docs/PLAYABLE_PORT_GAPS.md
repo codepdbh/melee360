@@ -22,10 +22,12 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`0A0C6FD5D7050F69502A1D22F6744CE53252C37E302E15DC04BCCB7FF98B9104`.
+`516B2F8DC625ED7F9C688C5DFFECCB93361D2144E546A1D14D6C8266A78E7538`.
 This build restores only traversal groups 0-7 after a maze fight, preserving
 the original disabled state of other arena groups. A normal-boot smoke test
-presented 1,448 opening frames without movie errors or a watchdog alert.
+reached loop frame 10,200 and presented 1,922 opening frames without movie
+errors, ADPCM history mismatches or a watchdog alert
+(`normal-fighter-camera-runtime-trace-20261007.txt`).
 It also uses the original grab wall-occlusion query; host tests verify the
 ECB center coordinates and wall-side choice. The complete runtime grab
 interaction across all stages remains unverified.
@@ -37,6 +39,10 @@ Original stage material tables now restore friction and sound/effect queries
 for footsteps, landings and ground bounces. Host tests cover all 1420 table
 entries; Mario/Zelda and four-CPU Fountain tests reach frame 1800. Audible
 and visual parity of these effects still require comparison with the original.
+Original fighter camera callbacks and model scaling now run, including
+independent width handling. Link/Young Link, small DK and the Easy Bowser
+final pass native tests. Camera subject framing/easing, visual parity and a
+complete campaign with these latest changes remain unverified.
 The nineteen-phase results below describe preceding builds.
 
 ## Fighter and item fixes (2026-10-05)
@@ -642,8 +648,10 @@ created as the slot's sub entity and put to sleep (`ftCo_800BFD04`), and
 `Player_GetEntityAtIndex`/`Player_SwapTransformedStates` keep a per-slot
 entity table so the original down special (`ftCommon_8007EFC8`) swaps them,
 handing over position, damage, collision (`mpCopyCollData`) and held items.
-The match scene follows the slot's active entity each frame. The transform
-flash camera hook (`ftCamera_80076064`) is still a stub.
+The match scene follows the slot's active entity each frame. Original
+`ftCamera_80076064` now initializes/resets the camera subject; `ftcamera.c`
+and the original frame callback replace the earlier empty hooks. The global
+camera subject manager and framing remain incomplete.
 
 The right stick (up/down) switches the rule between stock and a timed match
 (2, 3, 4, 5 or 8 minutes). Timed matches give unlimited lives, credit a KO to

@@ -1,5 +1,38 @@
 # Development status
 
+## Original fighter camera and model scaling — 2026-10-07
+
+The build compiles original `ftcamera.c` directly. The original fighter camera
+callback runs at GObj priority 0x12, with its dormant guard and common-update
+ordering. Camera subjects initialize on spawn and encounter size changes;
+stage zoom/center queries use the native stage's original archive values.
+Original `Fighter_UpdateModelScale` replaces its stub. Encounter size updates
+the original x/y fields while z retains its independent flat-mode width
+meaning. The native animation scale adapter calls original
+`ftCommon_GetModelScale`. The global camera manager, easing and match framing
+still need further porting.
+
+Host tests check the actual original functions, both facings, normal/tiny/giant
+sizes, camera-bone updates, the offset-aware death ratio, camera callback
+guards/order and the separate width override. `fighter-camera-native-20261007`
+passes 1800-frame Link/Kirby (27 hits), Young Link/Ice Climbers (33 hits), and
+small-DK encounter (24 hits, two falls) tests. The Very Hard Bowser test clears
+Bowser at frame 1430, loads Giga, samples Giga at frame 517 and then returns
+through game-over/menu; verdict SHORT because the target was 1800. No
+watchdog alert. It does not prove a Giga clear or a sustained 1800-frame Giga
+fight. The dedicated Easy final pilot passes in 62 seconds, with 30 hits,
+mode-4 completion and return to menu (`fighter-camera-bowser-final-20261007`).
+Diagnostic SHA-256:
+`7B1F9AA28074C17DC98373B66BE843409D954256C08E7492E2568BC0DF1145DC`.
+Current normal twenty-phase XEX SHA-256:
+`516B2F8DC625ED7F9C688C5DFFECCB93361D2144E546A1D14D6C8266A78E7538`.
+The 903-second campaign continuation below uses the preceding material build,
+before these camera/scale changes.
+A fresh normal boot reached loop frame 10,200 and presented 1,922 movie
+frames with zero movie errors, zero ADPCM history mismatches and no watchdog
+alert (`normal-fighter-camera-runtime-trace-20261007.txt`). This checks opening
+playback only; visual comparison and physical console verification remain pending.
+
 ## Original surface materials — 2026-10-07
 
 The native build now extracts the original 71 stage material tables, twenty
@@ -24,14 +57,18 @@ landing sound 526/effect 30008. These are selection/submission checks,
 not listening or visual parity tests. Both runs retain one SFX miss.
 Diagnostic SHA-256:
 `A5C28D98A46EDF29208CC743ABD4DB54D754B3DAFB1C3E5A191249FB77C055CE`.
-The new normal twenty-phase XEX has SHA-256
+The preceding normal twenty-phase material XEX has SHA-256
 `0A0C6FD5D7050F69502A1D22F6744CE53252C37E302E15DC04BCCB7FF98B9104`.
 A fresh normal-boot smoke run reached loop frame 2700 and presented 1448
 opening frames, with zero movie errors/history mismatches and no watchdog:
 `normal-surface-materials-runtime-trace-20261007.txt`. No menu interaction or
-physical Xbox test was performed. Campaign follow-up is running at
-`adventure-materials-campaign-20261007`; prior campaign evidence refers to
-the earlier executable without these material queries.
+physical Xbox test was performed. The campaign follow-up
+`adventure-materials-campaign-20261007` completed with verdict OK in 903
+seconds, three Continues, maze goal 4190, escape 2291, race 3974 and final
+mode-4 completion/return to menu. It starts at the maze, uses original seed
+12000 and Very Easy, and excludes optional Giant Kirby/Giga. The first four
+phases, other maze variants and a physical console remain unverified by
+this run. Diagnostic SHA-256 is the A5C28D98 build above.
 
 ## Original moving-surface queries — 2026-10-07
 
