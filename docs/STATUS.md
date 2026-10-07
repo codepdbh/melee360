@@ -1,5 +1,42 @@
 # Development status
 
+## Original moving-surface queries — 2026-10-07
+
+Removed the `mpGetSpeed` placeholder and constant-zero collision surface
+queries. The native endpoint adapter now runs the original `mpRemap2d` math,
+with the original four `mpCollGetSpeed*` wrappers and ECB query point.
+Inactive collision lines are rejected, matching the original enabled/hidden
+line check. Host tests compare against the actual upstream helper for slopes,
+vertical/reversed lines, endpoint clamping and the original degenerate branch.
+Static surfaces return success with zero speed; missing/disabled lines leave
+the output unchanged, as in the original. This is not the complete original
+collision engine or a port of unimplemented stage hazards.
+
+The XDK build links with the replacement stub removed. Xenia's four-CPU,
+items-enabled Fountain of Dreams test reached frame 1800 with 99 hits and no
+watchdog alert (`surface-speed-native-20261007`). This is integration evidence,
+not a native measurement of every moving surface. The current normal
+twenty-phase `dist/default.xex` has SHA-256
+`98899CEF25563ED34BD28EEE904EABE4FBE0EE002453748BFFFFDB75B6556682`.
+Its fresh normal-boot trace reached loop frame 3000 and presented 1696 opening
+frames, with zero movie errors, zero ADPCM history mismatches and no hang:
+`normal-surface-speed-runtime-trace-20261007.txt`. This does not verify menu
+interaction, visual/audio fidelity or physical Xbox behavior.
+
+## Seeded Adventure continuation — 2026-10-07
+
+`maze-connected-floor-campaign-20261006` completed in Xenia: verdict OK,
+721 seconds, original seed 12000, maze goal at frame 3502, escape at 2291,
+race at 3974, final mode-4 completion and return to menu. The run includes
+two Continues and no watchdog alert. It starts at the maze, omits the first
+four phases, uses Very Easy and does not exercise optional Giant Kirby or
+Giga Bowser. It therefore does not prove a complete twenty-one-phase campaign
+from the beginning, all randomized maze rooms, or resolution of every earlier
+render stall. Diagnostic SHA-256:
+`4B847DE445051706B4248C7B5A3CB1617D277E62C95F11B3AA8C8E4259BDE2CB`.
+Normal live-input `dist/default.xex` remains twenty phases;
+the diagnostic's race and bot are excluded from that executable.
+
 ## Underground Maze source progress — 2026-10-06
 
 The current playable XEX includes a twentieth Adventure phase:
@@ -14,8 +51,7 @@ to room 2, then reached the Triforce on retry (445 seconds, 50 hits, four falls;
 with retry, not traversal of every room or a complete twenty-phase campaign.
 Original maze hazards and transition animations are still missing.
 
-The playable `dist/default.xex` now includes the experimental maze, with normal
-boot and live input, SHA-256
+The preceding normal-boot/live-input twenty-phase maze build has SHA-256
 `C7272C2962895FEBC3A02F6A2ECAB7CA28F0FAFF42A249F9ADCC9984A7C9727C`.
 This build also restores the original grab wall-occlusion query. Host tests
 verify ECB centers and both wall directions. A normal-boot Xenia smoke run
