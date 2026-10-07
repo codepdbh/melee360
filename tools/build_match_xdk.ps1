@@ -787,11 +787,19 @@ $audioRangesPath = Join-Path $out 'audio_ranges_slice.c'
 Set-Content -Encoding ASCII $audioRangesPath $audioRanges
 $units += @{ Path = $audioRangesPath }
 
+$surfaceMaterials = Join-Path $out 'surface_materials_original.c'
+& python (Join-Path $PSScriptRoot 'generate_surface_materials.py') $surfaceMaterials
+if ($LASTEXITCODE -ne 0) { throw 'Original surface material generation failed.' }
+$units += @{ Path = $surfaceMaterials }
+
 foreach ($unit in $units) {
     $dir = if ($unit.Dir) { $unit.Dir } else { Split-Path $unit.Path }
     $object = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($unit.Path) + '.obj')
     $compilePath = $unit.Path
     $leadInclude = @()
+    if ($CallTrace -and $unit.Path -eq $surfaceMaterials) {
+        $leadInclude += '/DM360_SURFACE_MATERIAL_TRACE'
+    }
     $unitText = Get-Content -Raw -LiteralPath $unit.Path
     # The XDK C frontend rejects const objects inside other constant initializers.
     $constPattern = '(?m)^static\s+(?:u8|u16|u32|s8|s16|s32|int|MotionFlags)\s+const\s+(\w+)\s*=\s*([^;]+);'
@@ -807,7 +815,7 @@ foreach ($unit in $units) {
         New-Item -ItemType Directory -Force $adaptedDir | Out-Null
         $compilePath = Join-Path $adaptedDir ([IO.Path]::GetFileName($unit.Path))
         Set-Content -Encoding ASCII -LiteralPath $compilePath $adaptedText
-        $leadInclude = @("/I$dir")
+        $leadInclude += "/I$dir"
     }
     & $Compiler ($leadInclude + $base + $kindForward + @('/W3', "/I$dir", "/Fo$object", $compilePath)) | Write-Host
     if ($LASTEXITCODE -ne 0) { throw "Original fighter unit failed: $($unit.Path)" }

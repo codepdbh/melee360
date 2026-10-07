@@ -177,6 +177,13 @@ blended particles when the reconstructed segment hit test connects.
 
 ### Campaign test evidence
 
+The match build also generates `surface_materials_original.c` from the
+original `mplib.c`, `mpcoll.c` and `ft_081B.c` tables/functions. Native stage
+ownership uses `M360_MatchGroundKind`. `test_surface_materials.ps1` checks
+all 71 stage tables and twenty materials per table. `-CallTrace` adds
+diagnostic `surface.query.*` records once per ground/material/query mode;
+normal builds exclude these hooks.
+
 `./tools/test_soak_rules.ps1` checks the actual trace parser and verdict
 functions without starting Xenia. A final match marker alone does not establish
 campaign flow completion; a Giga scene identifier alone does not establish

@@ -1207,6 +1207,11 @@ int M360_MatchBgmId(void)
     return IsCampaign() ? row->x4 : (int) row->xC;
 }
 
+int M360_MatchGroundKind(void)
+{
+    return s_stages[s_stageIndex].grkind;
+}
+
 float M360_MatchFixedZoom(void)
 {
     return s_fixedZoom;

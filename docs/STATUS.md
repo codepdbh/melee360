@@ -1,5 +1,38 @@
 # Development status
 
+## Original surface materials — 2026-10-07
+
+The native build now extracts the original 71 stage material tables, twenty
+entries each, from `mplib.c`. Original friction queries, the Ice Climbers
+friction exception, footstep/landing sound and effect queries, and all three
+fighter wrappers replace constant returns and unported stubs. Only stage
+ownership is adapted through `M360_MatchGroundKind`; query bodies and values
+come from the original source. Optional diagnostic tracing is excluded from
+the normal build. The complete original collision engine remains unfinished.
+
+`test_surface_materials.ps1` passes all 1420 stage/material combinations,
+low-byte indexing, sentinel/default behavior, airborne/missing-floor guards,
+four bounce sound entries and the Ice Climbers exception. An ISO audit of
+all 21 native stage archives finds only material indices 0–19:
+`surface-materials-iso-audit-20261007.json`.
+
+`surface-materials-native-20261007` passes two Xenia tests at frame 1800:
+Mario vs Zelda on Battlefield (24 hits, one fall), and four CPUs/items on
+Fountain of Dreams (77 hits). No watchdog alert; audio is enabled. Fountain
+trace identifies GrKind 12/material 10: original step sound 335/effect 30007,
+landing sound 526/effect 30008. These are selection/submission checks,
+not listening or visual parity tests. Both runs retain one SFX miss.
+Diagnostic SHA-256:
+`A5C28D98A46EDF29208CC743ABD4DB54D754B3DAFB1C3E5A191249FB77C055CE`.
+The new normal twenty-phase XEX has SHA-256
+`0A0C6FD5D7050F69502A1D22F6744CE53252C37E302E15DC04BCCB7FF98B9104`.
+A fresh normal-boot smoke run reached loop frame 2700 and presented 1448
+opening frames, with zero movie errors/history mismatches and no watchdog:
+`normal-surface-materials-runtime-trace-20261007.txt`. No menu interaction or
+physical Xbox test was performed. Campaign follow-up is running at
+`adventure-materials-campaign-20261007`; prior campaign evidence refers to
+the earlier executable without these material queries.
+
 ## Original moving-surface queries — 2026-10-07
 
 Removed the `mpGetSpeed` placeholder and constant-zero collision surface
@@ -15,7 +48,7 @@ collision engine or a port of unimplemented stage hazards.
 The XDK build links with the replacement stub removed. Xenia's four-CPU,
 items-enabled Fountain of Dreams test reached frame 1800 with 99 hits and no
 watchdog alert (`surface-speed-native-20261007`). This is integration evidence,
-not a native measurement of every moving surface. The current normal
+not a native measurement of every moving surface. The preceding normal
 twenty-phase `dist/default.xex` has SHA-256
 `98899CEF25563ED34BD28EEE904EABE4FBE0EE002453748BFFFFDB75B6556682`.
 Its fresh normal-boot trace reached loop frame 3000 and presented 1696 opening
