@@ -28,6 +28,10 @@ This is a source port, not GameCube emulation. Game logic is compiled for the
 Xbox 360 PowerPC CPU while GameCube services are replaced incrementally with
 LibXenon implementations.
 
+The target is the original game's behavior and presentation. Native substitutes
+are intermediate work; see the [source-port fidelity criteria](docs/PORT_FIDELITY.md)
+and the remaining-work report before treating a playable milestone as parity.
+
 ## Progress
 
 | Area | Status |
