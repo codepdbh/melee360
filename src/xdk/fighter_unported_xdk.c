@@ -329,7 +329,6 @@ bool pl_8003D60C(int a0) { (void) a0; Report("fighter.unported.pl_8003D60C"); re
 void pl_80038144(HSD_GObj* a0, HSD_GObj* a1, s32 a2, ft_800898B4_t* a3, u16 a4, s32 a5, s32 a6) { (void) a0; (void) a1; (void) a2; (void) a3; (void) a4; (void) a5; (void) a6; Report("fighter.unported.pl_80038144");  }
 void pl_80037ECC(HSD_GObj* a0) { (void) a0; Report("fighter.unported.pl_80037ECC");  }
 u16 plAttack_80037B08(void) {  Report("fighter.unported.plAttack_80037B08"); return (u16) 0; }
-bool mpGetSpeed(int a0, Vec3* a1, Vec3* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.mpGetSpeed"); return (bool) 0; }
 bool lb_80014638(struct lb_80014638_arg0_t* a0, struct lb_80014638_arg1_t* a1) { (void) a0; (void) a1; Report("fighter.unported.lb_80014638"); return (bool) 0; }
 bool lb_800144C8(ColorOverlay* a0, struct Fighter_804D653C_t* a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lb_800144C8"); return (bool) 0; }
 bool lb_80014258(Fighter_GObj* a0, void* a1, FtCmd2 a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.lb_80014258"); return (bool) 0; }
