@@ -1,5 +1,50 @@
 # Development status
 
+## Original floor adjacency and stage identities — 2026-10-07
+
+`mpLineGetNext` and `mpLineGetPrev` now read the archive's authored default
+and alternate links. The native adapter preserves the original strict
+squared-distance < 4 decision using current moving endpoints. It rejects
+invalid/truncated indices and access after stage teardown. Native collision
+toggles collapse hidden/disabled state to `kind == 0`; the complete original
+collision engine and its stage callbacks are still missing.
+`test_surface_links.ps1` passes 338,688 comparisons with the actual upstream
+functions, plus inactive-line, fallback, boundary and lifecycle checks.
+
+The Classic generator retains all 286 original StKind-to-GrKind entries.
+`Stage_80225194` now preserves campaign variants and the archive's VS row;
+`Stage_8022519C` no longer returns constant zero. Match traces record both
+IDs. `test_match_rules.ps1` compares the complete table with upstream and
+checks all 21 native grounds, archive rows, invalid IDs and campaign variants.
+
+Adjacency-only diagnostic `FD02E3BC9E2CC7817C3BE8D52B497D1A642FE49BF63024588D1EFA61D5BD9BB0`
+passes 1800-frame Link/Kirby, four-CPU Fountain and maze-entry tests
+(`surface-links-native-20261007`). Its goal tests clear maze at frame 4190
+and escape at frame 2287 (`surface-links-courses-20261007`).
+Combined diagnostic `44E935468387D59C94367F4DF47C2A463EA54F9AAB8E88A57D01236A4D6BF5BD`
+passes Fountain and Team Kirby at frame 1800; Ness/DK finishes a match after
+a maximum sample of 896 frames (player loss), rather than reaching 1800.
+The two objective cases were explicitly capped at 1800 and returned SHORT;
+they establish no completed goal (`stage-identity-final-native-20261007`).
+Uncapped goal reruns with the combined diagnostic then cleared maze at frame
+4190 and Brinstar escape at frame 2287, both without a watchdog
+(`stage-identity-final-courses-20261007`, 76 and 41 seconds). This uses one
+original maze variant, not a complete campaign or all variants.
+An earlier matrix was aborted after it copied the preceding executable while
+the map was being relinked; its first-render watchdog is retained but excluded
+from current-build evidence (`stage-identity-native-20261007/ABORTED.txt`).
+The first-render stall was not reproduced in the completed-build Ness test.
+
+The harness now snapshots symbols and records both hashes, rejecting stale
+copies or a map newer than its executable. Host checks cover those guards.
+Normal live-input SHA-256 (incrementally relinked native scene/bridge objects):
+`37F3220CC41008951A84096CA6AEFDCF6194565DB7972553B9AD08E935B068A3`.
+Its normal boot reached loop frame 4500 and presented 2338 movie frames with
+zero movie errors, zero ADPCM history mismatches and no watchdog alert
+(`normal-stage-identity-runtime-trace-20261007.txt`). `imagexex /DUMP` succeeds.
+This verifies opening playback and image structure, not visual parity or a
+physical Xbox 360. The release retains normal opening boot/live controller input.
+
 ## Original fighter camera and model scaling — 2026-10-07
 
 The build compiles original `ftcamera.c` directly. The original fighter camera
@@ -24,7 +69,7 @@ fight. The dedicated Easy final pilot passes in 62 seconds, with 30 hits,
 mode-4 completion and return to menu (`fighter-camera-bowser-final-20261007`).
 Diagnostic SHA-256:
 `7B1F9AA28074C17DC98373B66BE843409D954256C08E7492E2568BC0DF1145DC`.
-Current normal twenty-phase XEX SHA-256:
+Preceding normal twenty-phase XEX SHA-256:
 `516B2F8DC625ED7F9C688C5DFFECCB93361D2144E546A1D14D6C8266A78E7538`.
 The 903-second campaign continuation below uses the preceding material build,
 before these camera/scale changes.

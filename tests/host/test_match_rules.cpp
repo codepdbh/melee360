@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "melee_classic_matchups.h"
 #include "melee_adventure_matchups.h"
+#include "stage_identity_reference.h"
 #include "../../src/xdk/match_xdk.h"
 
 enum { kMaxFighters = 4, kStartingStocks = 3, kCampaignRounds = 5,
@@ -23,6 +24,7 @@ const CostumeDesc s_kinds[] = {
 struct StageDesc { int grkind; };
 const StageDesc s_stages[] = { {36}, {37}, {28}, {10}, {12}, {29}, {7}, {30}, {5}, {2}, {4}, {8}, {13}, {14}, {16}, {20}, {18}, {31}, {33}, {32}, {34} };
 struct StageParam { unsigned stkind; int x4; unsigned xC; };
+typedef unsigned StKind;
 struct GroundParam { StageParam* stage_params; int stage_param_count; };
 StageParam mockStageParams[64];
 GroundParam mockGround;
@@ -258,6 +260,40 @@ static void Reset(unsigned count) {
 }
 
 int main() {
+    const unsigned stageIdCount = sizeof(referenceStageIds) / sizeof(referenceStageIds[0]);
+    assert(stageIdCount == sizeof(g_m360StageGroundKinds) / sizeof(g_m360StageGroundKinds[0]));
+    for (unsigned i = 0; i < stageIdCount; ++i)
+        assert(Stage_8022519C(i) == referenceStageIds[i].grkind);
+    assert(Stage_8022519C(~0u) == Gr_Kind_Unk00);
+    assert(Stage_8022519C(stageIdCount) == Gr_Kind_Unk00);
+    Reset(4);
+    for (unsigned i = 0; i < kStageCount; ++i) {
+        BuildStage(i);
+        assert((int) Stage_8022519C(Stage_80225194()) == s_stages[i].grkind);
+        // Preserve an authored variant when present in the stage parameter row.
+        for (unsigned id = stageIdCount; id-- > 0;) {
+            if ((int) referenceStageIds[id].grkind == s_stages[i].grkind) {
+                mockStageParams[0].stkind = id;
+                assert(Stage_80225194() == id);
+                break;
+            }
+        }
+        mockStageParams[0].stkind = ~0u;
+        assert((int) Stage_8022519C(Stage_80225194()) == s_stages[i].grkind);
+    }
+    s_gameMode = kGameModeClassic;
+    for (const auto& encounter : g_m360ClassicNormal) {
+        s_classicStKind = encounter.stkind;
+        assert(Stage_80225194() == encounter.stkind);
+        assert((int) Stage_8022519C(Stage_80225194()) == encounter.grkind);
+    }
+    s_gameMode = kGameModeAdventure;
+    for (const auto& encounter : g_m360Adventure) {
+        s_classicStKind = encounter.stkind;
+        assert(Stage_80225194() == encounter.stkind);
+        assert((int) Stage_8022519C(Stage_80225194()) == encounter.grkind);
+    }
+    printf("PASS: all %u original stage identities, 21 native grounds, archive rows and campaign variants\n", stageIdCount);
     for (s_stageIndex = 0; s_stageIndex < kStageCount; ++s_stageIndex)
         assert(M360_MatchGroundKind() == s_stages[s_stageIndex].grkind);
     s_stageIndex = 0;
