@@ -22,10 +22,10 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`98899CEF25563ED34BD28EEE904EABE4FBE0EE002453748BFFFFDB75B6556682`.
+`0A0C6FD5D7050F69502A1D22F6744CE53252C37E302E15DC04BCCB7FF98B9104`.
 This build restores only traversal groups 0-7 after a maze fight, preserving
 the original disabled state of other arena groups. A normal-boot smoke test
-presented 1,696 opening frames without movie errors or a watchdog alert.
+presented 1,448 opening frames without movie errors or a watchdog alert.
 It also uses the original grab wall-occlusion query; host tests verify the
 ECB center coordinates and wall-side choice. The complete runtime grab
 interaction across all stages remains unverified.
@@ -33,6 +33,10 @@ Original moving-surface velocity remapping and its four collision queries now
 replace constant-zero stubs. Host comparisons with the upstream math pass;
 a four-CPU/items Fountain test reached frame 1800 without a watchdog. The full
 original collision engine and unimplemented stage hazards remain pending.
+Original stage material tables now restore friction and sound/effect queries
+for footsteps, landings and ground bounces. Host tests cover all 1420 table
+entries; Mario/Zelda and four-CPU Fountain tests reach frame 1800. Audible
+and visual parity of these effects still require comparison with the original.
 The nineteen-phase results below describe preceding builds.
 
 ## Fighter and item fixes (2026-10-05)

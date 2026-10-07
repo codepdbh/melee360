@@ -139,8 +139,6 @@ UNPORTED_VOID(ftMh_MS_389_80151018, (HSD_GObj* gobj))
 UNPORTED_VOID(ftCh_GrabUnk1_8015BC88, (HSD_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8540, (Fighter_GObj* gobj))
 UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
-UNPORTED_BOOL(ft_80084BFC, (Fighter_GObj* gobj, int* a, int* b, int* c))
-UNPORTED_BOOL(ft_80084C38, (Fighter_GObj* gobj, int* a, int* b, int* c))
 UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
 SILENT_VOID(ft_800880D8, (Fighter* fp))
@@ -540,7 +538,6 @@ void lb_8000FD48(HSD_JObj* a0, DynamicsDesc* a1, size_t a2) { (void) a0; (void) 
 void lb_8001044C(DynamicsDesc* a0, UNK_T a1, int a2, float pos_y, bool a4, Fighter_Part part, int a6, bool a7) { (void) a0; (void) a1; (void) a2; (void) pos_y; (void) a4; (void) part; (void) a6; (void) a7; Report("fighter.unported.lb_8001044C"); }
 void lb_80011710(DynamicsDesc* a0, DynamicsDesc* a1) { (void) a0; (void) a1; Report("fighter.unported.lb_80011710"); }
 bool lb_800149E0(struct lb_80014638_arg1_t* a0, u32 a1) { (void) a0; (void) a1; Report("fighter.unported.lb_800149E0"); return (bool) 0; }
-int* mpLib_80056A1C(int a0, int* a1) { (void) a0; (void) a1; Report("fighter.unported.mpLib_80056A1C"); return (int*) 0; }
 void pl_80037DF4(HSD_GObj* a0, union Struct2070* a1) { (void) a0; (void) a1; Report("fighter.unported.pl_80037DF4"); }
 void pl_800384DC(HSD_GObj* a0, int a1, void* a2) { (void) a0; (void) a1; (void) a2; Report("fighter.unported.pl_800384DC"); }
 void pl_8003E4A4(int slot, bool a1, void* a2, int a3) { (void) slot; (void) a1; (void) a2; (void) a3; Report("fighter.unported.pl_8003E4A4"); }
