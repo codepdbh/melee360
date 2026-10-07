@@ -1132,7 +1132,7 @@ static void ApplyTree(M360Fighter* f, FigaTree* tree)
 
 static float ModelScale(Fighter* fp)
 {
-    return fp->x34_scale.y * fp->co_attrs.model_scaling;
+    return ftCommon_GetModelScale(fp);
 }
 
 static void AnimAdvance(M360Fighter* f)
@@ -3117,10 +3117,6 @@ bool ft_80084A18(Fighter_GObj* gobj)
     return line >= 0 && (unsigned) line < M360_MatchStageData()->lineCount;
 }
 
-void ftCamera_UpdateCameraBox(HSD_GObj* gobj)
-{
-    (void) gobj;
-}
 
 void ftParts_80074A4C(Fighter_GObj* gobj, int model_idx, int val)
 {
@@ -3342,8 +3338,10 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     HSD_GObj_SetupProc(gobj, Fighter_8006CB94, 0xD);
     HSD_GObj_SetupProc(gobj, ProcHit, 0xE);
     HSD_GObj_SetupProc(gobj, ProcFinish, 0x11);
+    HSD_GObj_SetupProc(gobj, Fighter_UnkCallCameraCallback_8006D9EC, 0x12);
     M360_FighterRespawn(gobj, x, y);
     ProcFinish(gobj);
+    ftCamera_80076064(fp);
     M360_MatchTrace("fighter.spawn.joints", f->jointCount);
     M360_MatchTrace("fighter.spawn.dobjs", f->dobjCount);
     return gobj;
@@ -3677,16 +3675,6 @@ void Player_GetSpawnPlatformPos(s32 slot, Vec3* out)
 }
 
 
-void ftCamera_80076018(UnkFloat6_Camera* in, UnkFloat6_Camera* out, float mul)
-{
-    out->x0.x = in->x0.x * mul;
-    out->x0.y = in->x0.y * mul;
-    out->x0.z = in->x0.z * mul;
-    out->xC.x = in->xC.x * mul;
-    out->xC.y = in->xC.y * mul;
-    out->xC.z = in->xC.z * mul;
-}
-
 /* pl/player.c queries over the port's slot table (used by the HUD). */
 static Fighter* SlotFighter(s32 slot)
 {
@@ -3762,14 +3750,16 @@ void ft_8008521C(Fighter_GObj* gobj)
 void M360_FighterSetEncounter(void* handle, float size, int metal)
 {
     Fighter* fp = GET_FIGHTER((HSD_GObj*) handle);
-    Vec3 scale;
-    fp->x34_scale.x = fp->x34_scale.y = fp->x34_scale.z = size;
+    fp->x34_scale.x = fp->x34_scale.y = size;
+    /* Fighter_UnkInitLoad: z is the optional flat-mode width override,
+     * independent of the player's ordinary/giant/tiny model size. */
+    fp->x34_scale.z = 1.0f;
     fp->is_metal = fp->is_always_metal = metal != 0;
     fp->metal_timer = fp->metal_health = 0;
     ftCo_800D105C(handle);
     ft_80081C88(handle, size);
-    scale.x = scale.y = scale.z = ModelScale(fp);
-    HSD_JObjSetScale(((HSD_GObj*) handle)->hsd_obj, &scale);
+    Fighter_UpdateModelScale((Fighter_GObj*) handle);
+    ftCamera_80076064(fp);
 }
 
 int Player_GetRemainingHP(s32 slot)
