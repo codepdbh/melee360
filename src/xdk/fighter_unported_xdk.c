@@ -143,7 +143,6 @@ UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
 SILENT_VOID(ft_800880D8, (Fighter* fp))
 SILENT_VOID(ft_8008A1B8, (Fighter_GObj* gobj, u32 flags))
-SILENT_VOID(ftCamera_80076064, (Fighter* fp))
 SILENT_VOID(ftCo_8009E7B4, (Fighter* fp, u8 (*blend)[2]))
 SILENT_VOID(ftCo_8009F834, (Fighter_GObj* gobj, int a, Fighter_Part b, int c, int d, Vec3* e, Vec3* f, float g))
 SILENT_VOID(HSD_PadRumbleRemoveId, (u8 a, int b))
@@ -283,7 +282,15 @@ float Stage_CalcUnkCamYBounds(void)
 
 void Stage_UnkSetVec3TCam_Offset(Vec3* out)
 {
-    out->x = out->y = out->z = 0.0f;
+    const M360MatchStage* stage = M360_MatchStageData();
+    out->x = stage->camX;
+    out->y = stage->camY;
+    out->z = 0.0f;
+}
+
+float Stage_GetCamFixedZoom(void)
+{
+    return M360_MatchFixedZoom();
 }
 
 bool ftAnim_80070FD0(Fighter* fp)
@@ -377,8 +384,6 @@ int un_80322598(int spawn_id, float y) { (void) spawn_id; (void) y; return 0; }
 
 /* Grab/throw dependencies outside the Mario-vs-Mario match: item grabs,
  * tether/hookshot items, cargo throws, Kirby/Yoshi/Samus/Mewtwo/Fox hooks. */
-UNPORTED_VOID(Fighter_UpdateModelScale, (Fighter_GObj* gobj))
-SILENT_VOID(ftCamera_800762F4, (HSD_GObj* gobj))
 SILENT_VOID(pl_80040614, (int slot, bool sub, float damage))
 /* Standing rank (gm_8016C5C0) and handicap: tied players at the default
  * VS handicap of 9 (gm_1601.c). */
@@ -401,10 +406,8 @@ SILENT_VOID(pl_8003FFDC, (int a, int b, int c, int d, int e))
 SILENT_VOID(pl_80040048, (int slot, int sub))
 /* Taunt hooks for other characters and the taunt statistic. */
 SILENT_VOID(pl_80040120, (int slot, int sub))
-/* Rebirth/death bookkeeping: coin modes, dead-state entry and camera
- * helpers not used by the quick match. */
+/* Rebirth/death bookkeeping: coin modes and dead-state entry. */
 UNPORTED_VOID(ftCo_800D331C, (Fighter_GObj* gobj))
-SILENT_VOID(ftCamera_80076320, (HSD_GObj* gobj))
 SILENT_VOID(pl_80040374, (int slot, int sub))
 s32 Player_GetUnk9C(s32 slot) { (void) slot; return 0; }
 SILENT_VOID(Player_SetUnk9C, (s32 slot, s32 value))

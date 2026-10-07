@@ -184,6 +184,14 @@ all 71 stage tables and twenty materials per table. `-CallTrace` adds
 diagnostic `surface.query.*` records once per ground/material/query mode;
 normal builds exclude these hooks.
 
+The match build compiles original `ftcamera.c` directly and includes the
+original fighter camera callback/model-scale routines in the fighter slice.
+The callback is registered at original GObj priority `0x12`. Stage fixed zoom
+and center offset queries use the native stage's archive-derived values.
+`test_fighter_camera.ps1` checks the actual functions, facing/size changes,
+bone updates, dormant guards, callback ordering and the separate width
+override. The global camera manager/framing still needs further porting.
+
 `./tools/test_soak_rules.ps1` checks the actual trace parser and verdict
 functions without starting Xenia. A final match marker alone does not establish
 campaign flow completion; a Giga scene identifier alone does not establish

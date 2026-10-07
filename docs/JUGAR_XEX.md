@@ -23,6 +23,7 @@ Al derrotarlo puedes seguir explorando; tienes siete minutos por intento.
 Esta version corrige el paso entre salas despues de vencer a Link.
 Tambien restaura el calculo original de velocidad de las superficies para los objetos.
 Usa las tablas originales de materiales para la friccion y la seleccion de sonidos y efectos al pisar o caer.
+Tambien recupera las funciones originales de escala del modelo y los datos de camara de los luchadores.
 Una prueba de Xenia completo el laberinto despues de un timeout y reintento.
 Faltan sus enemigos del recorrido y animaciones de transicion. La carrera
 y la escalada originales siguen pendientes.
