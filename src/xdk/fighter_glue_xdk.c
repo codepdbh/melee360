@@ -3111,6 +3111,54 @@ int mpLib_8004DD90_Floor(int line_id, Vec3* vec, float* y_out, u32* flags_out, V
     return line_id;
 }
 
+/* mpLib adjacency queries: retain the original authored alternate/default
+ * links and strict squared-distance < 4 test. Native kind == 0 represents a
+ * disabled collision line. Positions come from the current moving surface,
+ * rather than the archive's untransformed vertices. */
+int mpLineGetNext(int line_id)
+{
+    const MapLine* map = M360_MatchMapLine(line_id);
+    const M360MatchStage* stage = M360_MatchStageData();
+    const M360StageLine* v1;
+    const M360StageLine* v0;
+    int result;
+    float dx, dy;
+    if (!map)
+        return -1;
+    result = map->next_id1;
+    if (M360_MatchMapLine(result) && stage->lines[result].kind != 0) {
+        v1 = &stage->lines[line_id];
+        v0 = &stage->lines[result];
+        dx = v1->x1 - v0->x0;
+        dy = v1->y1 - v0->y0;
+        if (dx * dx + dy * dy < 4.0)
+            return result;
+    }
+    return M360_MatchMapLine(map->next_id0) ? map->next_id0 : -1;
+}
+
+int mpLineGetPrev(int line_id)
+{
+    const MapLine* map = M360_MatchMapLine(line_id);
+    const M360MatchStage* stage = M360_MatchStageData();
+    const M360StageLine* v0;
+    const M360StageLine* v1;
+    int result;
+    float dx, dy;
+    if (!map)
+        return -1;
+    result = map->prev_id1;
+    if (M360_MatchMapLine(result) && stage->lines[result].kind != 0) {
+        v0 = &stage->lines[line_id];
+        v1 = &stage->lines[result];
+        dx = v0->x0 - v1->x1;
+        dy = v0->y0 - v1->y1;
+        if (dx * dx + dy * dy < 4.0)
+            return result;
+    }
+    return M360_MatchMapLine(map->prev_id0) ? map->prev_id0 : -1;
+}
+
 bool ft_80084A18(Fighter_GObj* gobj)
 {
     const int line = GET_FIGHTER(gobj)->coll_data.floor.index;

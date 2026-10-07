@@ -224,6 +224,7 @@ function Get-SoakMatrix {
     $list += New-Config 'adventure-route-pilot' @{ Mode = 4; Round = 0; P1 = 18; CpuLevel = 3; Script = 'routepilot'; TargetFrame = 99999; Seconds = 240 }
     $list += New-Config 'adventure-route-pilot-hard' @{ Mode = 4; Round = 0; P1 = 18; CpuLevel = 9; Script = 'routepilot'; TargetFrame = 99999; Seconds = 300 }
     $list += New-Config 'adventure-maze-pilot' @{ Mode = 4; Round = 4; P1 = 18; CpuLevel = 3; Script = 'mazepilot'; TargetFrame = 99999; Seconds = 520 }
+    $list += New-Config 'adventure-maze-seeded-pilot' @{ Mode = 4; Round = 4; P1 = 18; CpuLevel = 1; Seed = 12000; Script = 'mazepilot'; TargetFrame = 99999; Seconds = 520 }
     if ($raceOffset) {
         $list += New-Config 'adventure-race-pilot' @{ Mode = 4; Round = 14; P1 = 18; CpuLevel = 3; Script = 'racepilot'; TargetFrame = 99999; Seconds = 300 }
     }
@@ -480,11 +481,39 @@ function Stop-AllXenia {
     throw 'xenia_canary is still running after 20 s'
 }
 
+function Save-SoakEvidence([string] $SourceXex, [string] $LoadedXex, [string] $SourceMap, [string] $OutputDir) {
+    $loadedHash = (Get-FileHash -LiteralPath $LoadedXex -Algorithm SHA256).Hash
+    if ((Get-FileHash -LiteralPath $SourceXex -Algorithm SHA256).Hash -ne $loadedHash) {
+        throw 'Diagnostic XEX changed during preparation; finish the build and rerun.'
+    }
+    $snapshot = ''
+    $mapHash = ''
+    if (Test-Path -LiteralPath $SourceMap) {
+        if ((Get-Item -LiteralPath $SourceMap).LastWriteTimeUtc -gt (Get-Item -LiteralPath $SourceXex).LastWriteTimeUtc) {
+            throw 'Diagnostic map is newer than the XEX; finish the image build and rerun.'
+        }
+        $mapHash = (Get-FileHash -LiteralPath $SourceMap -Algorithm SHA256).Hash
+        $snapshot = Join-Path $OutputDir 'diagnostic.map'
+        Copy-Item -LiteralPath $SourceMap -Destination $snapshot -Force
+        if ((Get-FileHash -LiteralPath $snapshot -Algorithm SHA256).Hash -ne $mapHash) {
+            throw 'Diagnostic map changed during preparation; finish the build and rerun.'
+        }
+    }
+    if ((Get-FileHash -LiteralPath $SourceXex -Algorithm SHA256).Hash -ne $loadedHash) {
+        throw 'Diagnostic XEX changed during map preparation; finish the build and rerun.'
+    }
+    $evidence = [pscustomobject] @{ SourceXex=$SourceXex; XexSha256=$loadedHash; SourceMap=$SourceMap; Map=$snapshot; MapSha256=$mapHash }
+    $evidence | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $OutputDir 'binary-evidence.json') -Encoding UTF8
+    return $evidence
+}
+
 function Get-FreeCommitMB {
     try { [int]((Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory / 1KB) } catch { -1 }
 }
 
 $runDirXex = Initialize-Slot 0
+$binaryEvidence = Save-SoakEvidence $soakXex (Join-Path $runDirXex 'default.xex') $soakMap $OutDir
+if ($binaryEvidence.Map) { $soakMap = $binaryEvidence.Map }
 $results = @()
 foreach ($config in $matrix) {
     Stop-AllXenia
@@ -581,7 +610,8 @@ Stop-AllXenia
 
 $csv = Join-Path $OutDir 'soak-matrix.csv'
 $results | Export-Csv -NoTypeInformation -Path $csv
-$md = @('| Config | Verdict | Match frame | Hits | KOs | Winner | Frame us avg/max | >20ms | Heap used | Commit peak MB (MB/min) | Hang / error |',
+$md = @("XEX SHA-256: $($binaryEvidence.XexSha256)", "Map SHA-256: $($binaryEvidence.MapSha256)", '',
+    '| Config | Verdict | Match frame | Hits | KOs | Winner | Frame us avg/max | >20ms | Heap used | Commit peak MB (MB/min) | Hang / error |',
     '|---|---|---|---|---|---|---|---|---|---|---|')
 foreach ($r in $results) {
     $hang = if ($r.Verdict -eq 'FREEZE') { "$($r.HangProc) $($r.HangStack)" } elseif ($r.Guest) { $r.Guest } else { '' }

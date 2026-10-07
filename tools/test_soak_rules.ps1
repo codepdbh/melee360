@@ -7,7 +7,7 @@ $tokens = $null
 $parseErrors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($source, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw 'Soak harness parse failed.' }
-foreach ($name in @('Read-Shared', 'Read-Trace', 'Get-Verdict', 'Test-RunComplete', 'New-Config', 'Get-SoakMatrix', 'Resolve-Address')) {
+foreach ($name in @('Read-Shared', 'Read-Trace', 'Get-Verdict', 'Test-RunComplete', 'New-Config', 'Get-SoakMatrix', 'Resolve-Address', 'Save-SoakEvidence')) {
     $function = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $true)
     if (-not $function) { throw "Missing harness function: $name" }
     Invoke-Expression $function.Extent.Text
@@ -15,6 +15,24 @@ foreach ($name in @('Read-Shared', 'Read-Trace', 'Get-Verdict', 'Test-RunComplet
 $out = Join-Path $root 'build-x360/host-tests/soak-rules'
 New-Item -ItemType Directory -Force $out | Out-Null
 $fixture = Join-Path $out 'runtime-trace.txt'
+$sourceXex = Join-Path $out 'source.xex'
+$loadedXex = Join-Path $out 'loaded.xex'
+$sourceMap = Join-Path $out 'source.map'
+[IO.File]::WriteAllText($sourceMap, 'fixture map')
+[IO.File]::WriteAllText($sourceXex, 'fixture executable')
+Copy-Item -LiteralPath $sourceXex -Destination $loadedXex -Force
+$evidence = Save-SoakEvidence $sourceXex $loadedXex $sourceMap $out
+if ($evidence.XexSha256 -ne (Get-FileHash -LiteralPath $loadedXex).Hash -or
+    $evidence.MapSha256 -ne (Get-FileHash -LiteralPath $evidence.Map).Hash) { throw 'Binary/map evidence hashes differ.' }
+[IO.File]::WriteAllText($loadedXex, 'stale executable')
+$rejected = $false
+try { Save-SoakEvidence $sourceXex $loadedXex $sourceMap $out | Out-Null } catch { $rejected = $true }
+if (-not $rejected) { throw 'Stale diagnostic executable was accepted.' }
+Copy-Item -LiteralPath $sourceXex -Destination $loadedXex -Force
+(Get-Item -LiteralPath $sourceMap).LastWriteTimeUtc = (Get-Item -LiteralPath $sourceXex).LastWriteTimeUtc.AddSeconds(2)
+$rejected = $false
+try { Save-SoakEvidence $sourceXex $loadedXex $sourceMap $out | Out-Null } catch { $rejected = $true }
+if (-not $rejected) { throw 'Incomplete image build was accepted.' }
 function Read-Fixture([string] $text) {
     [IO.File]::WriteAllText($fixture, $text)
     Read-Trace $fixture
