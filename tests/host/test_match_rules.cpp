@@ -258,6 +258,9 @@ static void Reset(unsigned count) {
 }
 
 int main() {
+    for (s_stageIndex = 0; s_stageIndex < kStageCount; ++s_stageIndex)
+        assert(M360_MatchGroundKind() == s_stages[s_stageIndex].grkind);
+    s_stageIndex = 0;
     Reset(4);
     s_gameMode = kGameModeAdventure; s_campaignRound = 0; s_cpuLevel = 3;
     assert(M360_MatchCombatRatio(0, 0) == 1.0f);

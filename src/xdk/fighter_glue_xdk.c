@@ -1715,12 +1715,6 @@ void ft_800848DC(Fighter_GObj* gobj, HSD_GObjEvent cb)
         cb(gobj);
 }
 
-bool ft_80084C74(Fighter_GObj* gobj, int* arg1, int* arg2, int* arg3)
-{
-    (void) gobj; (void) arg1; (void) arg2; (void) arg3;
-    return false;
-}
-
 bool ft_80084CE4(Fighter* attacker, Fighter* victim)
 {
     /* Original grab occlusion test: compare the ECB centers against the
@@ -2981,14 +2975,6 @@ void mpColl_80041EE4(CollData* cd)
     cd->left_facing_wall.index = -1;
 }
 
-/* Floor-material friction (mpLib_803BF248); the native stage data has no
- * material table, matching ft_GetGroundFrictionMultiplier's 1.0. */
-float mpLib_800569EC(u32 flags)
-{
-    (void) flags;
-    return 1.0f;
-}
-
 bool mpColl_80048654(CollData* coll)
 {
     float y;
@@ -3129,12 +3115,6 @@ bool ft_80084A18(Fighter_GObj* gobj)
 {
     const int line = GET_FIGHTER(gobj)->coll_data.floor.index;
     return line >= 0 && (unsigned) line < M360_MatchStageData()->lineCount;
-}
-
-float ft_GetGroundFrictionMultiplier(Fighter* fp)
-{
-    (void) fp;
-    return 1.0f;
 }
 
 void ftCamera_UpdateCameraBox(HSD_GObj* gobj)
