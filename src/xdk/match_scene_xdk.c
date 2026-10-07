@@ -1212,6 +1212,33 @@ int M360_MatchGroundKind(void)
     return s_stages[s_stageIndex].grkind;
 }
 
+/* Stage_8022519C's original lookup table is generated from stage.c. */
+GrKind Stage_8022519C(StKind stkind)
+{
+    if ((unsigned) stkind >= sizeof(g_m360StageGroundKinds) / sizeof(g_m360StageGroundKinds[0]))
+        return Gr_Kind_Unk00;
+    return (GrKind) g_m360StageGroundKinds[stkind];
+}
+
+/* Stage_80225194 returns selected_stage.stkind in Melee. Preserve campaign
+ * variants instead of confusing that identity with the archive's GrKind.
+ * VS uses the archive's StageParam row, with its original map as fallback. */
+StKind Stage_80225194(void)
+{
+    StageParam* row;
+    unsigned i;
+    const int ground = M360_MatchGroundKind();
+    if (IsCampaign() && s_classicStKind != ~0u)
+        return (StKind) s_classicStKind;
+    row = MatchStageParam();
+    if (row && (int) Stage_8022519C(row->stkind) == ground)
+        return row->stkind;
+    for (i = 0; i < sizeof(g_m360StageGroundKinds) / sizeof(g_m360StageGroundKinds[0]); ++i)
+        if (g_m360StageGroundKinds[i] == ground)
+            return (StKind) i;
+    return (StKind) 0;
+}
+
 float M360_MatchFixedZoom(void)
 {
     return s_fixedZoom;
@@ -1548,6 +1575,8 @@ static void StartFight(void)
             s_active = 0; return;
         }
     }
+    M360_MatchTrace("match.stage.stkind", (unsigned) Stage_80225194());
+    M360_MatchTrace("match.stage.grkind", (unsigned) Stage_8022519C(Stage_80225194()));
     ResolveCostumes();
     s_loadFailedSlot = 0;
     s_fighterCount = 0;
@@ -2450,4 +2479,14 @@ void M360_MatchGetStatus(M360MatchStatus* status)
 const M360MatchStage* M360_MatchStageData(void)
 {
     return &s_stage;
+}
+
+/* Authored adjacency stays in the relocated ISO archive. Line indices match
+ * LoadCollision's native array; reject entries truncated by its capacity. */
+const MapLine* M360_MatchMapLine(int line_id)
+{
+    if (!s_coll || s_builtStage == ~0u || line_id < 0 ||
+        line_id >= s_coll->line_count || (unsigned) line_id >= s_stage.lineCount)
+        return NULL;
+    return &s_coll->lines[line_id];
 }

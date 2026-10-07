@@ -229,3 +229,22 @@ Boot-to-match diagnostics optionally read a nonnegative `seed` from
 This makes one original maze variant reproducible without moving fighters or
 changing the goal. It does not validate all six variants. Normal live-input
 builds do not read this diagnostic setting.
+
+The native adjacency bridge now reads all four authored `MapLine` links from
+the relocated stage archive. `./tools/test_surface_links.ps1` compares its
+next/previous selection against the original `mplib.c` functions, including
+the strict squared-distance threshold, moving endpoints and inactive lines.
+Native collision toggles still collapse hidden/disabled lines to `kind == 0`;
+this does not replace the remaining original collision engine.
+
+The Classic metadata generator also preserves all 286 original stage identity
+entries. Native `Stage_80225194` returns the selected campaign variant or the
+archive's VS row; `Stage_8022519C` performs the original table lookup. The match
+trace records both IDs. `test_match_rules.ps1` compares all entries with the
+actual upstream table and checks each native ground and campaign variant.
+
+The soak harness records the loaded XEX/map hashes in `binary-evidence.json`
+and snapshots its symbols as `diagnostic.map`. It rejects a source executable
+that changes during preparation and a map newer than the executable. Finish
+building before launching a diagnostic matrix. The added
+`adventure-maze-seeded-pilot` checks only the goal for original RNG seed 12000.

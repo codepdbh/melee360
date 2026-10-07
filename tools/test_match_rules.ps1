@@ -36,6 +36,7 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static unsign
     'unsigned M360_MatchCpuLevel(',
     'unsigned M360_MatchCpuKind(',
     'static StageParam* MatchStageParam(', 'int M360_MatchBgmId(', 'int M360_MatchGroundKind(',
+    'GrKind Stage_8022519C(', 'StKind Stage_80225194(',
     'static unsigned StartingStocks(', 'static int LoseStock(', 'static int StockResult(',
     'static int ClassicStageIndex(', 'static void CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
     'void M360_MatchEnter(', 'void M360_MatchLeave(',
@@ -48,6 +49,13 @@ $source = (Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')).Repl
 $extracted = (Get-MatchFunction 'unsigned M360_FighterCostumeCount(') + "`r`n" +
     (Get-MatchFunction 'int M360_FighterIndexForKind(') + "`r`n" + $extracted
 Set-Content -LiteralPath (Join-Path $out 'match_rules_original.h') -Encoding ASCII $extracted
+$stageSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/stage.c')
+$stageMap = [regex]::Match($stageSource, '(?s)struct StageIdMapEntry stage_id_map\[\] = \{.*?\n\};')
+$groundEnum = [regex]::Match((Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/forward.h')), '(?s)typedef enum GrKind \{.*?\} GrKind;')
+if (-not $stageMap.Success -or -not $groundEnum.Success) { throw 'Original stage identity reference not found.' }
+$reference = $groundEnum.Value + "`r`nstruct StageIdMapEntry { GrKind grkind; int unk4, unk8; };`r`n" +
+    $stageMap.Value.Replace('stage_id_map[]', 'referenceStageIds[]')
+Set-Content -LiteralPath (Join-Path $out 'stage_identity_reference.h') -Encoding ASCII $reference
 $batch = @"
 @echo off
 call "$VcVars" >nul 2>&1
