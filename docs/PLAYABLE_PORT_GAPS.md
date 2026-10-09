@@ -22,7 +22,18 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`CFBA92ACDC18193E0627EA66AFD334035B5CDF55B7A5D6C3BFECFFA10BE936E0`.
+`6D0D14AD0CAA98DC090F9B8859D71E5D3C7BD0ECD02F44B3F9091B2D1B1AD4F3`.
+This full rebuild also restores original root/secondary animation displacement
+and bounded bone lookup. Host checks pass with mocked animation sampling.
+Zelda/Sheik executes five swaps during a diagnostic test but still suffers two
+unexpected falls; that issue remains unresolved. Latest opening smoke and
+maze/escape reruns were pending when the user requested a stop and commit.
+The original collision initialization and selective copy now replace native
+substitutes, resetting ECB buffers, normals, filters and initialization flags.
+Original DownReflect code and state 335 are linked and pass host checks with
+mocked contacts. Runtime rebound remains blocked by the native wall helper,
+which does not populate original wall-hug flags and normals. The complete
+original collision pipeline remains pending.
 The full normal rebuild now includes original grounded body inclination and
 foot IK (`ft_0899.c`, `lb_020A.c`), authored leg descriptors and priority-7
 processing. Host checks include both leg chains and small/giant model sizes;
@@ -59,7 +70,7 @@ Fountain/Team Kirby at frame 1800, finishes a short Ness/DK match, and clears
 the seeded maze and Brinstar escape goals at frames 4190 and 2287.
 These goal tests cover individual phases, not the full campaign or all maze
 variants (`stage-identity-final-courses-20261007`).
-The current normal XEX reaches loop frame 4500 and presents 2338 opening
+The preceding stage-identity normal XEX reaches loop frame 4500 and presents 2338 opening
 frames with no movie errors, ADPCM history mismatches or watchdog alert;
 its image dump succeeds (`normal-stage-identity-runtime-trace-20261007.txt`).
 Physical console behavior and visual comparison remain unverified.

@@ -1138,32 +1138,20 @@ static float ModelScale(Fighter* fp)
 static void AnimAdvance(M360Fighter* f)
 {
     Fighter* fp = &f->fighter;
-    HSD_JObj* transN = f->jointCount > 1 ? f->joints[1] : NULL;
     unsigned i;
     if (fp->anim_id == -1)
         return;
-    HSD_AObjInitEndCallBack();
-    for (i = 0; i < f->jointCount; ++i) {
-        HSD_JObj* j = f->joints[i];
-        if (fp->x594_b0 && j == transN) {
-            Vec3 zero = { 0.0f, 0.0f, 0.0f };
-            const float scale = ModelScale(fp);
-            HSD_JObjAnim(j);
-            fp->x698 = fp->x68C_transNPos;
-            HSD_JObjGetTranslation(j, &fp->x68C_transNPos);
-            fp->x68C_transNPos.x *= scale;
-            fp->x68C_transNPos.y *= scale;
-            fp->x68C_transNPos.z *= scale;
-            fp->x6B0 = fp->x6A4_transNOffset;
-            fp->x6A4_transNOffset.x = fp->x68C_transNPos.x - fp->x698.x;
-            fp->x6A4_transNOffset.y = fp->x68C_transNPos.y - fp->x698.y;
-            fp->x6A4_transNOffset.z = fp->x68C_transNPos.z - fp->x698.z;
-            HSD_JObjSetTranslate(j, &zero);
-        } else {
-            HSD_JObjAnim(j);
-        }
+    if (fp->x594_b0) {
+        FighterBone* transN = ftParts_GetBone(fp, FtPart_TransN);
+        FighterBone* secondary = ftParts_GetBone(fp, 0x35);
+        ftAnim_8006E054(fp, f->joints[0], transN ? transN->joint : NULL,
+                      secondary ? secondary->joint : NULL);
+    } else {
+        HSD_AObjInitEndCallBack();
+        for (i = 0; i < f->jointCount; ++i)
+            HSD_JObjAnim(f->joints[i]);
+        HSD_AObjInvokeCallBacks();
     }
-    HSD_AObjInvokeCallBacks();
     for (i = 0; i < f->jointCount; ++i)
         if (f->joints[i]->aobj && !f->parts[f->jointParts[i]].flags_b5) {
             fp->cur_anim_frame = f->joints[i]->aobj->curr_frame;
@@ -2298,39 +2286,6 @@ static bool CollGround(CollData* coll)
     return true;
 }
 
-/* mpcoll.c: transformations hand the ground state to the partner fighter. */
-void mpCopyCollData(CollData* src, CollData* dst, int arg2)
-{
-    (void) arg2;
-    dst->cur_pos = src->cur_pos;
-    dst->prev_pos = src->prev_pos;
-    dst->last_pos = src->last_pos;
-    dst->x34_flags.b0 = src->x34_flags.b0;
-    dst->x34_flags.b1234 = src->x34_flags.b1234;
-    dst->x34_flags.b5 = src->x34_flags.b5;
-    dst->x34_flags.b6 = src->x34_flags.b6;
-    dst->facing_dir = src->facing_dir;
-    dst->x38 = src->x38;
-    dst->floor_skip = src->floor_skip;
-    dst->ledge_id_left = src->ledge_id_left;
-    dst->ledge_id_right = src->ledge_id_right;
-    dst->joint_id_skip = src->joint_id_skip;
-    dst->lstick_x = src->lstick_x;
-    dst->x64_ecb = src->x64_ecb;
-    dst->desired_ecb = src->desired_ecb;
-    dst->ecb = src->ecb;
-    dst->prev_ecb = src->prev_ecb;
-    dst->xE4_ecb = src->xE4_ecb;
-    dst->x130_flags = src->x130_flags;
-    dst->env_flags = src->env_flags;
-    dst->prev_env_flags = src->prev_env_flags;
-    dst->x13C = src->x13C;
-    dst->contact = src->contact;
-    dst->floor = src->floor;
-    dst->left_facing_wall = src->left_facing_wall;
-    dst->right_facing_wall = src->right_facing_wall;
-    dst->ceiling = src->ceiling;
-}
 
 bool mpColl_80048844(CollData* coll) { return CollGround(coll); }
 bool mpColl_8004B108(CollData* coll) { return CollGround(coll); }
@@ -2984,26 +2939,6 @@ bool mpColl_8004730C(CollData* coll, ftCollisionBox* box)
     return CollAir(coll);
 }
 
-/* mpColl_80041EE4: reset a CollData to its unattached state. */
-void mpColl_80041EE4(CollData* cd)
-{
-    cd->x0_gobj = NULL;
-    cd->env_flags = 0;
-    cd->x130_flags = 0;
-    cd->prev_pos = cd->cur_pos;
-    cd->last_pos = cd->cur_pos;
-    cd->floor_skip = -1;
-    cd->ledge_id_right = -1;
-    cd->ledge_id_left = -1;
-    cd->floor.index = -1;
-    cd->floor.flags = 0;
-    cd->floor.normal.x = 0.0f;
-    cd->floor.normal.y = 1.0f;
-    cd->floor.normal.z = 0.0f;
-    cd->ceiling.index = -1;
-    cd->right_facing_wall.index = -1;
-    cd->left_facing_wall.index = -1;
-}
 
 bool mpColl_80048654(CollData* coll)
 {
@@ -3226,12 +3161,6 @@ void ftParts_80074B0C(Fighter_GObj* gobj, int model_idx, int val)
         f->modelIdx = val;
         f->fighter.x5F4_arr[0].idx = (s8) val;
     }
-}
-
-Fighter_Part ftParts_GetBoneIndex(Fighter* fp, Fighter_Part part)
-{
-    FighterPartsTable* table = (FighterPartsTable*) (uintptr_t) ftPartsTable[fp->kind].v;
-    return (Fighter_Part) (s8) table->part_to_joint[part];
 }
 
 void ft_PlaySFX(Fighter* fp, enum_t sfx_id, u8 sfx_vol, u8 sfx_pan)

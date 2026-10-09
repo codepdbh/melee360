@@ -1,5 +1,76 @@
 # Development status
 
+## Original root motion; stopped for commit — 2026-10-09
+
+The native animation advance now calls original `ftAnim_8006E054` for root
+motion, using original remapped bone lookup instead of assuming joint 1.
+This restores the secondary displacement path, authored scaling flag b6,
+instance traversal and captured-object joint compensation. Original bounded
+`ftParts_GetBoneIndex` and `ftParts_GetBone` are compiled from `ftparts.c`.
+`test_root_motion.ps1` passes with mocked animation sampling, including
+nontrivial bone remapping, missing bones and both scaling modes.
+
+Full normal rebuild SHA-256:
+`6D0D14AD0CAA98DC090F9B8859D71E5D3C7BD0ECD02F44B3F9091B2D1B1AD4F3`.
+It compiled and linked successfully (`root-motion-normal-build-20261009.log`).
+This latest normal image has not received an opening smoke or a full campaign
+test. Source work stopped at the user's request before those checks.
+
+Pre-root-motion scripted diagnostic `D6728B4474899C37D658BBEE536AC43FA010406F69E6FC74A3BC90B4C75BC1BF`
+passes 1800-frame transformation and four-CPU Fountain checks. Transformation
+records five player swaps, but also two player falls; it proves swaps execute,
+not transformation correctness. Fountain averages 33562 us/frame in that
+instrumented run; performance remains a concern, not an established normal
+console measurement (`collision-lifecycle-scripted-native-20261009`).
+Root-motion diagnostic `EE1DEA57165D9FBE39824944B1034662B9FC915BD273A908DFDB639572DF4A82`
+also records five swaps and two falls at frame 1800. The original routine
+restoration did not fix those falls (`root-motion-transform-20261009`).
+An additional generated-copy position probe was prepared to investigate them;
+its counters do not enter the normal build. Maze/escape goal reruns with these
+latest changes remain pending, as does the transformation fall fix.
+
+## Original collision initialization and DownReflect — 2026-10-09
+
+`collision_lifecycle` extracts original `mpColl_80041EE4` and `mpCopyCollData`
+from `mpcoll.c`. Initialization now resets the original flags, all four
+surface normals/metadata, frame ID, joint filters, ledge dimensions and six
+ECB/source buffers. The former native initializer left these fields unset.
+Copy retains the exact original selective fields and all three mode values.
+`test_collision_lifecycle.ps1` checks initialization and intentionally retained
+fields, including the original unusual wall default normals, with mock types.
+
+The complete original DownReflect entry, velocity/position response and four
+state callbacks now replace constant false. Motion table entry 335 is copied
+verbatim from `ftmotionstates.c`. `test_down_reflect.ps1` exercises the actual
+functions with mocked contact/effect helpers, strict thresholds, both walls,
+simultaneous wall flags, repeat guards and animation/landing recovery.
+Native wall collision still needs the original ECB/contact pipeline: its
+current `AirWalls` helper does not report wall-hug flags or normals. Therefore
+this establishes the original rebound code and state, not working wall bounce
+in runtime or completion of the original collision engine.
+
+The first DownReflect-only diagnostic
+`33C6FF33B6D9260B812624666A649BA9F018AE71A09794D431C890FCB36A1FA1`
+passes Mario/Zelda and Young Link/Ice Climbers at 1800 frames
+(`down-reflect-native-20261009`). These are stability checks, not contact proofs.
+Combined lifecycle diagnostic:
+`3945278D0DD0DF0FB2F5373A73C3CFF03199FB59D17E3616974C3987FF080AAB`.
+That build omitted `-InputScript`; its Zelda/Sheik runs are stability only.
+The interrupted first matrix is incomplete; its rerun's pilot results are
+excluded (`NO_SCRIPT_INPUT.txt`). Four-CPU Fountain reached frame 5100 but
+missed its 5400 target within 150 seconds (SHORT). The escape pilot was stopped
+intentionally after the missing input flag was diagnosed; its CRASH label
+records that stop, not a reproduced guest crash.
+Corrected scripted diagnostic (`-BootToMatch -InputScript -CallTrace`):
+`D6728B4474899C37D658BBEE536AC43FA010406F69E6FC74A3BC90B4C75BC1BF`.
+Full normal rebuild:
+`CC8ED70DDD0CA1C5605C6B83DF9E3AFEC8D2C2F1778013A86BA8E48C51A94A85`.
+The normal image and paired map are frozen in `collision-lifecycle/normal`.
+The soak harness now rejects human-script cases without `script.steps` load
+evidence, and rejects empty button scripts. The dedicated transformation case
+requires two player-0 swaps and the frame target; host fixtures cover these
+guards. This prevents an ordinary ended match from validating ignored inputs.
+
 ## Original ground pose and foot IK — 2026-10-09
 
 The build now compiles complete original `ft_0899.c` and `lb_020A.c` routines:
@@ -27,9 +98,10 @@ Optional counters only enter generated diagnostic copies with `-CallTrace`;
 upstream source is unchanged.
 
 Uncapped objective reruns with that diagnostic completed the maze at frame
-4200 (14 hits, three KOs) and Brinstar escape at frame 2100, with no watchdog
+4190 (14 hits, three KOs) and Brinstar escape at frame 2287, with no watchdog
 (`ground-pose-courses-20261009`). Maze uses original seed 12000 and CPU level
 1; this does not establish all maze variants or a complete updated campaign.
+CSV frames 4200/2100 are periodic samples; the goal events provide finish frames.
 Normal live-input XEX was rebuilt through the full `build_xex.ps1` pipeline:
 `CFBA92ACDC18193E0627EA66AFD334035B5CDF55B7A5D6C3BFECFFA10BE936E0`.
 The normal build retains twenty Adventure phases and no diagnostic pilot.
