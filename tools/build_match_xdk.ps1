@@ -732,6 +732,19 @@ $units = @(
 )
 $units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80081C88(', 'void ft_80082B1C(', 'void ft_800849EC(', 'Fighter_GObj* ft_80082E3C(', 'void ft_80084DB0(') 'ft_081B_slice'
 $units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8(', 'void ft_80088328(', 'void ft_80088478(', 'void ft_80088510(', 'void ft_800885A8(', 'void ft_80088640(', 'void ft_80088770(', 'void ft_800887CC(', 'void ft_80088828(', 'void ft_80088884(', 'void ft_800888E0(', 'void ft_8008893C(', 'void ft_800889F4(', 'static inline int inline0(', 'void ftCo_800886D8(', 'void ft_80088998(', 'void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
+# Ground pose and two-bone IK remain original code. Optional counters prove
+# that authored commands and active branches run; they are absent normally.
+$poseDiagnostics = @{}
+$ikDiagnostics = @{}
+if ($CallTrace) {
+    $poseDiagnostics['(#include "ft_0899.h")'] = '$1' + "`r`nextern void M360_MatchTrace(const char*, unsigned);"
+    $poseDiagnostics['(fp->x221C_u16_y = flags;)'] = '$1 { static unsigned seen[32]; unsigned kind = (unsigned) fp->kind; unsigned mask = 1u << (flags & 7u); if (kind < 32 && !(seen[kind] & mask)) { seen[kind] |= mask; M360_MatchTrace("ground.pose.command.kind", kind); M360_MatchTrace("ground.pose.command.flags", flags); } }'
+    $poseDiagnostics['(ftPartSetRotX\(fp, 0, angle\);)'] = '$1 { static unsigned count; ++count; if (count <= 2 || count % 600 == 0) { M360_MatchTrace("ground.pose.slope_calls", count); M360_MatchTrace("ground.pose.slope_millirad", (unsigned) (int) (angle * 1000.0f)); } }'
+    $ikDiagnostics['(#include "lb_020A.h")'] = '$1' + "`r`nextern void M360_MatchTrace(const char*, unsigned);"
+    $ikDiagnostics['(HSD_JObjSetupMatrix\(data->jobj1\);)'] = '{ static unsigned count; ++count; if (count <= 2 || count % 600 == 0) M360_MatchTrace("ground.pose.ik_calls", count); } $1'
+}
+$units += New-Adapted 'melee/ft/ft_0899.c' $poseDiagnostics 'fighter_ground_pose'
+$units += New-Adapted 'melee/lb/lb_020A.c' $ikDiagnostics 'fighter_foot_ik'
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
 $units += New-Adapted 'melee/it/itzako.c' @{ '\bsin\b' = 'zako_sine'; '\bcos\b' = 'zako_cosine' } 'itzako'
 # MSVC rejects bitwise OR on pointers; keep the truth test explicit.

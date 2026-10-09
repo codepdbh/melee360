@@ -1,5 +1,44 @@
 # Development status
 
+## Original ground pose and foot IK — 2026-10-09
+
+The build now compiles complete original `ft_0899.c` and `lb_020A.c` routines:
+animation command 19, grounded body inclination, authored leg descriptors,
+two-bone IK, foot alignment and quaternion restoration. Fighter processing
+registers original `Fighter_8006C5F4` at priority 7, after collision mapping.
+Raw endpoint queries preserve authored orientation and disabled-line geometry;
+line kinds use the archive's original mask. The retail IK enable default is 1.
+
+`test_ground_pose.ps1` checks original command and solver functions, slope
+limits, short-segment adjacency, both leg chains, callback guards and model
+sizes 0.5/2. Matrix application is mocked, so this is not visual parity proof.
+`test_surface_links.ps1` also checks raw endpoint orientation, disabled lines,
+kind masking and invalid IDs. A read-only ISO audit found positive leg lengths
+in all 30 native entries (`fighter-ground-pose/feet-descriptors-iso-audit.json`).
+
+Diagnostic SHA-256:
+`88FBE0CEE1DB63748751A8D8F801F884B836B76D19572D714191E05E9204B13B`.
+Four audio-enabled Xenia cases passed at least 1800 frames: Mario/Zelda,
+Peach/Pikachu, Young Link/Ice Climbers and Adventure wireframes
+(`ground-pose-native-20261007`). Traces record authored commands, inclination
+calls and active IK calls, including 600 calls in Young Link/Ice Climbers.
+These are headless checks, not listening or visual verification.
+Optional counters only enter generated diagnostic copies with `-CallTrace`;
+upstream source is unchanged.
+
+Uncapped objective reruns with that diagnostic completed the maze at frame
+4200 (14 hits, three KOs) and Brinstar escape at frame 2100, with no watchdog
+(`ground-pose-courses-20261009`). Maze uses original seed 12000 and CPU level
+1; this does not establish all maze variants or a complete updated campaign.
+Normal live-input XEX was rebuilt through the full `build_xex.ps1` pipeline:
+`CFBA92ACDC18193E0627EA66AFD334035B5CDF55B7A5D6C3BFECFFA10BE936E0`.
+The normal build retains twenty Adventure phases and no diagnostic pilot.
+Its headless opening smoke reached loop frame 4200 and presented 2291 movie
+frames with zero movie errors, zero ADPCM history mismatches and no watchdog
+(`normal-ground-pose-runtime-trace-20261009.txt`). `imagexex /DUMP` exits 0.
+Camera, fighter parts, match rules, materials, moving surfaces, flow, soak
+evidence and route-pilot host regressions also pass after this change.
+
 ## Original floor adjacency and stage identities — 2026-10-07
 
 `mpLineGetNext` and `mpLineGetPrev` now read the archive's authored default

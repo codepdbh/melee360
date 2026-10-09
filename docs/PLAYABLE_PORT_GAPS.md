@@ -22,7 +22,14 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`37F3220CC41008951A84096CA6AEFDCF6194565DB7972553B9AD08E935B068A3`.
+`CFBA92ACDC18193E0627EA66AFD334035B5CDF55B7A5D6C3BFECFFA10BE936E0`.
+The full normal rebuild now includes original grounded body inclination and
+foot IK (`ft_0899.c`, `lb_020A.c`), authored leg descriptors and priority-7
+processing. Host checks include both leg chains and small/giant model sizes;
+matrix application is mocked. Four diagnostic Xenia combat cases pass 1800
+frames, and goal reruns clear maze and Brinstar escape
+(`ground-pose-native-20261007`, `ground-pose-courses-20261009`). This is not a
+full campaign, visual parity or physical-console verification.
 This build restores only traversal groups 0-7 after a maze fight, preserving
 the original disabled state of other arena groups. The preceding camera build
 reached loop frame 10,200 and presented 1,922 opening frames without movie
