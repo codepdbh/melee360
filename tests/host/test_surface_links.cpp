@@ -5,6 +5,8 @@
 
 using s16 = int16_t;
 using u32 = uint32_t;
+using enum_t = int;
+struct Vec3 { float x, y, z; };
 struct MapLine {
     uint16_t v0_idx, v1_idx;
     s16 prev_id0, next_id0, prev_id1, next_id1;
@@ -24,6 +26,7 @@ static CollVtx groundCollVtx[12];
 const M360MatchStage* M360_MatchStageData() { return &s_stage; }
 #define LINE_FLAG_ENABLED (1 << 16)
 #define LINE_FLAG_HIDDEN (1 << 18)
+#define LINE_FLAG_KIND 0xF
 #define SQ(x) ((x) * (x))
 #include "surface_links_native.h"
 #include "surface_links_reference.h"
@@ -90,6 +93,20 @@ int main()
     maps[0].next_id0 = maps[0].prev_id0 = 99;
     maps[0].next_id1 = maps[0].prev_id1 = 99;
     assert(mpLineGetNext(0) == -1 && mpLineGetPrev(0) == -1);
+    s_stage.lines[0].kind = 0;
+    s_stage.lines[0].x0 = 8; s_stage.lines[0].y0 = -2;
+    s_stage.lines[0].x1 = -5; s_stage.lines[0].y1 = 7;
+    Vec3 endpoint = { 99,98,97 };
+    mpLineGetV0Pos(0,&endpoint);
+    assert(endpoint.x == 8 && endpoint.y == -2 && endpoint.z == 0);
+    mpLineGetV1Pos(0,&endpoint);
+    assert(endpoint.x == -5 && endpoint.y == 7 && endpoint.z == 0);
+    maps[0].hi_flags = 0x2005;
+    assert(mpLineGetKind(0) == 5); // Original kind survives disable/hidden state.
+    endpoint = { 99,98,97 };
+    mpLineGetV0Pos(-1,&endpoint); mpLineGetV1Pos(6,&endpoint);
+    assert(endpoint.x == 99 && endpoint.y == 98 && endpoint.z == 97);
+    assert(mpLineGetKind(-1) == 0);
     assert(!M360_MatchMapLine(-1) && !M360_MatchMapLine(6));
     assert(mpLineGetNext(-1) == -1 && mpLineGetPrev(6) == -1);
     collision.line_count = 1;

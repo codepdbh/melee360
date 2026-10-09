@@ -248,3 +248,10 @@ and snapshots its symbols as `diagnostic.map`. It rejects a source executable
 that changes during preparation and a map newer than the executable. Finish
 building before launching a diagnostic matrix. The added
 `adventure-maze-seeded-pilot` checks only the goal for original RNG seed 12000.
+
+Original `melee/ft/ft_0899.c` and `melee/lb/lb_020A.c` are adapted as
+`fighter_ground_pose` and `fighter_foot_ik`. The native fighter installs the
+original priority-7 ground-pose callback. `-CallTrace` adds authored-command,
+inclination and IK counters to generated copies only. Normal builds omit
+these counters. `./tools/test_ground_pose.ps1` exercises the original solver
+and pose routines with mocked matrix application; it is not render parity QA.
