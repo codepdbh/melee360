@@ -193,6 +193,14 @@ function New-Config([string] $Name, [hashtable] $Values) {
     [pscustomobject] $c
 }
 
+$TransformScript = @'
+# Original down-special inputs, with time for the transformation to finish.
+90 0 0 0 0 -
+3 0 -127 0 0 B
+180 0 0 0 0 -
+loop
+'@
+
 function Get-SoakMatrix {
     $list = @()
     # Every fighter once as P1 (scripted moveset) and once as the CPU, on a
@@ -204,6 +212,7 @@ function Get-SoakMatrix {
         $list += New-Config ("p1-{0}-vs-{1}-{2}" -f $Fighters[$i], $Fighters[$cpu], $Stages[$stage]) @{
             P1 = $i; P2 = $cpu; Stage = $stage; Items = $items }
     }
+    $list += New-Config 'zelda-sheik-transform' @{ P1 = 13; P2 = 0; Stage = 1; CpuLevel = 1; Stocks = 8; Script = 'transform'; TargetFrame = 1800; Seconds = 90 }
     # Every stage with four CPUs and items (free-for-all).
     for ($s = 0; $s -lt $Stages.Count; ++$s) {
         $a = ($s * 3) % $Fighters.Count
@@ -255,7 +264,7 @@ function Write-RunFiles([string] $Dir, $Config) {
         "stocks $($Config.Stocks)", "time $($Config.Time)", "items $($Config.Items)", "repeat $($Config.Repeat)", '') -join "`n"
     if ($Config.Seed -ge 0) { $text += "seed $($Config.Seed)`n" }
     [IO.File]::WriteAllText((Join-Path $Dir 'match-config.txt'), $text)
-    $inputScript = if ($Config.Script -eq 'lifecycle') { $LifecycleScript } elseif ($Config.Script -eq 'route') { $RouteScript } elseif ($Config.Script -eq 'landing') { $LandingScript } elseif ($Config.Script -in @('routepilot','escapepilot','adventurepilot','wavepilot','gigapilot','mazepilot','racepilot')) { 'routepilot' } else { $MovesetScript }
+    $inputScript = if ($Config.Script -eq 'transform') { $TransformScript } elseif ($Config.Script -eq 'lifecycle') { $LifecycleScript } elseif ($Config.Script -eq 'route') { $RouteScript } elseif ($Config.Script -eq 'landing') { $LandingScript } elseif ($Config.Script -in @('routepilot','escapepilot','adventurepilot','wavepilot','gigapilot','mazepilot','racepilot')) { 'routepilot' } else { $MovesetScript }
     [IO.File]::WriteAllText((Join-Path $Dir 'input-script.txt'), $inputScript.Replace("`r", ''))
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Dir 'runtime-trace.txt')
 }
@@ -291,7 +300,7 @@ function Read-Trace([string] $Path) {
     $gigaPending = $false
     $r = [ordered]@{ Lines = 0; MatchFrame = 0; LoopFrame = 0; Hang = $false; AllDone = $false; MatchesDone = 0
         Winner = ''; PlayerWon = $false; GigaEntered = $false; AdventureGoal = $false; EscapeGoal = $false; CampaignComplete = $false; CampaignMode = 0; MazeGoal = $false; RaceGoal = $false; SuddenDeath = $false; TimeOver = $false; FrameAvg = 0; FrameMax = 0; Over20 = 0; WorkAvg = 0; WorkMax = 0
-        HeapUsed = @(); HeapLargest = 0; Hits = 0; Blast = 0; RandomSeed = -1; HangCrumb = ''; HangDetail = ''; HangProc = ''; HangStack = @(); HangCalls = @(); Fighters = 0 }
+        HeapUsed = @(); HeapLargest = 0; Hits = 0; Blast = 0; Transformations = 0; ScriptLoaded = $false; ScriptSteps = 0; RandomSeed = -1; HangCrumb = ''; HangDetail = ''; HangProc = ''; HangStack = @(); HangCalls = @(); Fighters = 0 }
     if (-not (Test-Path $Path)) { return [pscustomobject] $r }
     $lines = @((Read-Shared $Path) -split "`r?`n" | Where-Object { $_ })
     $r.Lines = $lines.Count
@@ -310,6 +319,8 @@ function Read-Trace([string] $Path) {
             # the goal marker. Preserve the same per-match peak as MatchFrame.
             '^loop\.match_hits$' { $r.Hits = [math]::Max($r.Hits, [int64] $v) }
             '^match\.blast_zone\.fighter$' { $r.Blast++ }
+            '^fighter\.transform\.player$' { if ($v -eq '0') { $r.Transformations++ } }
+            '^script\.steps$' { $r.ScriptLoaded = $true; $r.ScriptSteps = [int] $v }
             '^match\.enter\.fighters$' { $r.Fighters = [int64] $v; if ($gigaPending -and $r.Fighters -ge 2) { $r.GigaEntered = $true } }
             '^match\.result\.winner$' { $r.Winner = $v; if ($v -eq '0') { $r.PlayerWon = $true } }
             '^match\.adventure\.scene$' { $gigaPending = $v -eq '92' }
@@ -338,6 +349,12 @@ function Read-Trace([string] $Path) {
 
 function Get-Verdict($Config, $Trace, [bool] $Exited, [bool] $Stalled) {
     if ($Trace.Hang) { return 'FREEZE' }
+    $pilotScript = $Config.Script -in @('routepilot', 'escapepilot', 'adventurepilot', 'wavepilot', 'gigapilot', 'mazepilot', 'racepilot')
+    if ($Config.PSObject.Properties['Human'] -and $Config.Human -gt 0 -and
+        (-not $Trace.ScriptLoaded -or (-not $pilotScript -and $Trace.ScriptSteps -lt 1))) {
+        if ($Exited -or $Stalled) { return 'CRASH' }
+        return 'INVALID(no-script)'
+    }
     if ($Config.Seed -ge 0 -and $Trace.RandomSeed -ne $Config.Seed) { return $(if ($Exited) { 'CRASH' } else { 'SHORT' }) }
     if ($Config.Script -like 'route*' -and $Trace.AdventureGoal) { return 'OK' }
     if ($Config.Script -eq 'escapepilot' -and $Trace.EscapeGoal) { return 'OK' }
@@ -346,6 +363,11 @@ function Get-Verdict($Config, $Trace, [bool] $Exited, [bool] $Stalled) {
     if ($Config.Script -eq 'racepilot' -and $Trace.RaceGoal) { return 'OK' }
     if ($Config.Script -eq 'wavepilot' -and $Trace.PlayerWon) { return 'OK' }
     if ($Config.Script -eq 'gigapilot' -and $Trace.GigaEntered) { return 'OK' }
+    if ($Config.Script -eq 'transform') {
+        if ($Trace.MatchFrame -ge $Config.TargetFrame -and $Trace.Transformations -ge 2) { return 'OK' }
+        if ($Exited -or $Stalled) { return 'CRASH' }
+        return 'SHORT'
+    }
     # These runs require their objective marker, not merely an ended match.
     if ($Config.Script -in @('routepilot', 'escapepilot', 'adventurepilot', 'wavepilot', 'gigapilot', 'mazepilot', 'racepilot')) {
         if ($Exited -or $Stalled) { return 'CRASH' }
@@ -596,7 +618,7 @@ foreach ($config in $matrix) {
     $heap = if ($t.HeapUsed.Count) { '{0}..{1}' -f ($t.HeapUsed | Measure-Object -Minimum).Minimum, ($t.HeapUsed | Measure-Object -Maximum).Maximum } else { '' }
     $row = [pscustomobject] @{
         Name = $config.Name; Verdict = $verdict; MatchFrame = $t.MatchFrame; Target = $config.TargetFrame; CpuLevel = $config.CpuLevel
-        Fighters = $t.Fighters; Hits = $t.Hits; KOs = $t.Blast; Winner = $t.Winner; Seed = $t.RandomSeed; AdventureGoal = $t.AdventureGoal; EscapeGoal = $t.EscapeGoal; CampaignComplete = $t.CampaignComplete; MazeGoal = $t.MazeGoal; RaceGoal = $t.RaceGoal; SuddenDeath = $t.SuddenDeath; Matches = $t.MatchesDone
+        Fighters = $t.Fighters; Hits = $t.Hits; KOs = $t.Blast; Transformations = $t.Transformations; ScriptLoaded = $t.ScriptLoaded; ScriptSteps = $t.ScriptSteps; Winner = $t.Winner; Seed = $t.RandomSeed; AdventureGoal = $t.AdventureGoal; EscapeGoal = $t.EscapeGoal; CampaignComplete = $t.CampaignComplete; MazeGoal = $t.MazeGoal; RaceGoal = $t.RaceGoal; SuddenDeath = $t.SuddenDeath; Matches = $t.MatchesDone
         FrameUsAvg = $t.FrameAvg; FrameUsMax = $t.FrameMax; Over20ms = $t.Over20; WorkUsAvgMax = $t.WorkAvg; WorkUsMax = $t.WorkMax
         HeapUsed = $heap; LargestFree = $t.HeapLargest; CommitPeakMB = $commitPeak; CommitMBPerMin = $growth; FreeCommitMB = $freeBefore
         HangCrumb = $t.HangCrumb; HangDetail = $t.HangDetail; HangProc = $(if ($t.HangProc) { Resolve-Address $t.HangProc } else { '' }); HangStack = ($stack -join ' < ')

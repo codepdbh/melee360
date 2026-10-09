@@ -138,4 +138,20 @@ foreach ($phaseCount in @(20, 21)) {
     Assert-Rule ($scenes.Count -eq $phaseCount) 'Generated Adventure phase count differs from the build option.'
     Assert-Rule (($scenes -contains 58) -eq ($phaseCount -eq 21)) 'Experimental race leaked into the default build or is absent from the prototype.'
 }
+$config = [pscustomobject]@{ Script = 'transform'; Repeat = 1; TargetFrame = 1800; Mode = 2; Seed = -1 }
+$trace = Read-Fixture "loop.match_frame: 1800`nfighter.transform.player: 1`n"
+Assert-Rule ($trace.Transformations -eq 0) 'CPU transformation counted as the tested player.'
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'Frame target passed without player transformations.'
+$trace = Read-Fixture "loop.match_frame: 1800`nfighter.transform.player: 0`n"
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'SHORT') 'One-way transformation passed as a round trip.'
+$trace = Read-Fixture "loop.match_frame: 1800`nfighter.transform.player: 0`nfighter.transform.player: 0`n"
+Assert-Rule ($trace.Transformations -eq 2) 'Transformation counter lost repeated events.'
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Player transformation round trip failed.'
+$config | Add-Member -NotePropertyName Human -NotePropertyValue 1
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'INVALID(no-script)') 'Human script case passed without reading its input file.'
+$trace = Read-Fixture "script.steps: 3`nloop.match_frame: 1800`nfighter.transform.player: 0`nfighter.transform.player: 0`n"
+Assert-Rule ($trace.ScriptLoaded -and $trace.ScriptSteps -eq 3) 'Input script load evidence was missed.'
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'OK') 'Loaded transformation script was rejected.'
+$trace.ScriptSteps = 0
+Assert-Rule ((Get-Verdict $config $trace $false $false) -eq 'INVALID(no-script)') 'Empty button script passed.'
 Write-Host '[M360][HOST] Soak evidence and phase matrix rules PASS'
