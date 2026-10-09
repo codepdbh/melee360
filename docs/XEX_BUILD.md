@@ -255,3 +255,23 @@ original priority-7 ground-pose callback. `-CallTrace` adds authored-command,
 inclination and IK counters to generated copies only. Normal builds omit
 these counters. `./tools/test_ground_pose.ps1` exercises the original solver
 and pose routines with mocked matrix application; it is not render parity QA.
+
+`collision_lifecycle` extracts original initialization/copy functions from
+`mpcoll.c`; `fighter_down_reflect` extracts the original wall rebound and its
+four callbacks. The motion table also includes original entry 335. Host checks:
+`./tools/test_collision_lifecycle.ps1` and `./tools/test_down_reflect.ps1`.
+The wall contact pipeline remains native and does not yet populate wall-hug
+flags, so compiling this state does not establish runtime rebound fidelity.
+
+The `zelda-sheik-transform` soak case uses ordinary down-special PAD inputs.
+It requires the frame target and at least two player-0 transformation events;
+CPU transformations or one-way swaps cannot pass. CSV records the count.
+Human-script cases also require runtime `script.steps` load evidence; an empty
+button script is invalid. A missing input build flag reports `INVALID(no-script)`
+instead of passing on frames or a match result. Use `-InputScript` for pilots.
+
+`fighter_root_motion` extracts original `scale_inline` and `ftAnim_8006E054`;
+`fighter_bone_lookup` extracts the original table/bone lookup helpers. Native
+root animation advance resolves TransN and part 0x35 with those helpers.
+`./tools/test_root_motion.ps1` tests remapping, secondary displacement, scale
+flags, instance traversal and captured-object compensation with mock sampling.
