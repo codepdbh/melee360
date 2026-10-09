@@ -2851,6 +2851,36 @@ void mpFloorGetLeft(int line_id, Vec3* vec)
     mpLib_80053ECC_Floor(line_id, vec);
 }
 
+/* mplib.c raw endpoint queries preserve authored orientation, unlike the
+ * sorted left/right floor queries. Disabled lines retain their coordinates. */
+void mpLineGetV0Pos(int line_id, Vec3* pos_out)
+{
+    const M360StageLine* line;
+    if (!M360_MatchMapLine(line_id))
+        return;
+    line = &M360_MatchStageData()->lines[line_id];
+    pos_out->x = line->x0;
+    pos_out->y = line->y0;
+    pos_out->z = 0.0f;
+}
+
+void mpLineGetV1Pos(int line_id, Vec3* pos_out)
+{
+    const M360StageLine* line;
+    if (!M360_MatchMapLine(line_id))
+        return;
+    line = &M360_MatchStageData()->lines[line_id];
+    pos_out->x = line->x1;
+    pos_out->y = line->y1;
+    pos_out->z = 0.0f;
+}
+
+enum_t mpLineGetKind(int line_id)
+{
+    const MapLine* line = M360_MatchMapLine(line_id);
+    return line ? line->hi_flags & LINE_FLAG_KIND : 0;
+}
+
 void mpFloorGetRight(int line_id, Vec3* vec)
 {
     mpLib_80053DA4_Floor(line_id, vec);
@@ -3382,6 +3412,7 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
     HSD_GObj_SetupProc(gobj, Fighter_Spaghetti_8006AD10, 3);
     HSD_GObj_SetupProc(gobj, Fighter_procUpdate, 4);
     HSD_GObj_SetupProc(gobj, Fighter_procMap, 6);
+    HSD_GObj_SetupProc(gobj, Fighter_8006C5F4, 7);
     HSD_GObj_SetupProc(gobj, Fighter_8006C80C, 9);
     HSD_GObj_SetupProc(gobj, Fighter_8006CB94, 0xD);
     HSD_GObj_SetupProc(gobj, ProcHit, 0xE);

@@ -6,7 +6,7 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer
 $install = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $install) { throw 'MSVC host compiler not found.' }
 $vcvars = Join-Path $install 'VC/Auxiliary/Build/vcvars64.bat'
-$out = Join-Path $root 'build-x360/host-tests/surface-links'
+$out = Join-Path $root 'build-x360/host-tests/ground-pose'
 New-Item -ItemType Directory -Force $out | Out-Null
 function Get-Function([string]$source, [string]$signature) {
     $start = $source.IndexOf($signature)
@@ -21,30 +21,26 @@ function Get-Function([string]$source, [string]$signature) {
     if ($depth) { throw "Unbalanced function: $signature" }
     return $source.Substring($start, $cursor - $start)
 }
-$scene = Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')
-$glue = Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')
-$extracted = (Get-Function $scene 'const MapLine* M360_MatchMapLine(') + "`r`n"
-foreach ($signature in @('int mpLineGetNext(', 'int mpLineGetPrev(',
-    'void mpLineGetV0Pos(', 'void mpLineGetV1Pos(', 'enum_t mpLineGetKind(')) {
-    $extracted += (Get-Function $glue $signature) + "`r`n"
+$extracted = ''
+foreach ($group in @(
+    @{ Path='upstream/melee-pc/src/melee/lb/lb_020A.c'; Functions=@('static inline f32 calc_acos(', 'static inline f32 sqrtf_store(', 'void lbBgFlash_80021410(') },
+    @{ Path='upstream/melee-pc/src/melee/ft/ft_0899.c'; Functions=@('static bool fn_8008998C(', 'void ft_80089B08(', 'void ft_8008A1B8(') },
+    @{ Path='upstream/melee-pc/src/melee/ft/fighter.c'; Functions=@('void Fighter_8006C5F4(') }
+)) {
+    $source = Get-Content -Raw (Join-Path $root $group.Path)
+    foreach ($signature in $group.Functions) { $extracted += (Get-Function $source $signature) + "`r`n" }
 }
-Set-Content (Join-Path $out 'surface_links_native.h') -Encoding ASCII $extracted
-$upstream = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/mp/mplib.c')
-$reference = ''
-foreach ($name in @('mpLineGetNext', 'mpLineGetPrev')) {
-    $reference += (Get-Function $upstream "int $name(").Replace("$name(", "Original_$name(") + "`r`n"
-}
-Set-Content (Join-Path $out 'surface_links_reference.h') -Encoding ASCII $reference
+Set-Content (Join-Path $out 'ground_pose_original.h') -Encoding ASCII $extracted
 $batch = @"
 @echo off
 call "$vcvars" >nul 2>&1
 if errorlevel 1 exit /b 1
-cl /nologo /MT /O2 /EHsc /W4 /WX /I"$out" /I"$root\src\xdk" /Fo"$out\test_surface_links.obj" /Fe"$out\test_surface_links.exe" "$root\tests\host\test_surface_links.cpp"
+cl /nologo /MT /O2 /EHsc /std:c++17 /W4 /WX /I"$out" /Fo"$out\test_ground_pose.obj" /Fe"$out\test_ground_pose.exe" "$root\tests\host\test_ground_pose.cpp"
 if errorlevel 1 exit /b 1
-"$out\test_surface_links.exe"
+"$out\test_ground_pose.exe"
 exit /b %errorlevel%
 "@
 $batchPath = Join-Path $out 'test.bat'
 Set-Content $batchPath -Encoding ASCII $batch
 & cmd.exe /d /c $batchPath
-if ($LASTEXITCODE -ne 0) { throw 'Original collision adjacency regression failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Original ground pose regression failed.' }

@@ -142,7 +142,6 @@ UNPORTED_VOID(ftCo_800C8348, (Fighter_GObj* gobj, int timer, int health))
 UNPORTED_BOOL(Player_8003544C, (s32 slot, bool condition))
 
 SILENT_VOID(ft_800880D8, (Fighter* fp))
-SILENT_VOID(ft_8008A1B8, (Fighter_GObj* gobj, u32 flags))
 SILENT_VOID(ftCo_8009E7B4, (Fighter* fp, u8 (*blend)[2]))
 SILENT_VOID(ftCo_8009F834, (Fighter_GObj* gobj, int a, Fighter_Part b, int c, int d, Vec3* e, Vec3* f, float g))
 SILENT_VOID(HSD_PadRumbleRemoveId, (u8 a, int b))
@@ -203,6 +202,8 @@ UNPORTED_BOOL(ftCo_800C60C8, (Fighter_GObj* gobj))
 bool gm_8016B0FC(void) { return false; }
 
 DbLKind DbLevel;
+/* dbsound.c: enable the original fighter foot IK, as in the retail default. */
+int db_804D4AF8 = 1;
 
 void ftPartSetRotX(Fighter* fp, int part_idx, f32 rotate_x)
 {
@@ -351,7 +352,6 @@ void gm_80167470(s32 a0, s32 a1) { (void) a0; (void) a1; Report("fighter.unporte
 void gm_80167320(int a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167320");  }
 void ft_800C85B8(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ft_800C85B8");  }
 void ft_800C8170(Fighter* a0) { (void) a0; Report("fighter.unported.ft_800C8170");  }
-void ft_80089B08(Fighter_GObj* a0) { (void) a0; Report("fighter.unported.ft_80089B08");  }
 void ft_80088080(Fighter* a0) { (void) a0; Report("fighter.unported.ft_80088080");  }
 void ftSb_Init_8014FBA4(HSD_GObj* a0) { (void) a0; Report("fighter.unported.ftSb_Init_8014FBA4");  }
 void ftPartsPObjSetDefaultClass(void) {  Report("fighter.unported.ftPartsPObjSetDefaultClass");  }
