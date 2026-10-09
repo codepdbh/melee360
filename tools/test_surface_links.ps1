@@ -24,7 +24,8 @@ function Get-Function([string]$source, [string]$signature) {
 $scene = Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')
 $glue = Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')
 $extracted = (Get-Function $scene 'const MapLine* M360_MatchMapLine(') + "`r`n"
-foreach ($signature in @('int mpLineGetNext(', 'int mpLineGetPrev(')) {
+foreach ($signature in @('int mpLineGetNext(', 'int mpLineGetPrev(',
+    'void mpLineGetV0Pos(', 'void mpLineGetV1Pos(', 'enum_t mpLineGetKind(')) {
     $extracted += (Get-Function $glue $signature) + "`r`n"
 }
 Set-Content (Join-Path $out 'surface_links_native.h') -Encoding ASCII $extracted
