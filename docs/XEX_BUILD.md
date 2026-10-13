@@ -263,7 +263,7 @@ four callbacks. The motion table also includes original entry 335. Host checks:
 The wall contact pipeline remains native and does not yet populate wall-hug
 flags, so compiling this state does not establish runtime rebound fidelity.
 
-The `zelda-sheik-transform` soak case uses ordinary down-special PAD inputs.
+The `zelda-sheik-transform` and `sheik-zelda-transform` soak cases use ordinary down-special PAD inputs.
 It requires the frame target and at least two player-0 transformation events;
 CPU transformations or one-way swaps cannot pass. CSV records the count.
 Human-script cases also require runtime `script.steps` load evidence; an empty
@@ -275,3 +275,27 @@ instead of passing on frames or a match result. Use `-InputScript` for pilots.
 root animation advance resolves TransN and part 0x35 with those helpers.
 `./tools/test_root_motion.ps1` tests remapping, secondary displacement, scale
 flags, instance traversal and captured-object compensation with mock sampling.
+
+Stage collision bindings receive the scale wrapper, as original
+`Ground_InitMapColl` does; index zero is the archive model root. The native
+floor-follow pre-pass is removed because original Fighter_procUpdate already
+applies mpGetSpeed. `./tools/test_stage_bindings.ps1` compares traversal with
+actual mpLib_800552B0 and checks binding replacement and wrapper integration.
+`inspect_stage_collision.py` includes compiled StageData bindings and reports
+unresolved external-model bindings explicitly.
+
+After a normal build, `./tools/smoke_xenia_opening.ps1` checks opening progress,
+movie errors, audio history errors, watchdogs and absence of scripted inputs.
+It saves binary/map hashes, copies the paired map and stops only its owned
+headless emulator. Close any existing Xenia run first; the tool leaves it alone.
+It does not establish visual/audio parity or interactive menu navigation.
+
+The renderer caches immutable decoded GX vertices (maximum 8 MiB, 1024
+entries), retaining per-draw transforms, materials and topology. Shape meshes
+bypass it; budget/allocation failures use the existing parser. Native PObj
+removal and scene cleanup invalidate cached data. The full builder enables
+`M360_NATIVE_RENDER` on the HSD animation bridge to install the removal hook.
+`./tools/test_vertex_cache.ps1` checks decoder equivalence and cache lifecycle,
+and runs existing audio/texture regressions against the user's ISO.
+`M360_VERTEX_CACHE_TRACE` is an optional renderer-only diagnostic define for
+cache byte/entry counters; normal builds omit those counters.

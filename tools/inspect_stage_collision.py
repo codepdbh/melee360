@@ -2,6 +2,7 @@
 import json
 import math
 import pathlib
+import re
 import struct
 import sys
 
@@ -74,17 +75,48 @@ for i in range(nremaps):
         index, slot = read('2h', pairs + j * 4)
         points[slot] = [matrices[index][axis][3] for axis in range(3)]
 maps, nmaps = read('2I', map_head + 8)
+# Ground_InitMapColl also applies StageData::joints, after archive bindings.
+# Read the native tables so an audit includes the same authored bindings as
+# runtime (Final Destination's group is present only in StageData).
+scene = (root / 'src/xdk/match_scene_xdk.c').read_text()
+tables = {}
+for name, body in re.findall(r'static const M360GrJoint (\w+)\[\] = \{(.*?)\};', scene):
+    tables[name] = [tuple(map(int, values)) for values in
+                    re.findall(r'\{\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\}', body)]
+compiled = []
+for line in scene.splitlines():
+    if f'"{sys.argv[1]}"' not in line:
+        continue
+    table = re.search(r'\},\s*-?\d+,\s*(\w+),\s*(\d+),\s*Gr_Kind_', line)
+    if table and table[1] != 'NULL':
+        compiled = tables[table[1]]
+        assert len(compiled) == int(table[2])
 bindings = []
+unresolved_bindings = []
 for mapid in range(nmaps):
     desc = maps + mapid * 0x34
     matrices = []
     matrix = [row[:] for row in identity]
     for axis in range(3):
         matrix[axis][axis] = scale
-    walk(word(desc), matrix, matrices, False)
     binding, count = read('2I', desc + 0x20)
+    assignments = {}
     for i in range(count):
         group, unused, joint = read('3h', binding + i * 6)
+        assignments[group] = joint
+    for group, owner, joint in compiled:
+        if owner == mapid:
+            assignments[group] = joint
+    if not assignments:
+        continue
+    if word(desc) in (0, 0xFFFFFFFF):
+        unresolved_bindings.extend((mapid, group, joint) for group, joint in assignments.items())
+        continue
+    # Unused map descriptors may have external/sentinel model pointers.
+    # Runtime passes the synthetic scale wrapper to mpLib_800552B0. Its
+    # first child, index zero, is the archive model root itself.
+    walk(word(desc), matrix, matrices)
+    for group, joint in assignments.items():
         bindings.append((mapid, group, joint))
         if joint < 0 or joint >= len(matrices):
             raise ValueError(('Invalid joint binding', mapid, group, joint, len(matrices)))
@@ -103,4 +135,5 @@ for i in range(nlines):
         floors.append(dict(line=i, start=positions[v0], end=positions[v1], flags=flags))
 group_ranges = [dict(group=i, ranges=read('10h', groups + i * 0x28)) for i in range(ngroups)]
 print(json.dumps(dict(symbols=symbols, scale=scale, bindings=bindings,
+                     unresolved_bindings=unresolved_bindings,
                      points=points, groups=group_ranges, floors=floors, surfaces=surfaces), indent=2))
