@@ -22,12 +22,27 @@ and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
 Current normal SHA-256:
-`6D0D14AD0CAA98DC090F9B8859D71E5D3C7BD0ECD02F44B3F9091B2D1B1AD4F3`.
+`FF60CE6E11A3674B69A6C3657BB2087318C1FBBA359B00683903E690092D7876`.
 This full rebuild also restores original root/secondary animation displacement
 and bounded bone lookup. Host checks pass with mocked animation sampling.
-Zelda/Sheik executes five swaps during a diagnostic test but still suffers two
-unexpected falls; that issue remains unresolved. Latest opening smoke and
-maze/escape reruns were pending when the user requested a stop and commit.
+Stage collision bindings now start at the original scale wrapper, so joint
+zero is the archive model root. This fixes Final Destination's accidental
+attachment to an animated decoration and the demonstrated early Zelda/Sheik
+drift/falls: the 1800-frame reproducer records four swaps and zero falls.
+Both initial characters pass longer 3600-frame runs, with one later player
+fall each; this is not complete transformation parity. Grounded platform
+movement is applied once by original Fighter_procUpdate. The normal opening
+smoke passes frame 3600 with zero movie/history errors and no watchdog.
+Updated maze/escape goal checks clear at frames 4190/2287 on the preceding
+stage-binding diagnostic. Its continuous campaign stops at Temple after the
+pilot cannot follow its opponent to the lower floor; full campaign proof is
+still missing. The latest build caches immutable decoded GX geometry while
+retaining current animation/materials. Host cache/sound/texture checks pass.
+Four-CPU/items Fountain improves from 33164 to 16835 us/frame in Xenia, with
+identical sampled geometry and gameplay counters. Transformation and three
+match restarts pass. The latest normal opening reaches frame 3600 with 1997
+presented movie frames, zero movie/history errors and no watchdog. Console
+performance, visual parity and interactive play remain unverified.
 The original collision initialization and selective copy now replace native
 substitutes, resetting ECB buffers, normals, filters and initialization flags.
 Original DownReflect code and state 335 are linked and pass host checks with

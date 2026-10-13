@@ -5,6 +5,8 @@ struct IDirect3DTexture9 {
     IDirect3DTexture9() : releases(0) {}
     void Release() { ++releases; }
 };
+static unsigned geometryClears;
+void ClearVertexCache() { ++geometryClears; }
 #include "texture_cache_original.h"
 
 int main(void)
@@ -31,6 +33,7 @@ int main(void)
     assert(s_textures[1].texture == &e);
     M360_HsdRenderClearTextures();
     assert(!s_textureCount && !s_textureAge);
+    assert(geometryClears == 1);
     assert(a.releases == 1 && b.releases == 1 && c.releases == 1 && d.releases == 1 && e.releases == 1);
     puts("PASS: texture descriptor identity, retry, LRU eviction and scene cleanup");
     return 0;

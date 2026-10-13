@@ -780,6 +780,8 @@ bool ParseVertex(const HSD_VtxDescList* descs, const unsigned char** cursor,
     return true;
 }
 
+#include "hsd_vertex_cache.h"
+
 void Transform(const MatrixSet* set, const RawVertex& raw, HsdVertex* out,
                const unsigned* texSources)
 {
@@ -828,6 +830,8 @@ void DrawPObj(HSD_PObj* pobj, const MatrixSet* set, unsigned* count,
         return;
     const unsigned char* s = pobj->display;
     const unsigned char* end = s + (static_cast<unsigned>(pobj->n_display) << 5);
+    VertexCacheEntry* cached = GetVertexCache(pobj);
+    unsigned cacheIndex = 0;
     while (s + 3 <= end) {
         const unsigned primitive = *s & 0xF8;
         if (primitive == 0)
@@ -837,9 +841,16 @@ void DrawPObj(HSD_PObj* pobj, const MatrixSet* set, unsigned* count,
         HsdVertex first, previous, current, ring[4];
         RawVertex raw;
         for (unsigned i = 0; i < n; ++i) {
-            if (!ParseVertex(pobj->verts, &s, end, &raw))
-                return;
-            Transform(set, raw, &current, texSources);
+            const RawVertex* value;
+            if (cached) {
+                if (cacheIndex >= cached->vertices) return;
+                value = &cached->raw[cacheIndex++];
+                s += cached->stride;
+            } else {
+                if (!ParseVertex(pobj->verts, &s, end, &raw)) return;
+                value = &raw;
+            }
+            Transform(set, *value, &current, texSources);
             ++s_stats.vertices;
             if (pobj_type(pobj) == POBJ_ENVELOPE)
                 ++s_stats.envelopeVertices;
@@ -1554,11 +1565,17 @@ bool M360_HsdRenderInit(IDirect3DDevice9* device)
 
 void M360_HsdRenderClearTextures(void)
 {
+    ClearVertexCache();
     for (unsigned i = 0; i < s_textureCount; ++i)
         if (s_textures[i].texture)
             s_textures[i].texture->Release();
     s_textureCount = 0;
     s_textureAge = 0;
+}
+
+void M360_HsdRenderForgetPObj(const void* pobj)
+{
+    ForgetVertexCache(static_cast<const HSD_PObj*>(pobj));
 }
 
 void M360_HsdRenderShutdown(void)
@@ -1585,6 +1602,16 @@ void M360_HsdRenderBeginFrame(void)
 
 void M360_HsdRenderEndFrame(void)
 {
+#ifdef M360_VERTEX_CACHE_TRACE
+    static unsigned cacheFrame;
+    if (++cacheFrame % 300 == 0) {
+        unsigned entries = 0;
+        for (unsigned i = 0; i < kVertexCacheSlots; ++i)
+            if (s_vertexCache[i].state == 1) ++entries;
+        M360_Trace("mesh.cache.bytes", s_vertexCacheBytes);
+        M360_Trace("mesh.cache.entries", entries);
+    }
+#endif
     if (!s_device)
         return;
     D3DVIEWPORT9 vp = { 0, 0, 1280, 720, 0.0f, 1.0f };
