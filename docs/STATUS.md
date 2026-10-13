@@ -1,5 +1,40 @@
 # Development status
 
+## Grounded collision source function and prerelease preparation — 2026-10-13
+
+The active build now compiles original `ft_80082708` from `ft_081B.c`.
+It preserves the previous collision position, queries at the current fighter
+position and copies the resolved position back, replacing the native
+`GroundStep` wrapper for grounded specials. The underlying native collision
+queries remain incomplete; this does not restore the entire collision engine.
+The host collision lifecycle regression checks both contact and lost-contact
+paths and passes with the original source extracted at build time.
+
+Full diagnostic SHA-256:
+`7FF4F9712CB084C12B1EF5AE4A6806F4DE0721C42B5A1EE97B0A6997205803E1`.
+`prerelease-validation/combat` records two Xenia cases with audio enabled:
+Zelda/Sheik at frame 6600 (45 hits, 2 KOs) and Adventure round 5 at frame
+3602 (27 hits, 3 KOs), both OK without a watchdog. These are short combat
+checks, not full campaign, leak, visual/audio parity or hardware proof.
+
+README now describes the current XEX route, Xbox installation, controls and
+mode limitations. `v0.1.0-alpha.1` packages only a normal live-input XEX,
+generated interface atlas, instructions, notices, provenance and checksums.
+The builder records source/upstream revisions, cleanliness, flags and hashes;
+the packager rejects diagnostic or mismatched builds and verifies every ZIP
+entry. Release build identity and normal smoke results are recorded in the
+published prerelease. Physical Xbox 360 execution remains unverified.
+
+## Workspace cleanup — 2026-10-13
+
+Removed obsolete emulator checkouts/builds, diagnostic staging and Xenia
+caches. Unique file length falls from about 4.59 GB to 1.80 GB. One physical
+ISO retains source/runtime hardlink names; the current XEX hash is unchanged.
+Historical text evidence is archived locally, and modified legacy emulator
+source is preserved as a patch. Automatic tool approval rejected additional
+root-artifact deletion; those files remain. See
+[the cleanup record](WORKSPACE_CLEANUP.md) for recovery and measurement details.
+
 ## Immutable GX vertex decode cache — 2026-10-13
 
 A separate Xenia profile attributes about 31.6–31.9 ms/frame to rendering,

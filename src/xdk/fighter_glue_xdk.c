@@ -1654,11 +1654,6 @@ static int GroundStep(HSD_GObj* gobj, int stopAtEdge)
     return 0;
 }
 
-GroundOrAir ft_80082708(Fighter_GObj* gobj)
-{
-    return (GroundOrAir) GroundStep(gobj, 0);
-}
-
 /* mpColl_8004A678_Floor: a fighter drifting off a floor end without a hard
  * tilt (|stick x| < 0.75) toward it stops on the edge and flags Collide_Edge,
  * which the callers turn into Ottotto (teeter). */

@@ -1,196 +1,197 @@
-<div align="center">
-
 # MELEE360
 
-### Experimental native port of Super Smash Bros. Melee to Xbox 360
+Port experimental del código reconstruido de **Super Smash Bros. Melee para Xbox 360**.
+La ruta activa usa `default.xex`, PowerPC, D3D9/Xenos y XInput. El objetivo
+es conservar el comportamiento y los recursos originales del juego.
 
-**PowerPC · LibXenon · Xenos · XeLL**
+[Descargar prerelease](https://github.com/codepdbh/melee360/releases) ·
+[Estado técnico](docs/STATUS.md) · [Trabajo pendiente](docs/PLAYABLE_PORT_GAPS.md) ·
+[Criterios de fidelidad](docs/PORT_FIDELITY.md)
 
-[Status](docs/STATUS.md) · [Architecture](docs/PORTING_ANALYSIS.md) · [XeLL guide](docs/XELL_USB.md) · [XEX path](docs/XEX_BUILD.md)
+## Estado de esta versión
 
-</div>
+**`v0.1.0-alpha.1` es experimental.** Hay pruebas automatizadas de ejecución
+en Xenia Canary; todavía no se ha validado esta versión en una Xbox 360 física.
+El proyecto no incluye la ISO ni recursos extraídos del disco.
 
-> [!IMPORTANT]
-> MELEE360 is an early community porting project. Its native XEX now boots a
-> `GALE01` image and runs an experimental local VS flow with original game
-> resources. Scripted Xenia tests cover combat and scene transitions; physical
-> Xbox 360 play and full game fidelity remain unverified. The project does not
-> contain Nintendo game data. See the [local VS guide](docs/JUGAR_XEX.md).
-
-## About
-
-MELEE360 explores a native Xbox 360 port of the reconstructed Super Smash
-Bros. Melee codebase. It uses
-[`999sian/melee-pc`](https://github.com/999sian/melee-pc) as its primary game
-code reference and targets homebrew-capable consoles running XeLL Reloaded.
-
-This is a source port, not GameCube emulation. Game logic is compiled for the
-Xbox 360 PowerPC CPU while GameCube services are replaced incrementally with
-LibXenon implementations.
-
-The target is the original game's behavior and presentation. Native substitutes
-are intermediate work; see the [source-port fidelity criteria](docs/PORT_FIDELITY.md)
-and the remaining-work report before treating a playable milestone as parity.
-
-## Progress
-
-| Area | Status |
+| Área | Disponible / pendiente |
 |---|---|
-| Xbox 360 cross-toolchain | ✅ Working |
-| PowerPC ELF generation | ✅ Working |
-| Xenos framebuffer and triangle | ✅ Compiled; hardware test pending |
-| Xbox 360 controller input | ✅ Compiled |
-| Basic PCM audio | ✅ Compiled |
-| FAT filesystem and `GALE01` detection | ✅ Compiled |
-| GameCube FST and resource lookup | ✅ Host-tested and linked |
-| Dolphin `DVDOpen`/`DVDRead` compatibility | ✅ Minimal synchronous slice working |
-| XDK native `GALE01` boot path | ✅ ISO/FST/banner load running in Xenia Canary |
-| HAL `.dat` archive parser and relocation | ✅ Original parser relocates `GmTtAll.dat` in the XEX and resolves its first public root |
-| First reconstructed module (`lbtime.c`) | ✅ Linked and self-tested |
-| Original HSD controller pipeline (`controller.c`) | ✅ XInput bridge, normalized sticks and edge-triggered buttons running in XEX |
-| Original math/segment test (`lb_00CE.c`) | ✅ PowerPC hit-volume test drives prototype attacks |
-| Xenon emulator direct-ELF execution | ✅ Native guest framebuffer and PowerPC milestone running |
-| XDK `default.xex` generation | ✅ PowerPC/D3D9 interactive prototype builds and passes `imagexex /DUMP` |
-| D3D9 shader/quads renderer | ✅ Runtime-batched 2D geometry with vertex/pixel shaders, gradients and alpha blending |
-| Textured sprite atlas | ✅ Runtime-generated legal placeholder art with UV sampling and transparency |
-| External graphics resources | ✅ D3DX9 loads `game:\assets\sprite_atlas.png` with an in-memory fallback |
-| Sprite animation and effects | ✅ Idle/run/jump/attack frames, facing flip and impact particles |
-| Native movement/jump/attack sandbox | ✅ Running in Xenia Canary with controller and keyboard input |
-| Original HSD heap allocator (`memory.c`) | ✅ Real free-list heap linked (`HSD_MemAlloc`/`HSD_Free`), host-validated with a burn-in test |
-| Original HSD class/hash/debug/objalloc/id cluster | ✅ RTTI class hierarchy, hash search, real `HSD_Assert`/`OSPanic`, pool allocator and ID table linked and host-validated |
-| Original HSD gobj (game object) cluster | ✅ `list`/`gobj`/`gobjproc`/`gobjplink`/`gobjgxlink`/`gobjobject`/`gobjuserdata`/`gobjinit` linked and host-validated; cobj/fog/jobj/lobj stubbed pending their own ports |
-| Original HSD math/animation-data foundation | ✅ `mtx`/`quatlib`/`spline`/`fobj`/`random` linked and host-validated with real scalar `PSMTX`/`PSVEC` primitives; `util` pending GX types |
-| Original HSD animation-object layer | ✅ `aobj`/`dobj`/`robj` plus `util`/`bytecode` linked and host-validated; JObj animation advances on the real title graph |
-| Real title-scene descriptors | ✅ JObj, DObj, MObj, PObj and TObj graphs loaded from the ISO, including GX display lists and image descriptors |
-| GameCube texture decoding | ✅ I4/I8/IA4/IA8/RGB565/RGB5A3/RGBA8/CI4/CI8/CMPR decoded from the title archive and uploaded to D3D9 |
-| GX display-list translation | ✅ Title PObj triangles, quads, strips and fans plus direct/indexed position, color and UV attributes are translated to material-colored D3D9 triangles |
-| Interactive native title viewer | ✅ LB+RB cycles the real GX mesh, decoded title texture and disc banner while HAL animation advances; Start is reserved for scene integration |
-| Original HSD audio engine (`synth.c`/`devcom.c`) | ✅ Voice alloc/priority-stealing, ADSR-style volume ramp, pitch/pan curves and the DVD/ARAM command queue linked and host-validated; AX/AI/AR/DVD hardware entry points stubbed (no audible output yet) |
-| Real Melee music output | ✅ `menu01.hps` read from the ISO, HALPST/DSP-ADPCM decoded natively and streamed through XAudio2 at boot, looping; host test checks decode continuity and Xenia outputs audible sound |
-| Character sound effects | 🚧 Original SEM/SSM samples now use nibble-correct DSP decoding and separate mono/stereo buffers. 21 SSM entries match an independent decoder; XAudio2 submission/buffer reuse checked on the host. Audible in-game confirmation remains pending |
-| Opening movie from the ISO | ✅ `MvOpen.mth` decodes and advances in Xenia Canary |
-| Original menu scene and navigation | 🚧 Original `mnmain` scene lifecycle and shared HSD rendering are active; VS mode requests a quick match. Several menu leaves remain bridged/incomplete |
-| Quick match | 🚧 VS has fighter, costume, stage, stock and CPU selection. A scripted Xenia match verified movement, hits, stock loss, Mario's cape and continued play through frame 3486; physical Xbox 360 play remains unverified |
-| Classic and Adventure modes | 🚧 Classic has five normal encounters. Adventure has twenty phases, including Mushroom Kingdom, Brinstar escape and an experimental Underground Maze with Link rooms and a Triforce goal. Xenia verified a maze clear after retry; a preceding build cleared seventeen mandatory Easy phases and returned to the menu. Full original progression, maze hazards, special scenes and console validation remain incomplete; see `docs/PLAYABLE_PORT_GAPS.md` |
-| Fighter actions and combat | 🚧 Original common states, Mario specials, item code and CPU AI are linked. Scripted hits, damage and respawn run in Xenia; full behavior and controller play on console need validation |
-| Local two-player quick match | 🚧 A connected second XInput controller can control P2; otherwise the linked CPU AI controls the opponent |
-| Melee rendering and gameplay | 🚧 Original title/menu/stage/fighter graphs render. Material effects, match rules, stage coverage and console validation remain incomplete |
+| Inicio | Intro desde la ISO, título, menú y selección nativa de partida |
+| VS | Personajes, colores, escenarios, reglas, CPU y jugadores locales; paridad completa pendiente |
+| Combate | Estados originales, ataques, daño, vidas, reaparición, IA y objetos; quedan acciones y colisiones por portar |
+| Audio | Música, voces y efectos originales decodificados de HPS/SSM; envío a XAudio2 probado y audio confirmado por el usuario en Xenia |
+| Classic | Vista previa de cinco combates normales; faltan especiales, bonus y jefes |
+| Adventure | Veinte fases parcialmente implementadas; Mushroom Kingdom, laberinto y escape tienen pruebas de objetivo en Xenia; campaña actual completa sin validar |
+| Presentación | Modelos, animaciones y texturas originales; materiales, cámara y efectos aún incompletos |
+| Xbox 360 física | Compilación XEX disponible; ejecución, rendimiento y controles por validar en consola |
 
-The current `xenon.elf` is a platform and integration test. With a legal
-`GALE01` image on the USB drive it now opens `GmTtAll.dat`, runs the original
-HAL archive parser, applies its relocation table and resolves the first public
-title-screen resource.
+Adventure todavía necesita la carrera y escalada originales, peligros del
+laberinto y transiciones. No presentamos los combates provisionales como
+el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
-## Architecture
+Los últimos cambios corrigen la articulación de las colisiones del escenario,
+el doble desplazamiento en plataformas y restauran funciones originales de
+colisión, escala y ajuste de piernas. El render almacena los vértices GX
+inmutables ya decodificados y aplica animaciones/materiales en cada dibujo.
+Una prueba de cuatro CPU con objetos en Fountain pasó de 33,2 a 16,8 ms por
+cuadro en Xenia, con contadores muestreados iguales. Es una medición concreta,
+no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
 
-```text
-melee-pc reconstructed game code
-              │
-              ▼
-   Dolphin/Aurora compatibility boundary
-              │
-              ▼
-       MELEE360 platform API
-              │
-       ┌──────┼──────┐
-       ▼      ▼      ▼
-     Xenos  LibXenon  XeLL
-     video   I/O      loader
+## Instalar en Xbox 360
+
+### Requisitos
+
+- Xbox 360 que **ya pueda ejecutar homebrew XEX**, por ejemplo RGH/JTAG con
+  Aurora u otro cargador compatible. Una consola comercial sin modificar
+  no puede ejecutar este archivo.
+- Mando Xbox 360 y USB FAT32 o disco duro de la consola.
+- Tu propia imagen de **Melee NTSC-U 1.02 (`GALE01`)**, ISO completa sin
+  comprimir; la imagen habitual ocupa **1.459.978.240 bytes**. El lector
+  actual no abre RVZ, WBFS ni una carpeta con archivos extraídos.
+
+### Descarga y copia
+
+1. Abre [Releases](https://github.com/codepdbh/melee360/releases) y descarga
+   el asset **`MELEE360-v0.1.0-alpha.1-xbox360.zip`**. **Source code** es el
+   código fuente y no contiene el ejecutable listo para usar.
+2. Extrae el ZIP y coloca tu ISO dentro de `MELEE360`, llamada exactamente
+   **`melee.iso`**. Activa las extensiones de Windows para evitar `.iso.iso`.
+3. Copia la carpeta completa al USB o a `Hdd1:/Games/MELEE360/`:
+
+   ```text
+   Usb0:/Games/MELEE360/
+     default.xex
+     melee.iso                 ← tu imagen; no viene en la descarga
+     assets/
+       sprite_atlas.png
+     INSTRUCCIONES.md
+     AVISOS.txt
+     BUILD.json
+     SHA256SUMS.txt
+   ```
+
+4. En el explorador de archivos de Aurora u otro cargador compatible,
+   abre **`default.xex`**. Si quieres añadirlo a la biblioteca de Aurora,
+   incluye la carpeta de juegos entre sus rutas de escaneo.
+   [Proyecto oficial Aurora](https://phoenix.xboxunity.net/).
+5. Pulsa **Start** para pasar de la intro al título y luego al menú.
+   En **VS**, entra en la primera opción de combate, elige personaje con
+   izquierda/derecha y confirma con **A**. Elige también el rival CPU.
+   Con un segundo mando conectado, P2 puede elegir su propio personaje.
+
+Esta prerelease usa **XEX**: no requiere XeLL ni renombrar el archivo a ELF.
+Copia la ISO completa al dispositivo; un enlace local de Windows no basta.
+El paquete incluye una guía de instalación y hashes SHA-256; no necesitas
+copiar SDK, logs, mapas ni carpetas de compilación.
+[Guía independiente](docs/INSTALAR_XBOX360.md).
+
+### Controles
+
+| Acción | Mando Xbox 360 |
+|---|---|
+| Movimiento | Stick izquierdo |
+| Ataque normal | A |
+| Especial | B |
+| Salto | X / Y o stick arriba |
+| Ataques del C-stick | Stick derecho |
+| Escudo | LB / LT / RT |
+| Agarre | RB |
+| Pausa / continuar | Start |
+| Volver al menú desde pausa | B |
+| Revancha / menú al terminar | A / B |
+
+En selección de VS: **X/Y** cambia color, **cruceta arriba/abajo** escenario,
+**RB** vidas, **LB** nivel CPU, **RT** cantidad de jugadores, **Start** objetos
+ y **stick derecho arriba/abajo** reglas de vidas/tiempo. En Adventure,
+**LB** cambia dificultad. Las opciones también aparecen en pantalla.
+Un mando adicional puede incorporarse en selección o tomar un puesto CPU
+existente en combate. Si se desconecta un mando humano, reconéctalo y pulsa
+Start. [Más detalles del flujo actual](docs/JUGAR_XEX.md).
+
+### Problemas comunes
+
+| Problema | Qué comprobar |
+|---|---|
+| `melee.iso not found` | La ISO debe estar junto a `default.xex`; comprueba nombre y extensiones |
+| `disc is not GALE01` / FST | Región, versión y formato de la imagen; renombrar un RVZ no lo convierte en ISO |
+| El cargador rechaza el XEX | Capacidad de ejecutar homebrew y copia completa del asset binario |
+| Pantalla negra o cuelgue en consola | Anota modelo, cargador y pasos; la ejecución física de esta versión sigue sin verificar |
+| Classic / Adventure no coincide con GameCube | Son modos incompletos; consulta las fases pendientes arriba |
+
+Reporta fallos en [Issues](https://github.com/codepdbh/melee360/issues) con
+versión del port, consola/cargador o versión de Xenia, modo, personajes,
+escenario y pasos para reproducirlos.
+
+## Usar en Xenia
+
+Pon `melee.iso` al lado de `default.xex` y abre el XEX en Xenia.
+La [guía oficial de Xenia](https://github.com/xenia-project/xenia/wiki/Quickstart)
+explica cómo abrir ejecutables y los requisitos de Windows.
+Para audio, evita `--mute=true`. Desde este repositorio:
+
+```powershell
+./tools/run_xenia.ps1
 ```
 
-Desktop launcher, WebGPU, SDL, RmlUi and updater components are excluded from
-the console runtime. The long-term renderer replaces GX/WebGPU presentation
-with a native Xenos backend.
+El launcher habilita XAudio2; `-Mute` lo silencia. La prerelease usa el mando
+real: no contiene el piloto de las pruebas automáticas.
 
-## Build
+## Compilar el port
 
-Requirements: Windows with WSL or Linux, Docker, and Git.
+La base principal es [`999sian/melee-pc`](https://github.com/999sian/melee-pc),
+fijada en `6c2f5c527d0484b4d20d9d31ac6e0a30fa22eeac`. La lógica reconstruida
+se compila para PowerPC Xbox 360 y los servicios de GameCube se adaptan
+progresivamente a la plataforma. El flujo activo utiliza el SDK/XDK local;
+LibXenon/XeLL es una ruta histórica separada.
 
-```bash
-./tools/setup_xenon.sh --check
-./tools/build_x360.sh
+Necesitas Git, PowerShell y una instalación completa del SDK de Xbox 360
+que estés autorizado a utilizar. El SDK no viene en el repositorio.
+Desde la raíz del checkout, si todavía no tienes la base principal:
+
+```powershell
+git clone https://github.com/999sian/melee-pc.git upstream/melee-pc
+git -C upstream/melee-pc checkout 6c2f5c527d0484b4d20d9d31ac6e0a30fa22eeac
+$env:XEDK = 'C:\Program Files (x86)\Microsoft Xbox 360 SDK'
+./tools/check_xdk.ps1
+./tools/build_xex.ps1
 ```
 
-The official `free60/libxenon` container produces:
+El resultado normal es `dist/default.xex` y su registro `dist/build-info.json`.
+Copia tu ISO a `dist/melee.iso` para ejecutarlo. Compila **sin** `-BootToMatch`,
+`-InputScript`, `-CallTrace` ni `-ExperimentalRace` para jugar.
+Las opciones de diagnóstico son exclusivas de pruebas y el empaquetador
+rechaza esas variantes.
 
-```text
-dist/xenon.elf
+```powershell
+./tools/package_prerelease.ps1 -Version v0.1.0-alpha.1
 ```
 
-An emulator-safe integration ELF can also be built and run with the patched,
-pinned Xenon research emulator:
+El empaquetador exige un checkout limpio y una compilación normal del mismo
+commit, comprueba los hashes y crea un ZIP con una lista explícita de archivos.
+No busca ni copia imágenes del disco. Las pruebas y el registro de compilación
+están separados del paquete jugable.
 
-```bash
-./tools/setup_xenon_emulator.sh
-./tools/build_xenon_emulator_elf.sh
-./tools/run_xenon_emulator.sh
-```
+## Documentación y tamaño del proyecto
 
-This verifies native PowerPC execution, memory, endian behavior, linked Melee
-code and a status screen written by the guest ELF into tiled Xbox 360
-framebuffer memory. It is an integration milestone, not gameplay yet.
+- [Estado y evidencias](docs/STATUS.md)
+- [Pendientes jugables](docs/PLAYABLE_PORT_GAPS.md)
+- [Fidelidad al original](docs/PORT_FIDELITY.md)
+- [Compilación XEX](docs/XEX_BUILD.md)
+- [Dependencias y revisiones](docs/UPSTREAMS.md)
+- [Limpieza y recuperación de archivos](docs/WORKSPACE_CLEANUP.md)
+- [Ruta histórica XeLL/ELF](docs/XELL_USB.md)
 
-### Capturas verificadas
+La limpieza retiró checkouts antiguos, cachés y pruebas obsoletas. Se conserva
+una sola ISO física local, con nombres enlazados para fuente y ejecución.
+Las evidencias antiguas están comprimidas y los cambios del emulador anterior
+se guardaron como patch. No hace falta recuperar esos checkouts para compilar
+el XEX. Las carpetas de compilación y los recursos del disco no se publican.
 
-![Pantalla del ELF nativo en Xenon Emulator, hito anterior](docs/images/xenon-emulator-guest-framebuffer.png)
+## Código y avisos
 
-Esta captura corresponde al ELF en Xenon Emulator. La película actual en Xenia
-se verifica mediante la traza del XEX; todavía falta una captura visual válida
-de esa ventana para ampliar la galería.
-
-For the separate XDK/Xenia route, run `./tools/check_xdk.ps1` from PowerShell
-followed by `./tools/build_xex.ps1`, then see the
-[XEX build notes](docs/XEX_BUILD.md). SDK files are never copied into this
-repository.
-
-The XEX renderer compiles its HLSL shaders with the installed XDK and batches
-the complete 2D scene into native `D3DPT_QUADLIST` geometry. Generated shader
-microcode stays inside the ignored build directory.
-
-## Run with XeLL
-
-1. Format a USB drive as FAT32.
-2. Copy `dist/xenon.elf` to its root as `xenon.elf`.
-3. Connect it to an RGH/JTAG Xbox 360.
-4. Start XeLL Reloaded.
-
-For optional disc detection, place your own legally obtained image at:
-
-```text
-USB:/Melee360/melee.iso
-```
-
-See the [complete XeLL guide](docs/XELL_USB.md) for expected output and
-troubleshooting.
-
-## Layout
-
-```text
-src/common/          Platform-independent boundary
-src/xbox360/         LibXenon/Xenos implementation
-tests/xbox360/       Native integration test
-patches/             Reproducible third-party patches
-tools/               Setup and build scripts
-docs/                Architecture and progress notes
-```
-
-## Legal notice
-
-This repository contains no game ISO, extracted assets, Nintendo source code,
-console NAND, key vault, firmware or encryption keys. You must provide your
-own legally obtained game copy where required.
-
-Super Smash Bros., Melee, Nintendo and related names are trademarks of their
-respective owners. This project is unaffiliated with and not endorsed by
-Nintendo.
-
-## Credits
-
-- [`999sian/melee-pc`](https://github.com/999sian/melee-pc)
-- [`doldecomp/melee`](https://github.com/doldecomp/melee)
-- [`Free60Project/libxenon`](https://github.com/Free60Project/libxenon)
-- XeLL Reloaded and the Xbox 360 homebrew community
-
----
-
-<div align="center">Built carefully, one subsystem at a time.</div>
+Melee y sus recursos pertenecen a Nintendo/HAL Laboratory. La base reconstruida
+no ofrece una licencia de redistribución para el código del juego; sus adiciones
+del port tienen condiciones separadas. Consulta el
+[LICENSE.md de la base fijada](https://github.com/999sian/melee-pc/blob/6c2f5c527d0484b4d20d9d31ac6e0a30fa22eeac/LICENSE.md)
+y las [dependencias](docs/UPSTREAMS.md). No se declara una licencia única para
+todo el proyecto. El paquete no contiene ISO, recursos del disco, SDK ni claves.
