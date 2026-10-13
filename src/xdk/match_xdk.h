@@ -164,7 +164,6 @@ int M360_MatchGroundBelow(float x, float y, float depth, float* groundY,
 
 int M360_FighterLoad(void);
 void M360_FighterBuildIslands(void);
-void M360_FighterFollowFloors(void);
 void M360_FighterEffectsInit(void);
 unsigned M360_FighterKindCount(void);
 unsigned M360_FighterCostumeCount(unsigned kindIndex);

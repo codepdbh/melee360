@@ -213,6 +213,7 @@ function Get-SoakMatrix {
             P1 = $i; P2 = $cpu; Stage = $stage; Items = $items }
     }
     $list += New-Config 'zelda-sheik-transform' @{ P1 = 13; P2 = 0; Stage = 1; CpuLevel = 1; Stocks = 8; Script = 'transform'; TargetFrame = 1800; Seconds = 90 }
+    $list += New-Config 'sheik-zelda-transform' @{ P1 = 14; P2 = 0; Stage = 1; CpuLevel = 1; Stocks = 8; Script = 'transform'; TargetFrame = 1800; Seconds = 90 }
     # Every stage with four CPUs and items (free-for-all).
     for ($s = 0; $s -lt $Stages.Count; ++$s) {
         $a = ($s * 3) % $Fighters.Count

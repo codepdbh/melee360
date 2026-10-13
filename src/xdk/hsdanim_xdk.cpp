@@ -18,6 +18,9 @@ extern "C" {
 
 u32 HSD_GetNbBits(u32 arg0);
 s32 HSD_Index2PosNrmMtx(u32 arg0);
+#ifdef M360_NATIVE_RENDER
+void M360_HsdRenderForgetPObj(const void* pobj);
+#endif
 }
 
 #if defined(_XBOX)
@@ -514,6 +517,9 @@ void HSD_PObjRemoveAll(HSD_PObj* pobj)
     g_m360AnimStub.lastPtr = pobj;
     while (pobj) {
         HSD_PObj* next = pobj->next;
+#ifdef M360_NATIVE_RENDER
+        M360_HsdRenderForgetPObj(pobj);
+#endif
         if (pobj_type(pobj) == POBJ_SHAPEANIM && pobj->u.shape_set) {
             HSD_AObjRemove(pobj->u.shape_set->aobj);
             if (pobj->u.shape_set->flags & SHAPESET_ADDITIVE)
