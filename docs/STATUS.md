@@ -1,5 +1,99 @@
 # Development status
 
+## Immutable GX vertex decode cache — 2026-10-13
+
+A separate Xenia profile attributes about 31.6–31.9 ms/frame to rendering,
+versus about 1.0–1.3 ms to game update, in four-CPU/items Fountain
+(`frame-profile-baseline-20261013`, diagnostic
+`486EF1902F3CE94A61408F6F8B79509E98B1040B6DC54078680AB0F51C96B84E`).
+The renderer now caches decoded immutable GX vertices, bounded to 8 MiB and
+1024 entries. Every draw still applies current joint/envelope matrices,
+material/shader state, texture routing and original primitive order. Shape
+animation meshes bypass the cache; allocation/budget failures fall back to
+the existing decoder. Native PObj removal invalidates entries before pointer
+reuse, and scene texture cleanup also releases geometry. The full builder
+enables that removal hook for the native animation bridge.
+
+`test_vertex_cache.ps1` checks byte-identical direct and indexed/NBT3 output,
+animated transforms, removal/reuse, shape bypass, descriptor source changes,
+budget/allocation failure, malformed streams and hash probe chains. It also
+passes existing sound selection, real ISO submission and texture regressions.
+Full normal rebuild SHA-256:
+`FF60CE6E11A3674B69A6C3657BB2087318C1FBBA359B00683903E690092D7876`.
+Diagnostic `735AFAC6AAACEB56DCF0CCB9FCE79D41AAA09B8F2232714A6E16DAB69BC724F4`
+passes Zelda/Sheik and four-CPU/items Fountain at frame 1800, and all three
+scripted fall/restart matches (`vertex-cache-runtime-20261013`). Fountain's
+frame average improves from 33164 to 16835 us (1.97x throughput, 49.2% less
+frame time); its render samples fall to about 15.5 ms. All 60 sampled geometry,
+draw-count, fighter motion/position/damage/hit counters match the uncached
+profile exactly. This is counter/decoder equivalence, not visual parity proof.
+Fountain uses 4317084 cache bytes/458 entries, below the cap. Three match
+restarts return to the same 2740500-byte/207-entry baseline without a watchdog
+or host commit growth in that short run. Long-session leak/console tests are
+still required.
+
+The latest normal opening passes frame 3600 with 1997 presented movie frames,
+zero movie errors/history mismatches, no watchdog and no script-load marker
+(`vertex-cache-opening-20261013`). The SDK image dump exits zero. Physical
+Xbox play and a complete current campaign remain unverified; the preceding
+continuous campaign's Temple pilot limitation is documented below.
+
+## Stage collision joint indices and platform transport — 2026-10-13
+
+`BindMapColl` now receives the GObj's synthetic scale wrapper, matching
+original `Ground_InitMapColl`. Original `mpLib_800552B0` starts at that
+wrapper's first child: the archive model root is index zero. Previously the
+native caller passed the archive root, skipping one level and binding Final
+Destination collision to a rotating decorative child. The position probe
+recorded its central floor moving across the stage; after the correction both
+previous/current left endpoints stay at the authored -75 throughout the probe.
+The original per-group replacement rule also replaces duplicate bindings.
+
+The obsolete native fighter floor-follow pass was removed. Original
+`Fighter_procUpdate` already applies `mpGetSpeed`, so the native pre-pass moved
+grounded fighters twice. `test_stage_bindings.ps1` compares traversal with the
+actual original function, including instance joints and invalid indices, checks
+the wrapper call, and covers archive/StageData overrides and a full bind array.
+Surface speed/links, root motion, ground pose, fighter parts, match/flow and
+soak rule host checks pass.
+
+The former early Zelda/Sheik drift/fall reproducer now reaches frame 1800 with
+four player transformations, 13 hits and no falls (`binding-transform-20261013`).
+This corrects the demonstrated stage-binding cause; it is not complete
+transformation or collision parity. A longer clean diagnostic
+`24C5ABC441EFD95045362C8393080AE7B3DDC6693A85C34294430A6A0F02244D`
+passes both initial characters at 3600 frames (22/23 hits, seven/nine swaps,
+one player fall each, occurring later in the fight). Fountain four-CPU/items
+and Young Link/Kirby also pass 3600 frames (192/37 hits). Adventure phase 17
+ends with player loss at frame 3295 and is SHORT against the 3600 target;
+no watchdog or crash is recorded. Fountain averages 32379 us/frame in Xenia,
+so four-fighter performance remains below the 60 FPS budget. The normal
+build ran concurrently with part of this matrix; these timings do not measure
+physical Xbox 360 performance (`stage-bindings-combat-20261013`).
+
+Full normal rebuild SHA-256:
+`C37CBC50D0C18D67F9804EB609527674C6BC711862EAA2B5774884F9EBD23AAF`.
+`smoke_xenia_opening.ps1` validates the live-input opening independently:
+frame 3600, 1985 presented movie frames, zero movie errors and ADPCM history
+mismatches, no watchdog and no script-load marker (`stage-bindings-opening-20261013`).
+The reusable smoke tool saves hashes and the paired map and stops only its
+owned emulator process. This establishes opening stability, not visual/audio
+listening or a complete menu/controller walkthrough.
+
+`inspect_stage_collision.py` now audits compiled StageData bindings too and
+uses the corrected model-root index. A read-only audit parses all 21 stage
+archives; Stadium has one unresolved external-model binding, explicitly
+reported instead of treated as a validated local model. The corrected clean
+diagnostic clears the seeded maze at frame 4190 (14 hits, three falls) and
+Brinstar escape at frame 2287 (no falls), with normal PAD input
+(`stage-bindings-courses-20261013`). CSV frames 4200/2100 are periodic samples.
+The continuous Easy campaign reaches Temple after clearing Mushroom Kingdom,
+intervening fights and the maze (one Continue; maze goal at frame 4811).
+The controller pilot stays on Temple's upper floor while its opponent is on
+the lower floor, times out and retries. That run was intentionally stopped;
+its CRASH verdict records the host stop, not a guest crash. The full current
+campaign remains unverified (`stage-bindings-campaign-20261013/INTENTIONAL_STOP.txt`).
+
 ## Original root motion; stopped for commit — 2026-10-09
 
 The native animation advance now calls original `ftAnim_8006E054` for root

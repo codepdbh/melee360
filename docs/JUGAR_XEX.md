@@ -26,6 +26,8 @@ Usa las tablas originales de materiales para la friccion y la seleccion de sonid
 Tambien recupera las funciones originales de escala del modelo y los datos de camara de los luchadores.
 Ahora incluye el codigo original de inclinacion y ajuste de piernas al suelo, con los datos de cada personaje.
 Tambien usa la inicializacion y copia originales de los datos de colision; el contacto completo con paredes sigue pendiente.
+Se corrigio la articulacion que mueve las colisiones del escenario: Destino Final ya no arrastra el suelo con una pieza decorativa. Las plataformas transportan a los personajes una sola vez por cuadro.
+El render reutiliza los vertices originales ya decodificados y sigue aplicando las animaciones y materiales en cada cuadro.
 Las consultas de suelo reconocen los enlaces originales entre segmentos; los objetos tambien reciben la identidad correcta del escenario y su variante de campaña.
 Una prueba de Xenia completo el laberinto despues de un timeout y reintento.
 Faltan sus enemigos del recorrido y animaciones de transicion. La carrera

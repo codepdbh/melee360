@@ -462,26 +462,37 @@ static HSD_JObj* FindCollJoint(HSD_JObj* root, int z)
     return j;
 }
 
-static void AddCollBind(int group, HSD_JObj* model, int z)
+static void AddCollBind(int group, HSD_JObj* root, int z)
 {
-    HSD_JObj* j = FindCollJoint(model, z);
-    if (!j || group < 0 || group >= s_coll->joint_count || s_collBindCount >= kMaxCollBinds)
+    HSD_JObj* j = FindCollJoint(root, z);
+    unsigned i;
+    if (!j || group < 0 || group >= s_coll->joint_count)
+        return;
+    /* Ground_InitMapColl applies archive bindings first, then StageData.
+     * mpLib_800552B0 assigns one joint per group; the latter replaces it. */
+    for (i = 0; i < s_collBindCount; ++i) {
+        if (s_collBinds[i].group == group) {
+            s_collBinds[i].jobj = j;
+            return;
+        }
+    }
+    if (s_collBindCount >= kMaxCollBinds)
         return;
     s_collBinds[s_collBindCount].group = group;
     s_collBinds[s_collBindCount++].jobj = j;
     M360_MatchTrace("match.stage.coll_bind", (unsigned) group);
 }
 
-static void BindMapColl(const M360StageDesc* stage, int id, HSD_JObj* model)
+static void BindMapColl(const M360StageDesc* stage, int id, HSD_JObj* root)
 {
     struct UnkStageDat_x8_t* desc = MAP_GOBJ_DESC(s_mapHead, id);
     GrJoint* g = desc->unk20;
     int i;
     for (i = 0; g && i < desc->unk24; ++i)
-        AddCollBind(g[i].x, model, g[i].z);
+        AddCollBind(g[i].x, root, g[i].z);
     for (i = 0; i < stage->jointCount; ++i)
         if (stage->joints[i].mapId == id)
-            AddCollBind(stage->joints[i].group, model, stage->joints[i].joint);
+            AddCollBind(stage->joints[i].group, root, stage->joints[i].joint);
 }
 
 static void SetupMatrixChain(HSD_JObj* jobj)
@@ -563,7 +574,9 @@ static HSD_JObj* CreateMapGObj(const M360StageDesc* stage, int id)
     if (loop && loop[0])
         HSD_ForeachAnim(model, JOBJ_TYPE, 0x77A4, AnimCallback((void (*)(void)) HSD_AObjSetFlags), AOBJ_ARG_AU, AOBJ_LOOP);
     HSD_JObjAnimAll(model);
-    BindMapColl(stage, id, model);
+    /* Original Ground_InitMapColl receives the GObj's scale wrapper.
+     * mpLib_800552B0 starts at its child (the archive root, index zero). */
+    BindMapColl(stage, id, root);
     gobj = GObj_Create(HSD_GOBJ_CLASS_STAGE, 5, 0);
     HSD_GObjObject_80390A70(gobj, HSD_GObj_JObjKind, root);
     GObj_SetupGXLink(gobj, HSD_GObj_JObjCallback, kLinkStage, 0);
@@ -2202,8 +2215,8 @@ int M360_MatchFrame(void)
     for (i = 0; i < s_modelCount; ++i)
         HSD_JObjAnimAll(s_models[i]);
     UpdateMapColl();
-    if (s_collBindCount)
-        M360_FighterFollowFloors();
+    /* Original Fighter_procUpdate applies mpGetSpeed once per grounded
+     * fighter. A native pre-pass would apply the platform motion twice. */
     if (s_lobj)
         HSD_LObjAnimAll(s_lobj);
     for (i = 1; i < s_fighterCount && !IsCampaign(); ++i) {

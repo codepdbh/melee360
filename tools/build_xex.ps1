@@ -536,7 +536,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Original random.c compilation failed.' }
 Write-Host '[M360][XEX] compiling XDK HSD anim bridge'
 $hsdAnimWrapperArgs = @(
     '/nologo', '/c', '/O2', '/MT', '/EHsc-', '/GR-', '/GS-', '/W4',
-    '/D_XBOX', '/DXBOX', '/DNDEBUG',
+    '/DM360_NATIVE_RENDER', '/D_XBOX', '/DXBOX', '/DNDEBUG',
     "/I$includeXbox", "/I$includeSys", "/I$(Join-Path $root 'src\xdk')",
     "/I$(Join-Path $root 'upstream\melee-pc\src')", "/I$meleeSdkInclude",
     "/Fo$hsdAnimWrapperObject", $hsdAnimWrapper

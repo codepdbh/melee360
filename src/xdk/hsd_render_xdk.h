@@ -18,6 +18,7 @@ struct M360HsdRenderStats {
 bool M360_HsdRenderInit(IDirect3DDevice9* device);
 void M360_HsdRenderShutdown(void);
 extern "C" void M360_HsdRenderClearTextures(void);
+extern "C" void M360_HsdRenderForgetPObj(const void* pobj);
 void M360_HsdRenderBeginFrame(void);
 void M360_HsdRenderEndFrame(void);
 void M360_HsdRenderAllowErase(bool allow);
