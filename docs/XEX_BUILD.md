@@ -1,11 +1,15 @@
 # XEX build path
 
+The active gameplay/release target is the XDK `default.xex`, built for
+PowerPC Xbox 360 with D3D9/Xenos and XInput. See the
+[Xbox 360 installation guide](INSTALAR_XBOX360.md) and [README](../README.md).
+Physical console execution remains unverified.
+
 MELEE360 has two distinct executable targets:
 
-- `xenon.elf` is the current LibXenon build and runs through XeLL on an
-  RGH/JTAG console.
-- `default.xex` is the XDK build used for Xenia and development-kit style
-  loaders.
+- `xenon.elf` is the historical LibXenon integration target, loaded through XeLL.
+- `default.xex` is the active XDK game target used for Xenia and compatible
+  homebrew XEX loaders.
 
 For the current local VS route, file placement and controller controls, see
 [the play guide](JUGAR_XEX.md). The default build starts at the opening movie.

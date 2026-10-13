@@ -21,7 +21,7 @@ Xenia verified three Link-room victories and a Triforce clear after a timeout
 and retry (`adventure-maze-drop-pulse-20261006`, 445 seconds). All rooms in one
 attempt and the full updated campaign remain unverified. Maze hazards and
 transition animations remain missing; F-Zero race and mountain climb are absent.
-Current normal SHA-256:
+Previous normal build SHA-256 (before the first prerelease):
 `FF60CE6E11A3674B69A6C3657BB2087318C1FBBA359B00683903E690092D7876`.
 This full rebuild also restores original root/secondary animation displacement
 and bounded bone lookup. Host checks pass with mocked animation sampling.
