@@ -733,5 +733,20 @@ if ($imageExitCode -ne 0 -or -not (Test-Path -LiteralPath $xex)) {
 }
 
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $xex).Hash
+$revision = (& git -C $root rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Cannot record build revision.' }
+$dirty = [bool](& git -C $root status --porcelain --untracked-files=normal)
+$upstreamRevision = (& git -C (Join-Path $root 'upstream/melee-pc') rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Cannot record upstream revision.' }
+$upstreamDirty = [bool](& git -C (Join-Path $root 'upstream/melee-pc') status --porcelain --untracked-files=normal)
+$record = [ordered]@{
+    schema = 1; commit = $revision; dirty = $dirty
+    upstream = $upstreamRevision; upstream_dirty = $upstreamDirty
+    built_utc = [DateTime]::UtcNow.ToString('o')
+    boot_to_match = [bool]$BootToMatch; input_script = [bool]$InputScript
+    call_trace = [bool]$CallTrace; experimental_race = [bool]$ExperimentalRace
+    xex_sha256 = $hash; map_sha256 = (Get-FileHash -LiteralPath (Join-Path $build 'melee360.map')).Hash
+}
+$record | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $dist 'build-info.json')
 Write-Host "[M360][XEX] created $xex"
 Write-Host "[M360][XEX] SHA256=$hash"

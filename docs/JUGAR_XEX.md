@@ -111,7 +111,7 @@ y habilita el audio. Usa `-Mute` solo si quieres silenciar esa instancia.
 Para una prueba automatica con musica y efectos habilitados:
 
 ```powershell
-./tools/soak_xenia.ps1 -Only 'p1-Kirby-*' -Audio -Seconds 150
+./tools/soak_xenia.ps1 -Build -Only 'zelda-sheik-transform' -Audio
 ```
 
 Las pruebas automaticas silencian Xenia cuando no se indica `-Audio`.

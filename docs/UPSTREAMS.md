@@ -13,8 +13,12 @@ are intentionally ignored by the MELEE360 root repository.
 | Xenon Emulator | https://github.com/xenon-emu/xenon.git | `main` | `0284bbe6c8125935d97bf54ab3132089c6c65c8b` | GPL-2.0 | Early boot and CPU testing |
 | Aurora (vendored by melee-pc) | recorded by `extern/aurora/UPSTREAM_COMMIT` | n/a | See vendored file | MIT | GX compatibility and PC runtime |
 
-The Xenon Emulator checkout has 19 recursively initialized submodules. The
-other pinned repositories currently declare no root submodules. Run
+The optional Xenon Emulator checkout previously had 19 recursively initialized
+submodules. It and the clean doldecomp reference were removed on 2026-10-13
+to reclaim disk space; the active XDK build uses melee-pc. Local emulator
+changes and pinned recovery metadata are preserved in
+[the cleanup record](WORKSPACE_CLEANUP.md). The other pinned repositories
+declare no root submodules. Run
 `tools/update_upstreams.sh` to fetch and report available changes without
 changing any checkout.
 

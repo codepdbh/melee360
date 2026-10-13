@@ -19,6 +19,16 @@ struct CollData {
 };
 static int mpColl_804D64AC=47;
 void memzero(void* ptr,size_t count) { std::memset(ptr,0,count); }
+enum GroundOrAir { GA_Ground=0, GA_Air=1 };
+struct Fighter { Vec3 cur_pos; CollData coll_data; };
+struct Fighter_GObj { Fighter* user_data; };
+static bool groundContact;
+static Vec3 groundQueryPos, groundQueryLast;
+bool mpColl_8004B108(CollData* coll) {
+    groundQueryPos=coll->cur_pos; groundQueryLast=coll->last_pos;
+    if(groundContact) coll->cur_pos.y=17;
+    return groundContact;
+}
 #include "collision_lifecycle_original.h"
 static bool Equal(Vec3 a,Vec3 b) { return a.x==b.x && a.y==b.y && a.z==b.z; }
 template<class T> static bool Zero(const T& value) {
@@ -72,5 +82,13 @@ int main() {
         assert(dst.floor.index==3 && dst.ceiling.flags==8 && dst.left_facing_wall.index==5);
         assert(Equal(dst.right_facing_wall.normal,{1,0,0}));
     }
-    puts("PASS: original collision initialization, normals, filters, zeroed ECBs and selective copy in all modes");
+    Fighter fp={}; fp.cur_pos={20,18,3}; fp.coll_data.cur_pos={1,2,3};
+    Fighter_GObj gobj={&fp}; groundContact=true;
+    assert(ft_80082708(&gobj)==GA_Air);
+    assert(Equal(groundQueryPos,{20,18,3}) && Equal(groundQueryLast,{1,2,3}));
+    assert(Equal(fp.cur_pos,{20,17,3}) && Equal(fp.coll_data.cur_pos,fp.cur_pos));
+    fp.cur_pos={30,16,3}; groundContact=false;
+    assert(ft_80082708(&gobj)==GA_Ground);
+    assert(Equal(groundQueryLast,{20,17,3}) && Equal(fp.cur_pos,{30,16,3}));
+    puts("PASS: original collision lifecycle and grounded fighter position synchronization");
 }
