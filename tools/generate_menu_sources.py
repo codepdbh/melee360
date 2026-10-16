@@ -40,7 +40,7 @@ def generate(root, output):
     seeds = '\n'.join((base/f'melee/mn/{name}.c').read_text(encoding='utf-8') for name in menu_units)
     selected = set()
     pending = re.findall(r'\b([A-Za-z_]\w*)\s*\(', seeds)
-    pending.extend(('gm_80167BC8', 'gm_80167FC4', 'gm_SelKindToCKind', 'gm_SetupAllPlayerDefaults', 'gm_SetupRulesDefaults'))
+    pending.extend(('gm_80167BC8', 'gm_80167FC4', 'gm_SelKindToCKind', 'gm_SetupAllPlayerDefaults', 'gm_SetupRulesDefaults', 'gmMainLib_8015CDC8'))
     while pending:
         name = pending.pop()
         if name in selected or name in exports or name not in lookup:
