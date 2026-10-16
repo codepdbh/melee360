@@ -12,6 +12,8 @@ $original=Get-Content -Raw $originalPath
 if(-not $original.Contains('out = arg0;')) { throw 'Original ally pointer assignment changed.' }
 Set-Content -Encoding ASCII $originalPath ($original.Replace('out = arg0;','out = (RegClearCharEntry*)arg0;'))
 & (Join-Path $PSScriptRoot 'generate_classic_matchups.ps1') -OutputPath (Join-Path $out 'melee_classic_matchups.h')
+& python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $out 'melee_adventure_matchups.h')
+if($LASTEXITCODE -ne 0) { throw 'Adventure metadata extraction failed.' }
 $native=Get-Content -Raw (Join-Path $root 'src/xdk/campaign_xdk.c')
 $header=Get-Content -Raw (Join-Path $root 'src/xdk/campaign_xdk.h')
 Set-Content -Encoding ASCII (Join-Path $out 'campaign_native.h') ([regex]::Replace($header+"`n"+$native,'(?m)^#include[^\n]*\n',''))

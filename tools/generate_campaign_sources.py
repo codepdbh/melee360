@@ -56,7 +56,7 @@ def generate(output):
     result += '\n' + declaration(source, 'typedef struct RegClearCharEntry')
     fs = functions(source)
     for name in ('pick_random_ckind', 'fn_8017D9C0', 'gm_8017DB88',
-                 'fn_8017DD7C', 'fn_8017DE54'):
+                 'fn_8017DD7C', 'fn_8017DE54', 'gm_8017CE34_SetupColors'):
         result += '\n' + fs[name][1] + '\n'
     result += '\n' + declaration((BASE / 'gmregcommon.c').read_text(encoding='utf-8'),
                                   'u8 lbl_803D79F0[]')
