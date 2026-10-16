@@ -366,6 +366,7 @@ void ApplyRoutePilot(PADStatus* pad)
         float best = 1.0e30f;
         for (unsigned i = 1; i < match.fighters && i < 4; ++i) {
             if (!match.stocksRemaining[i]) continue;
+            if (M360_MatchIsTeams() && M360_MatchTeam(i)==M360_MatchTeam(0)) continue;
             const float distance = match.posX[i] - x;
             if (distance * distance < best) {
                 best = distance * distance;

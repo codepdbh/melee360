@@ -25,6 +25,7 @@
 #include "match_xdk.h"
 #include "character_select_xdk.h"
 #include "campaign_xdk.h"
+#include "menu_scene_xdk.h"
 #include <melee/gm/gm_1601.h>
 #include <melee/gm/gmmain_lib.h>
 #include <melee/mn/types.h>
@@ -2496,6 +2497,7 @@ void M360_MatchLeave(void)
 void M360_MatchSetMode(unsigned gameMode, unsigned round)
 {
     s_gameMode = gameMode;
+    M360_MenuSetGameMode(gameMode);
     s_campaignRound = round;
     if (!IsCampaign() && s_stageIndex >= M360_MatchStageCount()) s_stageIndex = 0;
     if (IsCampaign() && round == 0 && !s_campaignRetryPending) {

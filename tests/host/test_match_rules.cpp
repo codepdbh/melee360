@@ -127,6 +127,8 @@ struct gm_803DDEC8Struct { u8 x0,x1,x2,pad03;u16 x4,x6;u8 x8,pad09[3];gmClassicM
 struct Unk1PData_x24 { s8 ckind;u8 color,cpu_level,cpu_kind;float attack_ratio,defense_ratio; };
 struct MockMainData { u8 c_kind; } mockMainData;
 MockMainData* gmMainLib_8015CDC8() { return &mockMainData; }
+unsigned mockSceneMode;
+void M360_MenuSetGameMode(unsigned mode) { mockSceneMode=mode; }
 bool gm_IsCKindUnlocked(unsigned kind) { return kind<26; }
 bool gm_80164430(unsigned stage) {
     for(unsigned i=0;i<17;++i) if(s_stages[i].grkind==g_m360StageGroundKinds[stage]) return true;
