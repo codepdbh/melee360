@@ -47,6 +47,12 @@ la elección de temas alternativos todavía está pendiente.
 Para usar estos cambios, compila `main` y utiliza `dist/default.xex` junto a
 tu ISO. Classic y Adventure siguen incompletos; no se ha probado en consola física.
 
+Classic ahora enlaza siete combates de su secuencia original, con aliados,
+equipos, gigante y metal. Classic y Adventure usan los selectores originales
+de nivel, comportamiento CPU, colores, proporciones y frecuencia de objetos.
+VS respeta el reloj de Stock, Time sin límite y las reglas de autodestrucción
+y daño entre compañeros. [Detalle y límites](docs/CAMPAIGNS_VS_20261016.md).
+
 Los últimos cambios corrigen la articulación de las colisiones del escenario,
 el doble desplazamiento en plataformas y restauran funciones originales de
 colisión, escala y ajuste de piernas. El render almacena los vértices GX

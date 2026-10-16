@@ -53,6 +53,8 @@ float M360_MatchCombatRatio(unsigned slot, int defense);
 unsigned M360_MatchCpuLevel(unsigned slot);
 unsigned M360_MatchCpuKind(unsigned slot);
 int M360_MatchIsTeams(void);
+int M360_MatchFriendlyFire(void);
+int M360_MatchSelfDestructPenalty(void);
 
 enum { M360_MAX_STAGE_LINES = 512 };
 
@@ -169,6 +171,8 @@ void M360_FighterEffectsInit(void);
 unsigned M360_FighterKindCount(void);
 unsigned M360_FighterCostumeCount(unsigned kindIndex);
 int M360_FighterIndexForKind(int kind);
+int M360_FighterIndexForCharacter(unsigned ckind);
+unsigned M360_FighterCharacterForIndex(unsigned index);
 const char* M360_FighterKindName(unsigned index);
 void M360_FighterSelect(int slot, unsigned kindIndex, unsigned costume);
 unsigned M360_FighterKindIndex(void* gobj);

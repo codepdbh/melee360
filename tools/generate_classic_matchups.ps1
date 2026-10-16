@@ -61,5 +61,8 @@ foreach ($entry in $stageMap) {
     if (-not $grValues.ContainsKey($grName)) { throw "Unmapped stage identity: $grName" }
     $lines += "    $($grValues[$grName]), // $grName"
 }
+$lines += @('};', '// Original CharacterKind -> primary FighterKind mapping.',
+    'static const int g_m360CharacterFighters[] = {')
+foreach ($entry in $characterMap) { $lines += "    $($ftValues[$entry.Groups[1].Value])," }
 $lines += @('};', '#endif')
 Set-Content -LiteralPath $OutputPath -Encoding ASCII $lines

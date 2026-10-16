@@ -7,10 +7,10 @@
 #include "stage_identity_reference.h"
 #include "../../src/xdk/match_xdk.h"
 
-enum { kMaxFighters = 4, kStartingStocks = 3, kCampaignRounds = 5,
+enum { kMaxFighters = 4, kStartingStocks = 3, kCampaignRounds = 7,
        kGameModeClassic = 3, kGameModeAdventure = 4,
        kPhaseSelect = 0, kPhaseFight = 1, kRespawnFrames = 60,
-       kMaxCostumes = 6, kKindCount = 11, kSelectableKinds = 6, kStageCount = 21, kTimeOptionCount = 2,
+       kMaxCostumes = 6, kKindCount = 31, kSelectableKinds = 6, kStageCount = 21, kTimeOptionCount = 2,
        HSD_GOBJ_CLASS_STAGE = 1 };
 struct CostumeDesc { const char* costumeDat[6]; const char* costumeJoint[6]; int kind; };
 const CostumeDesc s_kinds[] = {
@@ -19,7 +19,27 @@ const CostumeDesc s_kinds[] = {
     { { "a", "b", "c", "d", "e", "f" }, { "a", "b", "c", "d", "e", "f" }, 14 },
     { { "a" }, { "a" }, 3 }, { { "a" }, { "a" }, 4 }, { { "a" }, { "a" }, 6 },
     { { "a" }, { "a" }, 12 }, { { "a" }, { "a" }, 23 }, { { "a" }, { "a" }, 15 },
-    { { "a" }, { "a" }, 29 }, { { "a" }, { "a" }, 30 }
+    { { "a" }, { "a" }, 29 }, { { "a" }, { "a" }, 30 },
+    { { "a" }, { "a" }, 1 },
+    { { "a" }, { "a" }, 2 },
+    { { "a" }, { "a" }, 5 },
+    { { "a" }, { "a" }, 7 },
+    { { "a" }, { "a" }, 8 },
+    { { "a" }, { "a" }, 9 },
+    { { "a" }, { "a" }, 10 },
+    { { "a" }, { "a" }, 13 },
+    { { "a" }, { "a" }, 16 },
+    { { "a" }, { "a" }, 18 },
+    { { "a" }, { "a" }, 19 },
+    { { "a" }, { "a" }, 20 },
+    { { "a" }, { "a" }, 21 },
+    { { "a" }, { "a" }, 22 },
+    { { "a" }, { "a" }, 24 },
+    { { "a" }, { "a" }, 25 },
+    { { "a" }, { "a" }, 26 },
+    { { "a" }, { "a" }, 27 },
+    { { "a" }, { "a" }, 28 },
+    { { "a" }, { "a" }, 31 }
 };
 struct StageDesc { int grkind; };
 const StageDesc s_stages[] = { {36}, {37}, {28}, {10}, {12}, {29}, {7}, {30}, {5}, {2}, {4}, {8}, {13}, {14}, {16}, {20}, {18}, {31}, {33}, {32}, {34} };
@@ -35,7 +55,8 @@ int HSD_Randi(int count) { assert(count > 0); return (int) (mockRand % (unsigned
 struct HSD_GObj {};
 struct Fighter { float x, y; unsigned reads, deaths, rebirths; } fighters[4];
 unsigned s_gameMode, s_campaignRound, s_campaignStocks, s_stocks;
-unsigned s_classicMatchups[kCampaignRounds], s_classicStKind;
+unsigned s_classicStKind;
+int s_classicRouteReady;
 int s_campaignRetryPending, s_campaignTimedOut;
 unsigned s_adventureLives[4];
 unsigned s_campaignClearFrames;
@@ -87,16 +108,51 @@ int s_closed[4], s_originalVsRules;
 unsigned s_creditedKOs[4];
 enum { Gm_PKind_Human=0, Gm_PKind_Cpu=1, Gm_PKind_NA=3 };
 struct PlayerInitData {
-    unsigned ckind,color,slot_type,cpu_level,team,stocks;
-    float attack_ratio,defense_ratio;
+    unsigned ckind,color,slot_type,cpu_level,team,stocks,cpu_kind,slot,xD_b1,xC_b1,xB,vs_metal;
+    float attack_ratio,defense_ratio,model_scale;
 };
-struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind;int item_freq; };
+#include "campaign_api.h"
+PlayerInitData s_campaignPlayers[6];
+M360CampaignEncounter s_campaignEncounter;
+typedef unsigned char u8;
+typedef signed char s8;
+typedef unsigned short u16;
+typedef int s32;
+typedef float f32;
+#define ASSERT_SIZE(type,size)
+#define HSD_ASSERTREPORT(line,expr,...) assert(expr)
+enum { ChKind_None=33,CKind_GKoops=29 };
+struct gmClassicMatchup;
+struct gm_803DDEC8Struct { u8 x0,x1,x2,pad03;u16 x4,x6;u8 x8,pad09[3];gmClassicMatchup* xC; };
+struct Unk1PData_x24 { s8 ckind;u8 color,cpu_level,cpu_kind;float attack_ratio,defense_ratio; };
+struct MockMainData { u8 c_kind; } mockMainData;
+MockMainData* gmMainLib_8015CDC8() { return &mockMainData; }
+bool gm_IsCKindUnlocked(unsigned kind) { return kind<26; }
+bool gm_80164430(unsigned stage) {
+    for(unsigned i=0;i<17;++i) if(s_stages[i].grkind==g_m360StageGroundKinds[stage]) return true;
+    return false;
+}
+void gm_SetupPlayerDefaults(PlayerInitData* p) {
+    memset(p,0,sizeof(*p));p->attack_ratio=p->defense_ratio=p->model_scale=1;
+}
+void gm_SetupAllPlayerDefaults(PlayerInitData* p) { for(unsigned i=0;i<6;++i) gm_SetupPlayerDefaults(&p[i]); }
+u8 gm_GetNumCostumesForCKind(u8 kind) { return (u8)M360_FighterCostumeCount((unsigned)M360_FighterIndexForCharacter(kind)); }
+s32 fn_8017DE54(u8,u8*);
+s32 fn_8017D9C0(const u8*,const u8*);
+extern u8 lbl_803D79F0[];
+struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind,timer_enabled,time_limit,friendly_fire;int item_freq,sd_penalty; };
 struct MockVs { struct { MockStartRules rules;PlayerInitData players[6]; } start; };
 struct CSSData { MockVs vs; } s_selectedCss;
 struct GameRules { unsigned time_limit,stock_count; } mockGameRules;
 GameRules* gmMainLib_GetGameRules() { return &mockGameRules; }
 void gm_80167BC8(MockVs*) {}
-int M360_FighterIndexForCharacter(unsigned kind) { return (int)kind; }
+int M360_FighterIndexForCharacter(unsigned kind) {
+    return kind<33 ? M360_FighterIndexForKind(g_m360CharacterFighters[kind]) : -1;
+}
+unsigned M360_FighterCharacterForIndex(unsigned index) {
+    for(unsigned i=0;i<33;++i) if(g_m360CharacterFighters[i]==s_kinds[index].kind) return i;
+    return 33;
+}
 int M360_CharacterSelectEnter(unsigned) { return 0; }
 int M360_CharacterSelectActive() { return 0; }
 int M360_CharacterSelectFrame() { return -1; }
@@ -193,19 +249,9 @@ int BuildStage(unsigned stage) {
     mockGround.stage_param_count = 1;
     mockStageParams[0].stkind = 0;
     mockStageParams[0].x4 = 11; mockStageParams[0].xC = 22;
-    for (unsigned i = 0; i < sizeof(g_m360ClassicNormal) / sizeof(g_m360ClassicNormal[0]); ++i) {
-        if (g_m360ClassicNormal[i].grkind == s_stages[stage].grkind) {
-            StageParam& row = mockStageParams[mockGround.stage_param_count++];
-            row.stkind = g_m360ClassicNormal[i].stkind;
-            row.x4 = 1000 + row.stkind; row.xC = 2000 + row.stkind;
-        }
-    }
-    for (unsigned i = 0; i < M360_ADVENTURE_ROUNDS; ++i) {
-        if (g_m360Adventure[i].grkind == s_stages[stage].grkind) {
-            StageParam& row = mockStageParams[mockGround.stage_param_count++];
-            row.stkind = g_m360Adventure[i].stkind;
-            row.x4 = 1000 + row.stkind; row.xC = 2000 + row.stkind;
-        }
+    for (unsigned i=0;i<286;++i) if(g_m360StageGroundKinds[i]==s_stages[stage].grkind) {
+        StageParam& row=mockStageParams[mockGround.stage_param_count++];
+        row.stkind=i;row.x4=1000+i;row.xC=2000+i;
     }
     return 1;
 }
@@ -230,7 +276,8 @@ void M360_FighterRespawn(void* f, float x, float y) {
 void M360_FighterRebirth(void* f) { ++((Fighter*) f)->rebirths; }
 void M360_FighterSetDead(void* f) { ++((Fighter*) f)->deaths; }
 void M360_FighterSetDamage(void*, float) {}
-int M360_FighterLastAttacker(void*) { return -1; }
+int mockAttacker = -1;
+int M360_FighterLastAttacker(void*) { return mockAttacker; }
 void M360_FighterGetState(void* f, float* x, float* y, float* facing,
                           unsigned* motion, unsigned* damage) {
     Fighter* fighter = (Fighter*) f;
@@ -240,10 +287,18 @@ void M360_FighterGetState(void* f, float* x, float* y, float* facing,
 
 // Extracted from the actual native match source by the runner.
 #include "match_rules_original.h"
+#pragma warning(push)
+#pragma warning(disable: 4100 4244 4505 4018)
+#include "campaign_original.h"
+#pragma warning(pop)
+#include "campaign_native.h"
 
 static void Reset(unsigned count) {
     memset(s_closed,0,sizeof(s_closed));
     s_originalVsRules=0;
+    gm_SetupAllPlayerDefaults(s_campaignPlayers);
+    for(unsigned i=0;i<4;++i) { s_campaignPlayers[i].team=i ? 4 : 0;s_adventureLives[i]=1; }
+    s_classicRouteReady=0;
     cssResumeCalls=0;
     memset(&s_selectedCss,0,sizeof(s_selectedCss));
     memset(fighters, 0, sizeof(fighters));
@@ -277,6 +332,7 @@ static void Reset(unsigned count) {
     s_campaignClearFrames = s_adventureElapsedFrames = 0;
     s_matchOver = s_draw = s_paused = s_suddenDeath = 0;
     s_disconnectedControllers = s_rematchPending = 0;
+    mockAttacker = -1;
     s_campaignRetryPending = s_campaignTimedOut = 0;
     connectedControllers = 1;
     memset(secondaryButtons, 0, sizeof(secondaryButtons));
@@ -325,6 +381,7 @@ int main() {
     s_stageIndex = 0;
     Reset(4);
     s_gameMode = kGameModeAdventure; s_campaignRound = 0; s_cpuLevel = 3;
+    assert(CampaignOpponent());
     assert(M360_MatchCombatRatio(0, 0) == 1.0f);
     assert(M360_MatchCombatRatio(0, 1) == 1.0f);
     assert(M360_MatchCombatRatio(1, 0) == 0.5f);
@@ -341,24 +398,29 @@ int main() {
     assert(M360_MatchCpuLevel(3) == 2);
     s_slotCount = 4;
     s_cpuLevel = 9;
+    assert(CampaignOpponent());
     assert(M360_MatchCombatRatio(1, 0) == 0.8f);
     assert(M360_MatchCombatRatio(1, 1) == 1.7f);
     s_campaignRound = 9; s_cpuLevel = 5;
+    assert(CampaignOpponent());
     assert(M360_MatchCombatRatio(1, 0) == 0.8f);
     assert(M360_MatchCombatRatio(1, 1) == 3.0f);
     assert(M360_MatchCpuLevel(1) == 4);
     assert(M360_MatchCpuLevel(3) == 4);
     s_campaignRound = 1;
+    assert(CampaignOpponent());
     assert(M360_MatchCpuLevel(1) == 5);
     assert(M360_MatchCpuLevel(2) == 4);
     assert(M360_MatchCpuKind(1) == 16);
     assert(M360_MatchCpuKind(2) == 4);
     s_campaignRound = 18;
+    assert(CampaignOpponent());
     assert(M360_MatchCpuLevel(1) == 5);
     assert(M360_MatchCpuLevel(2) == 3);
     assert(M360_MatchCpuKind(1) == 27);
     assert(M360_MatchCpuKind(2) == 27);
     s_campaignRound = 7;
+    assert(CampaignOpponent());
     assert(M360_MatchCombatRatio(1, 1) == 1.0f);
     s_gameMode = 0;
     assert(M360_MatchCombatRatio(1, 0) == 1.0f);
@@ -533,21 +595,13 @@ int main() {
                 mockButtons = 0x100;
                 M360_MatchFrame();
             }
-            assert(s_phase == kPhaseFight && s_fighterCount == 2);
-            assert(s_stocksRemaining[0] == lives && s_stocksRemaining[1] == 1);
+            assert(s_phase == kPhaseFight && s_fighterCount >= 2 && s_fighterCount <= 4);
+            assert(s_stocksRemaining[0] == lives);
             assert(!s_matchOver && !s_draw && !s_paused && s_frame == 0);
-            if (mode == kGameModeClassic) {
-                const unsigned chosen = s_classicMatchups[round];
-                assert(chosen < 38 && s_classicStKind == g_m360ClassicNormal[chosen].stkind);
-                assert(s_stages[s_stageIndex].grkind == g_m360ClassicNormal[chosen].grkind);
-                assert(s_kinds[s_selKind[1]].kind == g_m360ClassicNormal[chosen].fighterKind);
-                assert(s_selKind[1] != s_selKind[0]);
-                assert(hudTimeLimit == 300 && hudStockMatch);
-                assert(M360_MatchBgmId() == 1000 + (int) s_classicStKind);
-                if (round < 4)
-                    for (unsigned previous = 0; previous < round; ++previous)
-                        assert(g_m360ClassicNormal[s_classicMatchups[previous]].grkind != g_m360ClassicNormal[chosen].grkind);
-            }
+            assert(s_campaignEncounter.ordinal==s_combatOrdinals[round]);
+            assert(s_classicStKind==s_campaignEncounter.stkind);
+            assert(hudTimeLimit==300 && hudStockMatch);
+            assert(M360_MatchBgmId()==1000+(int)s_classicStKind);
             if (round == 0 || round == 2) {
                 fighters[0].x = 200;
                 mockButtons = 0;
@@ -557,9 +611,13 @@ int main() {
                 for (unsigned frame = 0; frame < kRespawnFrames; ++frame)
                     M360_MatchFrame();
             }
-            fighters[1].x = 200;
-            mockButtons = 0;
-            M360_MatchFrame();
+            mockButtons=0;
+            for(unsigned tick=0;tick<1200 && !s_matchOver;++tick) {
+                for(unsigned i=1;i<s_fighterCount;++i)
+                    if(M360_MatchTeam(i)!=M360_MatchTeam(0) && s_stocksRemaining[i] && !s_respawn[i]) fighters[i].x=200;
+                M360_MatchFrame();
+                for(unsigned i=1;i<s_fighterCount;++i) fighters[i].x=0;
+            }
             assert(s_matchOver && !s_draw && s_winner == 0);
             mockButtons = 0x100;
             assert(M360_MatchFrame() == M360_MATCH_NEXT_ROUND);
@@ -581,7 +639,7 @@ int main() {
     M360_MatchFrame();
     assert(s_phase == kPhaseFight && s_fighterCount == 1 && s_stageIndex == 17);
     assert(hudTimeLimit == 420 && M360_MatchIsTeams());
-    assert(M360_MatchTeam(0) == 0 && M360_MatchTeam(3) == 1);
+    assert(M360_MatchTeam(0) == 0 && M360_MatchTeam(3) == 4);
     routePoints = true; mockButtons = 0;
     M360_MatchFrame();
     assert(s_adventureCheckpoint == 1 && s_fighterCount == 4 && !s_matchOver);
@@ -780,7 +838,7 @@ int main() {
     M360_MatchEnter();
     mockButtons = 0x100;
     M360_MatchFrame();
-    const unsigned firstEncounter = s_classicMatchups[0];
+    const unsigned firstEncounter = s_classicStKind;
     for (unsigned lives = 2; ; --lives) {
         s_frame = 300 * 60 - 1;
         mockButtons = 0;
@@ -794,7 +852,7 @@ int main() {
             M360_MatchLeave();
             M360_MatchSetMode(kGameModeClassic, 0);
             M360_MatchEnter();
-            assert(s_classicMatchups[0] == firstEncounter && s_stocksRemaining[0] == 3);
+            assert(s_classicStKind == firstEncounter && s_stocksRemaining[0] == 3);
             M360_MatchLeave();
             break;
         }
@@ -804,10 +862,10 @@ int main() {
         assert(s_campaignStocks == lives); // Retry round 0 must not refill lives.
         M360_MatchEnter();
         assert(s_phase == kPhaseFight && !s_campaignTimedOut && s_frame == 0);
-        assert(s_classicMatchups[0] == firstEncounter && s_stocksRemaining[0] == lives);
+        assert(s_classicStKind == firstEncounter && s_stocksRemaining[0] == lives);
     }
     M360_MatchSetMode(kGameModeClassic, 0);
-    assert(s_campaignStocks == 3 && s_classicMatchups[0] == ~0u);
+    assert(s_campaignStocks == 3 && !s_classicRouteReady);
     s_classicStKind = 999;
     assert(!MatchStageParam() && M360_MatchBgmId() == -1);
     M360_MatchSetMode(2, 0);
@@ -835,6 +893,8 @@ int main() {
     assert(!StockResult(&winner,&draw));
     s_selectedCss.vs.start.rules.match_kind=0;
     mockGameRules.time_limit=1;
+    s_selectedCss.vs.start.rules.timer_enabled=1;
+    s_selectedCss.vs.start.rules.time_limit=60;
     s_score[0]=2;s_score[1]=3;s_score[2]=4;
     s_frame=3599;
     M360_MatchFrame();
@@ -847,4 +907,49 @@ int main() {
     ResolveCostumes();
     assert(s_selCostume[0]==2 && s_selCostume[1]==2);
     puts("PASS: original CSS team colors, stock team victory, summed time scores and team sudden death");
+
+    Reset(3);
+    s_originalVsRules=1;
+    s_selectedCss.vs.start.rules.match_kind=1;
+    s_selectedCss.vs.start.rules.timer_enabled=1;
+    s_selectedCss.vs.start.rules.time_limit=60;
+    s_stocksRemaining[0]=2;s_stocksRemaining[1]=1;s_stocksRemaining[2]=0;
+    s_frame=3599;
+    M360_MatchFrame();
+    assert(s_matchOver && s_winner==0 && !s_suddenDeath);
+    assert(s_stocksRemaining[0]==2 && s_stocksRemaining[1]==1);
+    s_matchOver=0;s_frame=3599;s_stocksRemaining[1]=2;
+    M360_MatchFrame();
+    assert(s_suddenDeath && s_stocksRemaining[0]==1 && s_stocksRemaining[1]==1 && !s_stocksRemaining[2]);
+    assert(!TimeMinutes() && !IsTimeMatch());
+    puts("PASS: timed Stock ranks remaining lives and only tied leaders enter sudden death");
+
+    Reset(2);
+    s_originalVsRules=1;
+    s_selectedCss.vs.start.rules.match_kind=0;
+    s_selectedCss.vs.start.rules.timer_enabled=0;
+    s_selectedCss.vs.start.rules.sd_penalty=0;
+    fighters[0].x=200;
+    M360_MatchFrame();
+    assert(IsTimeMatch() && !TimeMinutes() && !s_matchOver && s_respawn[0]);
+    assert(s_stocksRemaining[0]==1 && s_score[0]==0);
+    s_respawn[0]=0;s_selectedCss.vs.start.rules.sd_penalty=-2;
+    M360_MatchFrame();
+    assert(s_score[0]==-2);
+    s_respawn[0]=0;mockAttacker=1;
+    M360_MatchFrame();
+    assert(s_score[0]==-3 && s_score[1]==1);
+    s_respawn[0]=0;s_selectedCss.vs.start.rules.is_teams=1;
+    s_selectedCss.vs.start.players[0].team=s_selectedCss.vs.start.players[1].team=0;
+    s_selectedCss.vs.start.rules.friendly_fire=1;
+    assert(M360_MatchFriendlyFire());
+    M360_MatchFrame();
+    assert(s_score[0]==-4 && s_score[1]==-1);
+    puts("PASS: unlimited Time, original self-destruct penalty and team-KO scoring");
+
+    Reset(2);
+    connectedControllers=3;secondaryButtons[1]=0x100;
+    M360_MatchFrame();
+    assert(!s_human[1]);
+    puts("PASS: CPU slots cannot be taken over by a pad during combat");
 }

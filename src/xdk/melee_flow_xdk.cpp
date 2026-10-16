@@ -22,7 +22,6 @@ const unsigned kBgmOpening = 0x3E;
 const unsigned kGameModeVs = 2;
 const unsigned kGameModeClassic = 3;
 const unsigned kGameModeAdventure = 4;
-const unsigned kCampaignRounds = 5;
 const unsigned kTitleLogoTick = 0x140A;
 const unsigned kOpeningMenuTick = 0x157C;
 const unsigned kTitleTimeout = 600;

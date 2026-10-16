@@ -345,7 +345,7 @@ bool gm_IsCurrently1PMode_inline(void) {  Report("fighter.unported.gm_IsCurrentl
 bool gm_GetDbPauseFlag(int a0) { (void) a0; Report("fighter.unported.gm_GetDbPauseFlag"); return (bool) 0; }
 u32 gm_801A4BB8(void) {  Report("fighter.unported.gm_801A4BB8"); return (u32) 0; }
 bool gm_8016B168(void) { return M360_MatchIsTeams() != 0; }
-bool gm_8016B0D4(void) {  Report("fighter.unported.gm_8016B0D4"); return (bool) 0; }
+bool gm_8016B0D4(void) { return M360_MatchFriendlyFire() != 0; }
 bool gm_8016B014(void) {  Report("fighter.unported.gm_8016B014"); return (bool) 0; }
 void gm_80167470(s32 a0, s32 a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167470");  }
 void gm_80167320(int a0, bool a1) { (void) a0; (void) a1; Report("fighter.unported.gm_80167320");  }
