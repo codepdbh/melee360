@@ -1453,8 +1453,8 @@ static IDirect3DTexture9* ResolveParticleTexture(const M360ParticleTexture* tex)
     return texture;
 }
 
-void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleTexture* tex,
-                          unsigned blend, int depthWrite)
+static void DrawNativeQuad(const M360ParticleVertex* corners, const M360ParticleTexture* tex,
+                          unsigned blend, int depthWrite, bool constantRgb)
 {
     if (!s_device || !corners)
         return;
@@ -1474,6 +1474,10 @@ void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleT
     ClearStage(stage);
     stage->w[1][0] = 1.0f;              /* in1 = prev */
     stage->w[2][1] = 1.0f;              /* in2 = texture */
+    if (constantRgb) {
+        stage->w[2][1] = 0.0f;
+        for (unsigned i = 0; i < 3; ++i) stage->k[2][i] = 1.0f;
+    }
     stage->wa[0][1] = 1.0f;             /* alpha in1 = prev.a */
     stage->wa[1][2] = 1.0f;             /* alpha in2 = texture.a */
     ps[48 * 4 + 0] = ps[48 * 4 + 1] = ps[48 * 4 + 2] = ps[48 * 4 + 3] = 1.0f;
@@ -1519,6 +1523,18 @@ void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleT
     s_device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(HsdVertex));
     ++s_stats.drawCalls;
     s_stats.triangles += 2;
+}
+
+void M360_HsdDrawParticle(const M360ParticleVertex* corners, const M360ParticleTexture* tex,
+                        unsigned blend, int depthWrite)
+{
+    DrawNativeQuad(corners, tex, blend, depthWrite, false);
+}
+
+extern "C" void M360_HsdDrawTextQuad(const M360ParticleVertex* corners,
+                                    const M360ParticleTexture* tex, int depth)
+{
+    DrawNativeQuad(corners, tex, depth ? 0 : 2, 0, true);
 }
 
 bool M360_HsdDecodeTexture(const void* tobjHandle, unsigned** pixels,

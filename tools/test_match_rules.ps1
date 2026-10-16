@@ -37,7 +37,7 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static unsign
     'unsigned M360_MatchCpuKind(',
     'static StageParam* MatchStageParam(', 'int M360_MatchBgmId(', 'int M360_MatchGroundKind(',
     'GrKind Stage_8022519C(', 'StKind Stage_80225194(',
-    'static unsigned StartingStocks(', 'static int LoseStock(', 'static int StockResult(',
+    'static unsigned StartingStocks(', 'static int LoseStock(', 'static int StockResult(', 'static int MatchScore(',
     'static int ClassicStageIndex(', 'static void CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
     'void M360_MatchEnter(', 'void M360_MatchLeave(',
     'static int SelectInput(', 'static unsigned P1Slot(', ('static int SelectFrame(void)' + "`n{"),

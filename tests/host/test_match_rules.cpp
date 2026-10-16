@@ -83,6 +83,28 @@ int s_score[4], s_human[4], s_matchOver, s_draw;
 unsigned s_winner, s_frame, s_autoPlayed, s_autoResultFrames;
 unsigned s_slotCount, s_selKind[4], s_selCostume[4], s_selReady[4];
 int s_selHuman[4], s_itemFreq, s_selProbeP2;
+int s_closed[4], s_originalVsRules;
+unsigned s_creditedKOs[4];
+enum { Gm_PKind_Human=0, Gm_PKind_Cpu=1, Gm_PKind_NA=3 };
+struct PlayerInitData {
+    unsigned ckind,color,slot_type,cpu_level,team,stocks;
+    float attack_ratio,defense_ratio;
+};
+struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind;int item_freq; };
+struct MockVs { struct { MockStartRules rules;PlayerInitData players[6]; } start; };
+struct CSSData { MockVs vs; } s_selectedCss;
+struct GameRules { unsigned time_limit,stock_count; } mockGameRules;
+GameRules* gmMainLib_GetGameRules() { return &mockGameRules; }
+void gm_80167BC8(MockVs*) {}
+int M360_FighterIndexForCharacter(unsigned kind) { return (int)kind; }
+int M360_CharacterSelectEnter(unsigned) { return 0; }
+int M360_CharacterSelectActive() { return 0; }
+int M360_CharacterSelectFrame() { return -1; }
+void* M360_CharacterSelectData() { return &s_selectedCss; }
+void M360_CharacterSelectLeave() {}
+unsigned cssResumeCalls;
+void M360_CharacterSelectResume() { ++cssResumeCalls; }
+void M360_CharacterSelectAddKOs(const unsigned*) {}
 unsigned s_loadFailedSlot, s_builtStage, s_stageIndex, s_cpuLevel;
 float s_selPrevStick[4], s_selPrevSub, mockStickX, mockSubY;
 int failSlot = -1;
@@ -220,6 +242,10 @@ void M360_FighterGetState(void* f, float* x, float* y, float* facing,
 #include "match_rules_original.h"
 
 static void Reset(unsigned count) {
+    memset(s_closed,0,sizeof(s_closed));
+    s_originalVsRules=0;
+    cssResumeCalls=0;
+    memset(&s_selectedCss,0,sizeof(s_selectedCss));
     memset(fighters, 0, sizeof(fighters));
     memset(s_stocksRemaining, 0, sizeof(s_stocksRemaining));
     memset(s_stocksLost, 0, sizeof(s_stocksLost));
@@ -387,10 +413,12 @@ int main() {
     s_selReady[0] = s_selReady[1] = 1;
     failSlot = 1;
     StartFight();
-    assert(s_active && s_phase == kPhaseSelect && s_loadFailedSlot == 2);
+    assert(!s_active && s_loadFailedSlot == 2);
+    assert(M360_MatchFrame()==M360_MATCH_TO_MENU);
     assert(cleanupCalls == 1 && !hudStarts && !s_fighterCount);
     assert(!s_fighters[0] && !s_fighters[1] && !s_selReady[0] && !s_selReady[1]);
     failSlot = -1;
+    s_active=1;
     StartFight();
     assert(s_phase == kPhaseFight && s_fighterCount == 2 && hudStarts == 1);
     assert(!s_loadFailedSlot);
@@ -423,13 +451,15 @@ int main() {
     assert(M360_MatchFrame() == M360_MATCH_RESTART && s_rematchPending);
     M360_MatchLeave();
     M360_MatchEnter();
-    assert(s_phase == kPhaseFight && s_fighterCount == 4 && !s_rematchPending);
+    assert(s_phase == kPhaseSelect && !s_fighterCount && !s_rematchPending && cssResumeCalls==1);
+    StartFight(); // Model the next confirmation after the preserved CSS.
+    assert(s_phase==kPhaseFight && s_fighterCount==4);
     assert(s_human[0] && !s_human[1] && s_human[2] && !s_human[3]);
     assert(s_stocks == 8 && s_timeOption == 1 && s_itemFreq == 2 && s_cpuLevel == 7 && s_stageIndex == 5);
     assert(!s_matchOver && !s_draw && !s_paused && s_frame == 0);
     for (unsigned i = 0; i < 4; ++i)
-        assert(s_selKind[i] == 1 && s_selCostume[i] == i && s_selReady[i]);
-    puts("PASS: VS rematch after draw retains roster, colors, rules and human slots");
+        assert(s_selKind[i] == 1 && s_selCostume[i] == i);
+    puts("PASS: VS results return to CSS and retain roster, colors, rules and human slots");
 
     Reset(2);
     s_human[0] = s_human[1] = 1;
@@ -791,4 +821,30 @@ int main() {
     M360_MatchFrame();
     assert(!s_matchOver && s_score[0] == -1 && s_respawn[0] == kRespawnFrames);
     puts("PASS: campaign lives, eliminated slots, simultaneous falls, results and timed respawn");
+
+    Reset(3);
+    s_gameMode=2;s_originalVsRules=1;
+    s_selectedCss.vs.start.rules.is_teams=1;
+    s_selectedCss.vs.start.players[0].team=0;
+    s_selectedCss.vs.start.players[1].team=0;
+    s_selectedCss.vs.start.players[2].team=1;
+    s_stocksRemaining[2]=0;
+    unsigned winner;int draw;
+    assert(StockResult(&winner,&draw) && !draw && M360_MatchTeam(winner)==0);
+    s_stocksRemaining[2]=1;
+    assert(!StockResult(&winner,&draw));
+    s_selectedCss.vs.start.rules.match_kind=0;
+    mockGameRules.time_limit=1;
+    s_score[0]=2;s_score[1]=3;s_score[2]=4;
+    s_frame=3599;
+    M360_MatchFrame();
+    assert(s_matchOver && !s_suddenDeath && M360_MatchTeam(s_winner)==0);
+    s_matchOver=0;s_frame=3599;s_score[2]=5;
+    M360_MatchFrame();
+    assert(s_suddenDeath && s_stocksRemaining[0]==1 && s_stocksRemaining[1]==1 && s_stocksRemaining[2]==1);
+    s_selKind[0]=s_selKind[1]=0;
+    s_selCostume[0]=s_selCostume[1]=2;
+    ResolveCostumes();
+    assert(s_selCostume[0]==2 && s_selCostume[1]==2);
+    puts("PASS: original CSS team colors, stock team victory, summed time scores and team sudden death");
 }

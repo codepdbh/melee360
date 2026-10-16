@@ -1,5 +1,8 @@
 # Real main menu plan
 
+Historical research notes. Current implementation and remaining menu work
+are described in [Original menus and audio](ORIGINAL_MENUS_AUDIO.md).
+
 Research notes for replacing the placeholder MAIN MENU screen with the original
 Melee main menu. Upstream paths are relative to `upstream/melee-pc/src/`.
 The XEX parses the menu archive alongside the title archive, resolves 83/83

@@ -2009,6 +2009,14 @@ void Camera_GetTransformPosition(Vec* out)
 }
 
 /* lbAudioAx_800237A8: one-shot SFX; the id translation is the identity. */
+int M360_AudioSubmitOriginal(int id,int volume,int pan,int track,int channel)
+{
+    /* Original selectors submit 7-bit values before fn_80023750 converts
+     * them for AX hardware. The XAudio2 endpoint already consumes 7 bits. */
+    (void)channel;
+    return M360_AudioPlaySfx((unsigned)id,(unsigned)volume,(unsigned)pan,(unsigned)track);
+}
+
 int lbAudioAx_800237A8(enum_t sfx_id, int sfx_vol, int sfx_pan)
 {
     if (sfx_id < 0 || sfx_id >= 0x83D60)
@@ -3670,7 +3678,7 @@ Gm_PKind Player_GetPlayerSlotType(s32 slot)
 }
 
 /* ftMapping_list (player.c) inverted: FighterKind -> CharacterKind. */
-CharacterKind Player_GetPlayerCharacter(int slot)
+static CharacterKind CharacterForKind(unsigned kind)
 {
     static const s8 kCKind[Ft_Kind_Max] = {
         CKind_Mario, CKind_Fox, CKind_Captain, CKind_Donkey, CKind_Kirby, CKind_Koopa,
@@ -3680,9 +3688,21 @@ CharacterKind Player_GetPlayerCharacter(int slot)
         CKind_GameWatch, CKind_Ganon, CKind_Emblem, CKind_MasterH, CKind_CrezyH,
         CKind_Boy, CKind_Girl, CKind_GKoops, ChKind_Sandbag
     };
+    return kind < Ft_Kind_Max ? (CharacterKind) kCKind[kind] : CKind_Mario;
+}
+
+CharacterKind Player_GetPlayerCharacter(int slot)
+{
     Fighter* fp = SlotFighter(slot);
-    return fp && (unsigned) fp->kind < Ft_Kind_Max ? (CharacterKind) kCKind[fp->kind]
-                                                    : CKind_Mario;
+    return CharacterForKind(fp ? (unsigned)fp->kind : Ft_Kind_Mario);
+}
+
+int M360_FighterIndexForCharacter(unsigned ckind)
+{
+    unsigned i;
+    for(i=0;i<kKindCount;++i)
+        if((unsigned)CharacterForKind(s_kinds[i].kind)==ckind) return (int)i;
+    return -1;
 }
 
 FighterKind Player_80036394(s32 slot)

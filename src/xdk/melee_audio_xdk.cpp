@@ -39,7 +39,6 @@ short s_sfxRightScratch[kSfxMaxFrames];
 unsigned s_sfxNextVoice = 0;
 unsigned s_sfxSubmitted = 0;
 unsigned s_sfxMisses = 0;
-unsigned s_sfxBankFallbacks = 0;
 unsigned s_sfxBankBase[55] = {};
 unsigned s_sfxBankCount[55] = {};
 bool s_sfxBankIndexReady = false;
@@ -216,10 +215,8 @@ bool DecodeSfx(const SfxBank* bank, unsigned sfxId, unsigned voiceIndex,
     }
 }
 
-/* sfxId is the SSM sample id from the SEM stream; preferSlot is the SEM bank
- * (sound id / 10000), which is also the ssm_files index (lbaudio_ax.c). SSM id
- * ranges overlap between files that are never loaded together (menu, stage
- * and 1P banks), so the bank's own file must win over a range scan. */
+/* Both IDs come from the same US SEM/SSM set. Never search other banks:
+ * regional sample ranges and mutually exclusive stage banks can overlap. */
 bool ResolveSfxBank(unsigned sfxId, unsigned preferSlot, SfxBank** outBank, unsigned* outBankId)
 {
     unsigned slot;
@@ -244,15 +241,6 @@ bool ResolveSfxBank(unsigned sfxId, unsigned preferSlot, SfxBank** outBank, unsi
         if (*outBank)
             return true;
     }
-    ++s_sfxBankFallbacks;
-    for (slot = 0; slot < 55; ++slot) {
-        if (sfxId >= s_sfxBankBase[slot] &&
-            sfxId - s_sfxBankBase[slot] < s_sfxBankCount[slot]) {
-            *outBank = LoadSfxBank(slot);
-            *outBankId = sfxId;
-            return *outBank != 0;
-        }
-    }
     return false;
 }
 
@@ -261,7 +249,9 @@ bool LoadSfxSem(void)
     m360_gcm_file file = {};
     const unsigned char* image;
     unsigned cursor, count;
-    const char* paths[] = { "audio/smash2.sem", "audio/us/smash2.sem" };
+    /* Match setup_audio_lang(): the US banks require the US SEM. The root
+     * SEM uses Japanese sample numbering, which drifts after localized voices. */
+    const char* paths[] = { "audio/us/smash2.sem" };
     unsigned p;
     if (s_sfxSemReady)
         return s_sfxSem != 0;

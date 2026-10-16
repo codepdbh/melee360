@@ -109,6 +109,7 @@ typedef struct PadLibData {
 extern "C" {
 #endif
 
+extern PadLibData HSD_PadLibData;
 u32 OSDisableInterrupts(void);
 void OSRestoreInterrupts(u32 level);
 int OSGetResetSwitchState(void);

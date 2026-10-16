@@ -95,6 +95,7 @@ typedef struct M360MatchStatus {
     unsigned inputTriggered;
     float inputX, inputY;
     unsigned selecting;
+    unsigned originalSelect;
     unsigned selectKind[4];
     unsigned selectCostume[4];
     unsigned selectReady[4];
