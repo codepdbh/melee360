@@ -14,6 +14,9 @@ if (-not $VcVars) {
 if (-not (Test-Path -LiteralPath $Iso)) { throw "ISO not found: $Iso" }
 $out = Join-Path $root 'build-x360/host-tests/audio-xdk'
 New-Item -ItemType Directory -Force $out | Out-Null
+& python (Join-Path $PSScriptRoot 'audit_stage_music.py') --iso $Iso `
+    --output (Join-Path $out 'stage-music-audit.json') --header (Join-Path $out 'stage_music_files.h')
+if ($LASTEXITCODE -ne 0) { throw 'Original stage music audit failed.' }
 # Execute upstream selectors on the host without substituting their logic.
 function Get-SoundFunction([string] $Text, [string] $Signature) {
     $start = $Text.IndexOf($Signature)

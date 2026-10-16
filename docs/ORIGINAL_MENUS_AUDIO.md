@@ -50,6 +50,23 @@ escalada originales. Estos cambios no completan las campañas.
   de acciones de menú se extraen del original, incluyendo IDs y tracks.
   [Auditoría de sonido y upstream](UPSTREAM_AUDIT_20261016.md).
 
+## Música de cada escenario
+
+La pista principal se obtiene de `grGroundParam::stage_params` del escenario:
+VS usa su columna VS y Classic/Adventure la fila de su `StKind` y columna
+de un jugador. El ID se convierte a archivo con `hps_files` original.
+Por ejemplo, Fountain usa `izumi.hps`, Corneria `corneria.hps`, Onett
+`onetto.hps` y Final Destination `sp_end.hps`.
+
+La auditoría lee los 21 archivos de escenario disponibles, sus 162 filas y
+las 36 pistas referenciadas, incluidas alternativas. Todas están presentes
+en la ISO GALE01 1.02. La regresión decodifica cada pista completa, cruza su
+punto de bucle original y comprueba PCM no silencioso y cero desajustes de
+historial ADPCM. No extrae música al repositorio.
+
+La elección aleatoria/condicional de música alternativa y su activación con
+L/R todavía están pendientes; disponer del archivo no implementa esa lógica.
+
 ## Repetir las comprobaciones
 
 ```powershell
@@ -65,9 +82,34 @@ python tests/test_menu_sources.py
 
 El diagnóstico conserva el inicio normal y sustituye solamente PAD por
 entrada programada. Usa una carpeta nueva por prueba. Las otras fixtures
-cubren Rules/Stock, volver desde escenarios, Classic y Adventure; requieren
+cubren Rules/Stock, volver desde escenarios, Classic, Adventure y regresar
+de resultados al selector; requieren
 ajustar `-Expect`, `-MinHits`, `-ExpectedFlow` y `-TargetFrame` según el caso.
 `result.json` conserva hashes del XEX, mapa y guion junto al registro.
+
+La pasada final en Xenia del 16 de octubre completó estos recorridos:
+
+| Recorrido | Cuadro final | Resultado |
+|---|---:|---|
+| VS desde intro y menús | 3000 | PASS; 24 impactos |
+| Rules → Stock → combate | 3600 | PASS; 24 impactos |
+| Volver desde Stage Select | 2100 | PASS; regreso al menú |
+| Classic desde su selector | 2400 | PASS; primer encuentro |
+| Adventure desde su selector | 2400 | PASS; primera ruta |
+| Stock de una vida → resultados → selector | 4500 | PASS; selección conservada |
+
+Los seis casos usan el mismo XEX de diagnóstico, con cero errores de
+decodificación GX, cero desajustes del historial de audio y sin watchdog.
+La última fixture es `tests/fixtures/menu_result_return.txt`; comprueba
+`match.select.resume: 0`, con `-MinHits 0 -TargetFrame 4500`. El registro
+conserva Mario humano, Luigi CPU y los otros dos espacios cerrados antes
+y después de la partida.
+
+El XEX normal, sin entrada programada, también pasó una prueba de intro de
+1800 cuadros: 985 imágenes presentadas, cero errores de vídeo y cero
+desajustes de audio. Las evidencias locales están en
+`build-x360/menu-port/oct16-matrix` y
+`build-x360/menu-port/final-normal-opening`.
 
 Estas comprobaciones cubren el recorrido y los datos enviados al render/audio.
 La comparación visual y auditiva completa con GameCube y la ejecución en una
