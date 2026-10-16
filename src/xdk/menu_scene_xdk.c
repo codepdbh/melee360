@@ -52,11 +52,39 @@ static struct MenuExitData s_exitData;
 static int s_exitRequested;
 static GameRules s_gameRules;
 static struct GamePrefs s_gamePrefs;
-static HSD_Text* s_texts[16];
 static int s_archiveToken;
-static int s_textTraced;
 static unsigned s_noticeFrames;
 static const char* s_noticeLabel;
+static int s_textPoolReady;
+static int s_defaultsReady;
+static u8 s_sceneMode = GM_MENU;
+extern GameRules gmMainLib_DefaultGameRules;
+extern struct GamePrefs gmMainLib_DefaultGamePrefs;
+int M360_LoadDiscFonts(void);
+
+void M360_MenuTextStart(void)
+{
+    static int fontsReady;
+    if (!fontsReady) {
+        fontsReady = M360_LoadDiscFonts();
+        M360_MenuTrace("menu.fonts.original", fontsReady);
+    }
+    if (!s_textPoolReady) {
+        HSD_SisLib_803A6048(0x10000);
+        s_textPoolReady = 1;
+    }
+}
+
+void M360_MenuTextPoolReleased(void) { s_textPoolReady = 0; }
+void M360_MenuTextStop(void) {
+    if(s_textPoolReady) {
+        HSD_SisLib_803A5FBC();
+        s_textPoolReady=0;
+    }
+}
+void M360_MenuSetGameMode(unsigned mode) { s_sceneMode = (u8) mode; }
+void M360_MenuResetExit(void) { s_exitRequested = 0; }
+int M360_MenuTakeExit(void) { int result = s_exitRequested; s_exitRequested = 0; return result; }
 
 static const char* LeafLabel(const char* leaf)
 {
@@ -129,7 +157,7 @@ void gm_801A4B60(void)
 
 u8 gm_GetCurrentGameMode(void)
 {
-    return GM_MENU;
+    return s_sceneMode;
 }
 
 int gmMainLib_8015ECB0(void) { return M360_MenuBgmChoice(); }
@@ -141,83 +169,17 @@ void gm_801603B0(void) {}
 void gm_801677E8(s8 arg0) { (void) arg0; }
 void gm_801BA8FC(void) {}
 u8 gm_801BEB80(void) { return 0; }
-bool gm_IsCKindUnlocked(u8 ckind) { return ckind < 0x19; }
-u8 gm_SelKindToCKind(u8 selkind) { return selkind; }
+bool gm_IsCKindUnlocked(u8 ckind) { return ckind < CKind_Playable_Count; }
 void gm_80190EA4(void) { M360_MenuTrace("menu.leaf.unported:tournament", 0); }
-s32 mnCharSel_802640A0(void) { M360_MenuTrace("menu.leaf.unported:charsel", 0); return 0; }
 
 int lbAudioAx_80023694(void) { M360_AudioStopAllSfx(); return -1; }
 int lbAudioAx_800236DC(void) { return 0; }
 void lbAudioAx_8002392C(void) {}
 int lbAudioAx_80023F28(int bgm) { M360_MenuPlayBgm(bgm); return 0; }
-void lbAudioAx_80024030(int sfx)
-{
-    M360_MenuTrace("menu.sfx", (unsigned) sfx);
-    M360_AudioSfx((unsigned) sfx, 100, 64);
-}
 void lbCardGame_UpdatePowerTime(void) {}
 bool lbLang_IsSavedLanguageUS(void) { return true; }
 void lbMthp_8001F800(void) {}
 int lb_8001B760(int result) { return result; }
-
-void HSD_SisLib_803A62A0(s32 index, char* file, char* symbol)
-{
-    (void) index;
-    (void) file;
-    (void) symbol;
-}
-
-int HSD_SisLib_803A611C(int a, HSD_GObj* gobj, u16 b, u8 c, u8 d, u8 e, u8 f, u32 g)
-{
-    (void) a; (void) gobj; (void) b; (void) c; (void) d; (void) e; (void) f; (void) g;
-    return 0;
-}
-
-HSD_Text* HSD_SisLib_803A5ACC(int a, s32 b, f32 x, f32 y, f32 z, f32 w, f32 h)
-{
-    int i;
-    (void) a; (void) b; (void) x; (void) y; (void) z; (void) w; (void) h;
-    for (i = 0; i < 16; ++i) {
-        if (!s_texts[i]) {
-            s_texts[i] = HSD_MemAlloc(sizeof(HSD_Text));
-            if (s_texts[i])
-                memset(s_texts[i], 0, sizeof(HSD_Text));
-            return s_texts[i];
-        }
-    }
-    return NULL;
-}
-
-void HSD_SisLib_803A5CC4(HSD_Text* text)
-{
-    int i;
-    for (i = 0; i < 16; ++i) {
-        if (text && s_texts[i] == text) {
-            HSD_Free(text);
-            s_texts[i] = NULL;
-        }
-    }
-}
-
-void HSD_SisLib_803A5E70(void)
-{
-    int i;
-    for (i = 0; i < 16; ++i) {
-        if (s_texts[i]) {
-            HSD_Free(s_texts[i]);
-            s_texts[i] = NULL;
-        }
-    }
-}
-
-void HSD_SisLib_803A6368(HSD_Text* text, s32 index)
-{
-    (void) text;
-    if (!s_textTraced) {
-        s_textTraced = 1;
-        M360_MenuTrace("menu.text.unported", (unsigned) index);
-    }
-}
 
 void mnCount_Create(void) { ResumeMenu("menu.leaf.unported:misc_records"); }
 void mnDataDel_80250170(void) { ResumeMenu("menu.leaf.unported:erase_data"); }
@@ -234,11 +196,11 @@ void mnSnap_80257F24(void) { ResumeMenu("menu.leaf.unported:snapshots"); }
 HSD_GObjProc* mnSoundTest_8024BEE0(s32 arg) { (void) arg; ResumeMenu("menu.leaf.unported:sound_test"); return NULL; }
 void mnSound_8024A09C(int arg) { (void) arg; ResumeMenu("menu.leaf.unported:sound"); }
 void mnVibration_Init(int arg) { (void) arg; ResumeMenu("menu.leaf.unported:rumble"); }
-void mn_80231714(void) { ResumeMenu("menu.leaf.unported:rules"); }
 
 void M360_MenuSceneLeave(void)
 {
     int link;
+    M360_MenuTextStop();
     for (link = 0; link < 64; ++link) {
         HSD_GObj* gobj = HSD_GObjPLinkHead[link];
         while (gobj) {
@@ -247,13 +209,20 @@ void M360_MenuSceneLeave(void)
             gobj = next;
         }
     }
-    HSD_SisLib_803A5E70();
 }
 
 void M360_MenuSceneEnter(unsigned kind, unsigned selection)
 {
     struct MenuEnterData data;
     M360_MenuSceneLeave();
+    M360_MenuTextStart();
+    s_sceneMode = GM_MENU;
+    if (!s_defaultsReady) {
+        s_gameRules = gmMainLib_DefaultGameRules;
+        s_gamePrefs = gmMainLib_DefaultGamePrefs;
+        s_gamePrefs.saved_language = LANG_US;
+        s_defaultsReady = 1;
+    }
     memset(&s_exitData, 0, sizeof(s_exitData));
     s_exitRequested = 0;
     s_noticeFrames = 0;

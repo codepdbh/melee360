@@ -32,3 +32,4 @@ third_party/
 reference/
 tools/xenon-emulator/
 build-host/
+__pycache__/

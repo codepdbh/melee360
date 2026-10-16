@@ -203,6 +203,24 @@ extern "C" unsigned char* M360_ReadDiscFile(const char* name, unsigned* size)
     FILE* image = fopen(s_isoPath, "rb");
     if (!image)
         return 0;
+    /* main.dol is a disc-header section, not an FST file. Read its complete
+     * stored span for runtime extraction of the original SIS font atlas. */
+    if (strcmp(name, "main.dol") == 0) {
+        unsigned char offsets[8];
+        unsigned char* dol = NULL;
+        if (fseek(image, 0x420, SEEK_SET) == 0 && fread(offsets, 1, 8, image) == 8) {
+            const unsigned start = (offsets[0]<<24)|(offsets[1]<<16)|(offsets[2]<<8)|offsets[3];
+            const unsigned end = (offsets[4]<<24)|(offsets[5]<<16)|(offsets[6]<<8)|offsets[7];
+            if (end > start && end - start <= 8 * 1024 * 1024) {
+                dol = static_cast<unsigned char*>(_aligned_malloc(end - start, 32));
+                if (dol && fseek(image, start, SEEK_SET) == 0 &&
+                    fread(dol, 1, end - start, image) == end - start) *size = end - start;
+                else { _aligned_free(dol); dol = NULL; }
+            }
+        }
+        fclose(image);
+        return dol;
+    }
     struct m360_gcm gcm;
     unsigned char* data = 0;
     if (m360_gcm_mount(&gcm, image) == 0) {

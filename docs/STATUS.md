@@ -1,5 +1,43 @@
 # Development status
 
+## Original selection, rules and US sound tables — 2026-10-16
+
+The normal path now runs original `mncharsel`, Rules / More Rules / Item
+Switch / Random Stage Switch and `mnstagesel`, with original SIS text and
+runtime font extraction from the user's DOL. The native bridge preserves
+player slots, CPU levels, character/costume selection and team colors.
+Result confirmation returns to the retained CSS configuration. Name editing,
+Coin/Bonus combat, original results and portions of advanced rules remain
+pending; unsupported stages are locked by backend availability.
+
+The original controller initialization uses 80-unit sticks and 140-unit
+analog triggers. Native input now uses those units and normalization, with
+the digital trigger click at the end of its travel. Host regressions cover
+team stock results, team time scores, sudden death, preserved colors and
+the return from results to character selection.
+
+Audio had mixed the Japanese SEM with US SSM banks. The US SEM resolves
+all 4035 playable first-sample streams into their own expected bank; the
+prior mapping produced 948 foreign-bank selections and 19 misses. Foreign
+bank fallback is removed. Menu action IDs/tracks now come from the original
+selectors rather than passing action indices directly to the sample player.
+All 55 SSM filenames are checked against the original table. SEM sequencing
+and complete AX mixing are still incomplete.
+
+The Xenia matrix covers normal opening/title/menu navigation to VS, Stock
+Rules, stage cancellation back to CSS/menu, Classic's first encounter and
+Adventure's first route. Its artifacts are under
+`build-x360/menu-port/oct16-matrix`, with paired XEX/map/script hashes and
+per-case results. These are execution/data checks, not visual/audio parity
+or physical-console validation. Classic remains five normal encounters and
+Adventure remains twenty partially ported phases.
+
+The base was fetched and compared with upstream `88cda55` (212 newer
+commits). The reviewed synth compaction `memmove` fix is applied to a
+generated source; the clean game checkout remains pinned. See
+[the upstream audit](UPSTREAM_AUDIT_20261016.md) and
+[the menu/user guide](ORIGINAL_MENUS_AUDIO.md).
+
 ## Grounded collision source function and prerelease preparation — 2026-10-13
 
 The active build now compiles original `ft_80082708` from `ft_081B.c`.

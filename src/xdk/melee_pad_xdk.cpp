@@ -15,12 +15,13 @@ HSD_PadData g_padQueue[2];
 
 s8 ScaleThumb(SHORT value)
 {
-    int scaled = value >= 0 ? (static_cast<int>(value) * 127) / 32767
-                            : (static_cast<int>(value) * 127) / 32768;
-    if (scaled > 127)
-        scaled = 127;
-    if (scaled < -127)
-        scaled = -127;
+    /* GameCube PAD units: gmMain_8015FD24 normalizes a full stick by 80. */
+    int scaled = value >= 0 ? (static_cast<int>(value) * 80) / 32767
+                            : (static_cast<int>(value) * 80) / 32768;
+    if (scaled > 80)
+        scaled = 80;
+    if (scaled < -80)
+        scaled = -80;
     return static_cast<s8>(scaled);
 }
 
@@ -599,15 +600,15 @@ extern "C" int PADRead(PADStatus* status)
         status[channel].stickY = ScaleThumb(state.Gamepad.sThumbLY);
         status[channel].substickX = ScaleThumb(state.Gamepad.sThumbRX);
         status[channel].substickY = ScaleThumb(state.Gamepad.sThumbRY);
-        status[channel].triggerLeft = state.Gamepad.bLeftTrigger;
-        status[channel].triggerRight = state.Gamepad.bRightTrigger;
+        status[channel].triggerLeft = (state.Gamepad.bLeftTrigger * 140) / 255;
+        status[channel].triggerRight = (state.Gamepad.bRightTrigger * 140) / 255;
         status[channel].analogA =
             (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) ? 255 : 0;
         status[channel].analogB =
             (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) ? 255 : 0;
-        if (state.Gamepad.bLeftTrigger > 30)
+        if (state.Gamepad.bLeftTrigger >= 250)
             status[channel].button |= PAD_TRIGGER_L;
-        if (state.Gamepad.bRightTrigger > 30)
+        if (state.Gamepad.bRightTrigger >= 250)
             status[channel].button |= PAD_TRIGGER_R;
     }
 #ifdef M360_INPUT_SCRIPT
@@ -656,4 +657,14 @@ extern "C" void M360_HSDPadInit(void)
 {
     ZeroMemory(g_padQueue, sizeof(g_padQueue));
     HSD_PadInit(2, g_padQueue, 0, 0);
+    /* Original gmMain_8015FD24 controller clamp and scale configuration. */
+    HSD_PadLibData.clamp_stickType = 0;
+    HSD_PadLibData.clamp_stickShift = 1;
+    HSD_PadLibData.clamp_stickMax = 80;
+    HSD_PadLibData.clamp_stickMin = 0;
+    HSD_PadLibData.scale_stick = 80;
+    HSD_PadLibData.clamp_analogLRShift = 1;
+    HSD_PadLibData.clamp_analogLRMax = 140;
+    HSD_PadLibData.clamp_analogLRMin = 0;
+    HSD_PadLibData.scale_analogLR = 140;
 }

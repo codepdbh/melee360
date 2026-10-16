@@ -22,6 +22,10 @@
 #pragma warning(pop)
 
 #include "match_xdk.h"
+#include "character_select_xdk.h"
+#include <melee/gm/gm_1601.h>
+#include <melee/gm/gmmain_lib.h>
+#include <melee/mn/types.h>
 #include "melee_classic_matchups.h"
 #include "melee_adventure_matchups.h"
 
@@ -225,6 +229,15 @@ static const M360StageDesc s_stages[] = {
 
 enum { kStageCount = sizeof(s_stages) / sizeof(s_stages[0]) };
 
+int M360_MatchSupportsStage(unsigned stkind)
+{
+    unsigned i;
+    const int grkind=Stage_8022519C((StKind)stkind);
+    for(i=0;i<kStageCount;++i)
+        if(s_stages[i].grkind==grkind) return 1;
+    return 0;
+}
+
 typedef struct M360StageArchive {
     void* archive;
     UnkStageDat* mapHead;
@@ -244,6 +257,7 @@ static const unsigned kTimeOptions[] = { 0, 2, 3, 4, 5, 8 };
 enum { kTimeOptionCount = sizeof(kTimeOptions) / sizeof(kTimeOptions[0]) };
 static unsigned s_timeOption;
 static int s_score[kMaxFighters];
+static unsigned s_creditedKOs[kMaxFighters];
 static int s_draw;
 static int s_suddenDeath;
 static float s_selPrevSub;
@@ -313,6 +327,10 @@ static unsigned s_selCostume[kMaxFighters] = { 0, 3, 1, 2 };
 static unsigned s_slotCount = 2;
 static unsigned s_selReady[kMaxFighters];
 static int s_selHuman[kMaxFighters];
+static int s_closed[kMaxFighters];
+static CSSData s_selectedCss;
+static int s_originalVsRules;
+int M360_FighterIndexForCharacter(unsigned ckind);
 static float s_selPrevStick[kMaxFighters];
 static int s_selProbeP2;
 static M360MatchAutoConfig s_auto;
@@ -338,6 +356,8 @@ static unsigned TimeMinutes(void)
 {
     if (IsCampaign() || s_suddenDeath)
         return 0;
+    if (s_originalVsRules && !s_auto.enabled)
+        return s_selectedCss.vs.start.rules.match_kind == 0 ? gmMainLib_GetGameRules()->time_limit : 0;
     return s_auto.enabled ? s_auto.timeMinutes : kTimeOptions[s_timeOption];
 }
 
@@ -1071,13 +1091,13 @@ s32 gm_8016AE80(void)
 
 f32 gm_8016AE94(void)
 {
-    return 1.0f;
+    return s_originalVsRules && !s_auto.enabled ? s_selectedCss.vs.start.rules.x30 : 1.0f;
 }
 
 u64 gm_8016AEA4(void)
 {
     /* Every standard item (below It_Kind_L_Gun_Ray). */
-    return ((u64) 1 << 35) - 1;
+    return s_originalVsRules && !s_auto.enabled ? s_selectedCss.vs.start.rules.x20 : ((u64) 1 << 35) - 1;
 }
 
 s32 gm_8016AEB8(void)
@@ -1271,7 +1291,7 @@ void M360_MatchEnter(void)
     if (s_auto.enabled && !IsCampaign())
         s_stageIndex = s_auto.stage < kStageCount ? s_auto.stage : 0;
     M360_MatchTrace("match.enter.step", 1);
-    if (!BuildStage(s_stageIndex))
+    if ((s_auto.enabled || rematch || retry || (IsCampaign() && s_campaignRound > 0)) && !BuildStage(s_stageIndex))
         return;
     M360_MatchTrace("match.enter.step", 3);
     s_fighterCount = 0;
@@ -1288,6 +1308,8 @@ void M360_MatchEnter(void)
     s_active = 1;
     memset(s_selReady, 0, sizeof(s_selReady));
     if (!rematch) {
+        memset(s_closed, 0, sizeof(s_closed));
+        s_originalVsRules = 0;
         s_selHuman[0] = 1;
         for (i = 1; i < kMaxFighters; ++i)
             s_selHuman[i] = 0;
@@ -1307,14 +1329,20 @@ void M360_MatchEnter(void)
         s_cpuLevel = s_auto.cpuLevel;
         M360_FighterSetCpuLevel(s_cpuLevel);
         StartFight();
+    } else if (rematch && !s_auto.enabled) {
+        FreeAllGObjs();
+        M360_CharacterSelectResume();
     } else if (rematch || retry || (IsCampaign() && s_campaignRound > 0)) {
         for (i = 0; i < s_slotCount; ++i)
             s_selReady[i] = 1;
         StartFight();
     } else if (s_auto.enabled && !IsCampaign()) {
         ApplyAutoConfig();
+    } else {
+        FreeAllGObjs();
+        M360_CharacterSelectEnter(s_gameMode);
     }
-    CamUpdate(1);
+    if (!M360_CharacterSelectActive()) CamUpdate(1);
     M360_MatchTrace("match.mode", s_gameMode);
     M360_MatchTrace("match.campaign.round", s_campaignRound + 1);
     M360_MatchTrace("match.enter.blast_left", (unsigned) (int) s_stage.blastLeft);
@@ -1367,12 +1395,17 @@ static unsigned CampaignSeconds(void)
     return encounter ? encounter->seconds : s_gameMode == kGameModeClassic ? kClassicNormalSeconds : 0;
 }
 
-int M360_MatchIsTeams(void) { return IsCampaign(); }
-int M360_MatchTeam(unsigned slot) { return IsCampaign() ? (slot == 0 ? 0 : 1) : (int) slot; }
+int M360_MatchIsTeams(void) { return IsCampaign() || (s_originalVsRules && s_selectedCss.vs.start.rules.is_teams); }
+int M360_MatchTeam(unsigned slot) {
+    return IsCampaign() ? (slot == 0 ? 0 : 1) : s_originalVsRules && slot < 4 &&
+        s_selectedCss.vs.start.rules.is_teams ? s_selectedCss.vs.start.players[slot].team : (int)slot;
+}
 
 float M360_MatchCombatRatio(unsigned slot, int defense)
 {
     unsigned difficulty, percent;
+    if (!IsCampaign() && s_originalVsRules && slot < 4)
+        return defense ? s_selectedCss.vs.start.players[slot].defense_ratio : s_selectedCss.vs.start.players[slot].attack_ratio;
     if (slot == 0 || slot >= s_slotCount || !AdventureEncounter())
         return 1.0f;
     /* The current selector exposes CPU levels 1..9. Map pairs to the five
@@ -1388,6 +1421,8 @@ unsigned M360_MatchCpuLevel(unsigned slot)
 {
     const M360AdventureEncounter* encounter = AdventureEncounter();
     unsigned difficulty, enemy;
+    if (!IsCampaign() && s_originalVsRules && slot < 4)
+        return s_selectedCss.vs.start.players[slot].cpu_level;
     /* Route NPCs are constructed before s_slotCount expands at checkpoint. */
     if (!encounter || slot == 0 || slot >= kMaxFighters)
         return s_cpuLevel;
@@ -1435,6 +1470,7 @@ static int LoseStock(unsigned slot)
 static int StockResult(unsigned* winner, int* draw)
 {
     unsigned i, alive = 0, last = 0;
+    int survivingTeam = -1, multipleTeams = 0;
     if (IsCampaign()) {
         unsigned enemies = 0;
         const M360AdventureEncounter* encounter = AdventureEncounter();
@@ -1451,12 +1487,25 @@ static int StockResult(unsigned* winner, int* draw)
         if (s_fighters[i] && s_stocksRemaining[i]) {
             ++alive;
             last = i;
+            if (survivingTeam < 0) survivingTeam = M360_MatchTeam(i);
+            else if (survivingTeam != M360_MatchTeam(i)) multipleTeams = 1;
         }
-    if (alive > 1)
+    if (alive > 1 && (!M360_MatchIsTeams() || multipleTeams))
         return 0;
     *winner = last;
     *draw = alive == 0;
     return 1;
+}
+
+static int MatchScore(unsigned slot)
+{
+    unsigned i;
+    int score=s_score[slot];
+    if(M360_MatchIsTeams())
+        for(i=0;i<s_fighterCount;++i)
+            if(i!=slot && s_fighters[i] && M360_MatchTeam(i)==M360_MatchTeam(slot))
+                score+=s_score[i];
+    return score;
 }
 
 static int ClassicStageIndex(unsigned matchup)
@@ -1535,6 +1584,8 @@ static void CampaignOpponent(void)
 static void ResolveCostumes(void)
 {
     unsigned i;
+    /* Original CSS already resolves duplicate costumes and team colors. */
+    if (s_originalVsRules && !s_auto.enabled) return;
     for (i = 0; i < s_slotCount; ++i) {
         unsigned attempt;
         const unsigned colors = M360_FighterCostumeCount(s_selKind[i]);
@@ -1593,10 +1644,15 @@ static void StartFight(void)
     ResolveCostumes();
     s_loadFailedSlot = 0;
     s_fighterCount = 0;
+    memset(s_creditedKOs,0,sizeof(s_creditedKOs));
     memset(s_fighters, 0, sizeof(s_fighters));
     M360_FighterEffectsInit();
     for (i = 0; i < s_slotCount; ++i) {
         const int port = s_selHuman[i] ? (int) i : -1;
+        if (!IsCampaign() && s_closed[i]) {
+            s_human[i] = 0; s_stocksRemaining[i] = 0; s_stocksLost[i] = 0; s_score[i] = 0;
+            continue;
+        }
         M360_FighterSelect((int) i, s_selKind[i], s_selCostume[i]);
         s_fighters[i] = M360_FighterSpawn((int) i, s_stage.spawnX[i], s_stage.spawnY[i],
                                           s_stage.spawnX[i] > 0.0f ? -1.0f : 1.0f, port);
@@ -1613,7 +1669,7 @@ static void StartFight(void)
             s_fighterCount = 0;
             s_builtStage = ~0u;
             s_phase = kPhaseSelect;
-            s_active = BuildStage(s_stageIndex) && !s_auto.enabled;
+            s_active = 0;
             return;
         }
         s_human[i] = port >= 0;
@@ -1755,6 +1811,49 @@ static int SelectFrame(void)
 {
     unsigned i;
     int allReady;
+    if (M360_CharacterSelectActive()) {
+        int result = M360_CharacterSelectFrame();
+        if (result < 0) return M360_MATCH_CONTINUE;
+        if (!result) return M360_MATCH_TO_MENU;
+        s_selectedCss = *(CSSData*)M360_CharacterSelectData();
+        if (!IsCampaign()) gm_80167BC8(&s_selectedCss.vs);
+        s_originalVsRules = !IsCampaign();
+        s_slotCount = IsCampaign() ? 2 : 0;
+        for (i = 0; i < 4; ++i) {
+            PlayerInitData* player = &s_selectedCss.vs.start.players[i];
+            int kind = M360_FighterIndexForCharacter(player->ckind);
+            s_closed[i] = !IsCampaign() && player->slot_type == Gm_PKind_NA;
+            if(kind<0 && !s_closed[i] && (!IsCampaign() || i==0)) {
+                M360_MatchTrace("match.select.character.unavailable",player->ckind);
+                return M360_MATCH_TO_MENU;
+            }
+            s_selHuman[i] = player->slot_type == Gm_PKind_Human;
+            s_selKind[i] = kind >= 0 ? (unsigned)kind : 0;
+            s_selCostume[i] = player->color;
+            s_selReady[i] = !s_closed[i];
+            if (!IsCampaign() && !s_closed[i]) s_slotCount = i + 1;
+        }
+        if (IsCampaign()) {
+            s_campaignStocks = s_selectedCss.vs.start.players[0].stocks;
+            s_cpuLevel = s_selectedCss.vs.start.players[0].cpu_level * 2u + 1u;
+            memset(s_closed, 0, sizeof(s_closed));
+        } else {
+            s_stocks = gmMainLib_GetGameRules()->stock_count;
+            s_itemFreq = s_selectedCss.vs.start.rules.item_freq;
+            for(i=0;i<kStageCount;++i)
+                if(s_stages[i].grkind==Stage_8022519C(s_selectedCss.vs.start.rules.stkind)) break;
+            if(i==kStageCount) {
+                M360_MatchTrace("match.select.stage.unavailable",s_selectedCss.vs.start.rules.stkind);
+                return M360_MATCH_TO_MENU;
+            }
+            s_stageIndex=i;
+        }
+        FreeAllGObjs();
+        s_builtStage = ~0u;
+        if (!BuildStage(s_stageIndex)) return M360_MATCH_TO_MENU;
+        StartFight();
+        return M360_MATCH_CONTINUE;
+    }
     /* Pads are read by the frame loop, so a second controller is probed on
      * the first select frame rather than at match entry. */
     if (s_selProbeP2) {
@@ -2169,7 +2268,8 @@ int M360_MatchFrame(void)
         s_paused = 1;
         M360_HudPause(1, 0);
         M360_MatchTrace("match.controller.disconnected", s_disconnectedControllers);
-    } else if ((buttons & 0x1000u) && !s_disconnectedControllers && M360_HudFightStarted()) {
+    } else if ((buttons & 0x1000u) && !s_disconnectedControllers && M360_HudFightStarted() &&
+               (!s_originalVsRules || !s_selectedCss.vs.start.rules.disable_pausing)) {
         s_paused = !s_paused;
         M360_HudPause(s_paused, (int) pausePort);
         M360_MatchTrace("match.pause", s_paused);
@@ -2273,9 +2373,11 @@ int M360_MatchFrame(void)
         }
         M360_FighterGetState(s_fighters[i], &x, &y, &facing, &motion, &damage);
         if (OutsideBlastZone(x, y)) {
+            const int by = M360_FighterLastAttacker(s_fighters[i]);
             ++s_stocksLost[i];
+            if(by>=0 && (unsigned)by<s_fighterCount && (unsigned)by!=i && s_fighters[by])
+                ++s_creditedKOs[by];
             if (TimeMinutes()) {
-                const int by = M360_FighterLastAttacker(s_fighters[i]);
                 if (by >= 0 && (unsigned) by < s_fighterCount)
                     ++s_score[by];
                 --s_score[i];
@@ -2319,15 +2421,16 @@ int M360_MatchFrame(void)
         M360_MatchTrace("match.classic.timeout.lives", s_campaignStocks);
     }
     if (TimeMinutes() && M360_HudFightFrames() >= TimeMinutes() * 60u * 60u) {
-        unsigned best = 0;
+        unsigned best = ~0u;
         s_draw = 0;
-        for (i = 1; i < s_fighterCount; ++i) {
+        for (i = 0; i < s_fighterCount; ++i) {
             if (!s_fighters[i])
                 continue;
-            if (s_score[i] > s_score[best]) {
+            if (best==~0u || MatchScore(i) > MatchScore(best)) {
                 best = i;
                 s_draw = 0;
-            } else if (s_score[i] == s_score[best]) {
+            } else if (MatchScore(i) == MatchScore(best) &&
+                       (!M360_MatchIsTeams() || M360_MatchTeam(i)!=M360_MatchTeam(best))) {
                 s_draw = 1;
             }
         }
@@ -2335,7 +2438,7 @@ int M360_MatchFrame(void)
         if (s_draw) {
             /* Sudden death: the tied players return with one stock at 300%,
              * everyone else is out; the stock rules decide the winner. */
-            const int top = s_score[best];
+            const int top = MatchScore(best);
             unsigned n = 0;
             s_suddenDeath = 1;
             s_draw = 0;
@@ -2343,7 +2446,7 @@ int M360_MatchFrame(void)
                 if (!s_fighters[i])
                     continue;
                 s_respawn[i] = 0;
-                if (s_score[i] == top) {
+                if (MatchScore(i) == top) {
                     s_stocksRemaining[i] = 1;
                     M360_FighterRespawn(s_fighters[i], s_stage.spawnX[n & 3], s_stage.spawnY[n & 3]);
                     M360_FighterSetDamage(s_fighters[i], 300.0f);
@@ -2382,6 +2485,9 @@ void M360_MatchRender(void)
 void M360_MatchLeave(void)
 {
     const M360AdventureEncounter* encounter = AdventureEncounter();
+    if(s_active && s_matchOver && s_originalVsRules && !s_auto.enabled)
+        M360_CharacterSelectAddKOs(s_creditedKOs);
+    M360_CharacterSelectLeave();
     /* gm_8017D7AC excludes flag-0x80 events from total Adventure time.
      * Saturation preserves eligibility without wrapping on long retries. */
     if (s_active && s_matchOver && encounter && !(encounter->flags & 0x80)) {
@@ -2452,6 +2558,7 @@ void M360_MatchGetStatus(M360MatchStatus* status)
     status->inputX = M360_MatchPadX();
     status->inputY = M360_MatchPadY();
     status->selecting = s_active && s_phase == kPhaseSelect;
+    status->originalSelect = (unsigned)M360_CharacterSelectActive();
     status->stageIndex = s_stageIndex;
     status->stocks = IsCampaign() ? s_campaignStocks : s_stocks;
     status->cpuLevel = s_cpuLevel;

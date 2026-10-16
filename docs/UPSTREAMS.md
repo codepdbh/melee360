@@ -1,5 +1,11 @@
 # Upstreams
 
+Audit on 2026-10-16: `melee-pc/origin/master` is
+`88cda55cf976f8e69bdffd8645fd5afeefa77631`, 212 commits ahead of our clean
+build pin. Reviewed fixes and compatibility decisions are recorded in
+[the audit](UPSTREAM_AUDIT_20261016.md). The XDK build includes the reviewed
+SSM compaction fix through a generated source and a versioned manifest.
+
 Pinned on 2026-09-16. The directories are independent Git repositories and
 are intentionally ignored by the MELEE360 root repository.
 

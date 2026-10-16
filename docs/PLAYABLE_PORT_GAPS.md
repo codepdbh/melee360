@@ -11,6 +11,14 @@ The normal build starts at the opening movie, then title, original menu,
 native fighter/stage selection and match. Diagnostic `-BootToMatch` and
 `-InputScript` builds are opt-in and must not replace the live-input release.
 
+Update 2026-10-16: `main` now uses original `mncharsel`, Rules and Stage Select,
+including SIS text from the user's disc. The published `v0.1.0-alpha.1` still
+uses the earlier native selection. See [the current menu path](ORIGINAL_MENUS_AUDIO.md).
+Name editing, Coin/Bonus combat, original results, parts of advanced rules and
+full campaign flow remain pending. The US SEM/SSM mismatch is fixed and its
+4035 resolvable streams pass the same-bank audit; this is not complete AX/SEM
+sequencing, mixing or auditory parity.
+
 ### Experimental Underground Maze (2026-10-06)
 
 The current normal XEX adds a twentieth Adventure phase with the original

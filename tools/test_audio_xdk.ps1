@@ -30,6 +30,9 @@ function Get-SoundFunction([string] $Text, [string] $Signature) {
 }
 $upstreamSrc = Join-Path $root 'upstream/melee-pc/src/melee'
 $audioStatic = Get-Content -Raw (Join-Path $upstreamSrc 'lb/lbaudio_ax.static.h')
+$ssmFiles=[regex]::Match($audioStatic,'(?s)static const char\* ssm_files\[\] = \{.*?\n\};')
+if(-not $ssmFiles.Success) { throw 'Original SSM file table not found.' }
+Set-Content -Encoding ASCII (Join-Path $out 'ssm_files_original.h') ($ssmFiles.Value.Replace('ssm_files[]','originalSsmFiles[]'))
 $selection = ''
 foreach ($name in @('s32_arr_803BB5D0', 's32_arr_803BB8D4')) {
     $m = [regex]::Match($audioStatic, '(?s)static (?:int|s8) ' + $name + '\[[^;]*?\n\};')
@@ -37,6 +40,11 @@ foreach ($name in @('s32_arr_803BB5D0', 's32_arr_803BB8D4')) {
     $selection += $m.Value + "`r`n"
 }
 $audioText = Get-Content -Raw (Join-Path $upstreamSrc 'lb/lbaudio_ax.c')
+$menuSelectors="#define VOL_MAX 0x7F`n#define PAN_MID 0x40`n"
+foreach($signature in @('void lbAudioAx_80024030(','int lbAudioAx_8002411C(','int lbAudioAx_800243F4(')) {
+    $menuSelectors+=(Get-SoundFunction $audioText $signature).Replace('fn_80023750(','M360_AudioSubmitOriginal(')+"`n"
+}
+Set-Content -Encoding ASCII (Join-Path $out 'menu_sfx_original.h') $menuSelectors
 foreach ($signature in @('int lbAudioAx_800230C8(', 'int lbAudioAx_80023130(', 'int lbAudioAx_80023220(')) {
     $selection += (Get-SoundFunction $audioText $signature) + "`r`n"
 }
@@ -86,7 +94,7 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 cl /nologo /MT /O2 /TC /D_CRT_SECURE_NO_WARNINGS /Fo"$out\\" /c "$root\src\common\gcm.c" "$root\src\common\hps.c" "$root\src\common\dsp_adpcm.c"
 if errorlevel 1 exit /b 1
-cl /nologo /MT /O2 /EHsc /D_CRT_SECURE_NO_WARNINGS /I"$root\tests\host\xdk_audio_mock" /Fo"$out\test_audio_xdk.obj" /Fe"$out\test_audio_xdk.exe" "$root\tests\host\test_audio_xdk.cpp" "$out\gcm.obj" "$out\hps.obj" "$out\dsp_adpcm.obj"
+cl /nologo /MT /O2 /EHsc /D_CRT_SECURE_NO_WARNINGS /I"$out" /I"$root\tests\host\xdk_audio_mock" /Fo"$out\test_audio_xdk.obj" /Fe"$out\test_audio_xdk.exe" "$root\tests\host\test_audio_xdk.cpp" "$out\gcm.obj" "$out\hps.obj" "$out\dsp_adpcm.obj"
 if errorlevel 1 exit /b 1
 "$out\test_audio_xdk.exe" "$Iso"
 exit /b %errorlevel%

@@ -596,10 +596,13 @@ $hsdSynthWrapperArgs = @(
 if ($LASTEXITCODE -ne 0) { throw 'XDK HSD synth/devcom bridge compilation failed.' }
 
 Write-Host '[M360][XEX] compiling original melee-pc synth.c/devcom.c'
+$synthAdapted = Join-Path $build 'synth_backported.c'
+& python (Join-Path $PSScriptRoot 'apply_upstream_backports.py') --name synth_compaction --input $synthSource --output $synthAdapted
+if($LASTEXITCODE -ne 0) { throw 'Reviewed upstream synth backport failed.' }
 $hsdSynthArgs = @('/nologo', '/c', '/O2', '/MT', '/GS-', '/W3', '/TC',
-    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/FI$hsdSynthCompat") + $hsdCommonInc
+    '/D_XBOX', '/DXBOX', '/DNDEBUG', "/I$baselibDir", "/FI$hsdSynthCompat") + $hsdCommonInc
 
-& $compiler ($hsdSynthArgs + @("/Fo$synthObject", $synthSource))
+& $compiler ($hsdSynthArgs + @("/Fo$synthObject", $synthAdapted))
 if ($LASTEXITCODE -ne 0) { throw 'Original synth.c compilation failed.' }
 
 & $compiler ($hsdSynthArgs + @("/Fo$devcomObject", $devcomSource))
@@ -687,6 +690,7 @@ foreach ($scene in $sceneSources) {
     $sceneObjects += $sceneObject
 }
 Write-Host '[M360][XEX] compiling original fighter states and native match glue'
+$sceneObjects += @(& (Join-Path $PSScriptRoot 'build_menu_xdk.ps1') -Compiler $compiler -Build $build)
 $matchObjects = @(& (Join-Path $PSScriptRoot 'build_match_xdk.ps1') -Compiler $clPath -Build $build -CallTrace:$CallTrace)
 $linkArgs = @(
     '/NOLOGO', '/MACHINE:PPCBE', '/SUBSYSTEM:XBOX', '/XEX:NO',
@@ -742,6 +746,7 @@ $upstreamDirty = [bool](& git -C (Join-Path $root 'upstream/melee-pc') status --
 $record = [ordered]@{
     schema = 1; commit = $revision; dirty = $dirty
     upstream = $upstreamRevision; upstream_dirty = $upstreamDirty
+    backports_sha256 = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'upstream_backports.json')).Hash
     built_utc = [DateTime]::UtcNow.ToString('o')
     boot_to_match = [bool]$BootToMatch; input_script = [bool]$InputScript
     call_trace = [bool]$CallTrace; experimental_race = [bool]$ExperimentalRace

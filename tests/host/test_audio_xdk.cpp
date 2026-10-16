@@ -1,5 +1,6 @@
 #include "../../src/xdk/melee_audio_xdk.cpp"
 #include <assert.h>
+#include "ssm_files_original.h"
 
 int main(int argc, char** argv)
 {
@@ -7,7 +8,9 @@ int main(int argc, char** argv)
     assert(argc == 2);
     assert(M360_AudioInit(argv[1], &status));
     assert(LoadSfxSem());
-    unsigned valid = 0, rejected = 0;
+    assert(sizeof(originalSsmFiles)/sizeof(originalSsmFiles[0])==56);
+    for(unsigned i=0;i<55;++i) assert(strcmp(originalSsmFiles[i],kSfxBankFiles[i])==0);
+    unsigned valid = 0, rejected = 0, ownBank = 0, foreignBank = 0, missingBank = 0;
     for (unsigned slot = 0; slot < 55; ++slot) {
         unsigned begin = ReadBe32(s_sfxSem + s_sfxSemBankTable + slot * 4);
         unsigned end = slot + 1 < 55
@@ -20,13 +23,28 @@ int main(int argc, char** argv)
         assert(!ResolveSfxSampleId(slot * 10000 + 9999, &sample));
         ++rejected;
         for (unsigned local = 0; local < end - begin; ++local)
-            if (ResolveSfxSampleId(slot * 10000 + local, &sample))
+            if (ResolveSfxSampleId(slot * 10000 + local, &sample)) {
                 ++valid;
+                SfxBank* bank;unsigned bankId;
+                if(!ResolveSfxBank(sample,slot,&bank,&bankId)) ++missingBank;
+                else if(bank->slot==slot) ++ownBank;
+                else {
+                    if(foreignBank<12) printf("FOREIGN: sound=%u sample=%u expected=%u actual=%u\n",slot*10000+local,sample,slot,bank->slot);
+                    ++foreignBank;
+                }
+            }
     }
     unsigned sample;
     assert(!ResolveSfxSampleId(550000, &sample));
     assert(!ResolveSfxSampleId(0xFFFFFFFFu, &sample));
     assert(valid > 4000);
+    printf("AUDIT: own=%u foreign=%u missing=%u\n",ownBank,foreignBank,missingBank);
+    assert(ownBank==valid && foreignBank==0 && missingBank==0);
+    SfxBank* wrongBank;unsigned wrongId;
+    // Dr. Mario's out-of-range Japanese sample number is valid in Falco's US
+    // bank. It must be rejected instead of reproducing the regional mismatch.
+    assert(!ResolveSfxBank(s_sfxBankBase[9]+s_sfxBankCount[9],9,&wrongBank,&wrongId));
+    assert(!ResolveSfxBank(0,55,&wrongBank,&wrongId));
 
     const unsigned ids[] = {282, 100105, 110100, 110109};
     static short left[65536], right[65536];

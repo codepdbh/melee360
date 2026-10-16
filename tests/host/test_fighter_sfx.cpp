@@ -11,6 +11,12 @@ struct Fighter {
 };
 int lbAudioAx_800233EC(int id) { return id; }
 bool ftCommon_80080144(Fighter*);
+static int submittedId,submittedVolume,submittedPan,submittedTrack,submittedChannel,submissions;
+int M360_AudioSubmitOriginal(int id,int volume,int pan,int track,int channel) {
+    submittedId=id;submittedVolume=volume;submittedPan=pan;submittedTrack=track;submittedChannel=channel;
+    return ++submissions;
+}
+#include "menu_sfx_original.h"
 #pragma warning(push)
 #pragma warning(disable : 4101) // original codegen stack padding
 #include "fighter_sfx_original.h"
@@ -43,6 +49,18 @@ int main(void)
     assert(ft_80087D0C(&f, 130165) == 130063);
     assert(lbAudioAx_80023130(-1) == 55);
     assert(lbAudioAx_80023130(0x83D60) == 55);
+    lbAudioAx_80024030(0);
+    assert(submittedId==0xAC && submittedTrack==0x13 && submittedChannel==3);
+    lbAudioAx_80024030(2);
+    assert(submittedId==0xAE && submittedTrack==0 && submittedChannel==3);
+    assert(submittedVolume==127 && submittedPan==64);
+    lbAudioAx_80024030(10);
+    assert(submittedId==0xDD);
+    const int previous=submissions;
+    lbAudioAx_80024030(11);assert(submissions==previous);
+    lbAudioAx_8002411C(0x147);assert(submittedId==0x147 && submittedChannel==6);
+    lbAudioAx_800243F4(0x147);assert(submittedId==0x147 && submittedTrack==0xCA && submittedChannel==7);
+    puts("PASS: original menu action IDs, volume, pan, tracks and submission selectors");
     puts("PASS: original fighter size/metal variants and Ice Climbers costume voices");
     return 0;
 }

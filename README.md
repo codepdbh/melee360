@@ -29,6 +29,21 @@ Adventure todavía necesita la carrera y escalada originales, peligros del
 laberinto y transiciones. No presentamos los combates provisionales como
 el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
+### Desarrollo en `main`, posterior a la prerelease
+
+La compilación actual incorpora la **selección de personajes, Rules y Stage
+Select originales**, con mano y fichas. El texto SIS usa las fuentes de tu
+disco. [Recorrido y controles actuales](docs/ORIGINAL_MENUS_AUDIO.md).
+
+También corrige el cruce entre la tabla de sonido japonesa y los bancos US:
+4035 streams se resuelven ahora en su banco correcto. Se restauran los
+selectores originales de sonidos de menú y la escala original del mando.
+[Revisión del fork y correcciones incorporadas](docs/UPSTREAM_AUDIT_20261016.md).
+
+**El ZIP `v0.1.0-alpha.1` todavía usa los controles anteriores descritos abajo.**
+Para usar estos cambios, compila `main` y utiliza `dist/default.xex` junto a
+tu ISO. Classic y Adventure siguen incompletos; no se ha probado en consola física.
+
 Los últimos cambios corrigen la articulación de las colisiones del escenario,
 el doble desplazamiento en plataformas y restauran funciones originales de
 colisión, escala y ajuste de piernas. El render almacena los vértices GX

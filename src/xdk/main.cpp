@@ -8,6 +8,7 @@
 #include "melee_movie_xdk.h"
 #include "hsd_render_xdk.h"
 #include "menu_scene_xdk.h"
+#include "character_select_xdk.h"
 #include "match_xdk.h"
 #include "melee_title_scene_xdk.h"
 #include "sprite_renderer.h"
@@ -624,6 +625,16 @@ static const char* PlayerTag(unsigned slot, bool human)
 
 void RenderCharacterSelect(SpriteRenderer& renderer, const M360MatchStatus& match)
 {
+    if (match.originalSelect) {
+        const char* notice=M360_CharacterSelectNotice();
+        if(notice) {
+            g_dynamic.count=0;
+            g_dynamic.color=D3DCOLOR_XRGB(238,244,252);
+            AddText(g_dynamic,260,660,notice,2);
+            RenderBatch(renderer,g_dynamic);
+        }
+        return; /* Original mncharsel / mnstagesel own these screens. */
+    }
     const unsigned slots = match.campaignRounds ? 2 : (match.slotCount < 2 ? 2 : match.slotCount);
     const LONG width = static_cast<LONG>(880 / slots);
     DrawRect(renderer, 160, 0, 960, 720, D3DCOLOR_XRGB(0, 0, 0), 0.55f);
@@ -761,7 +772,7 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
                     ? (match.campaignRound + 1 >= match.campaignRounds
                         ? "A: FINISH   B: MAIN MENU" : "A: NEXT FIGHT   B: MAIN MENU")
                     : (match.campaignRounds ? "A: CONTINUE   B: MAIN MENU"
-                                            : "A: REMATCH   B: MAIN MENU"), 2);
+                                            : "A: CHARACTER SELECT   B: MAIN MENU"), 2);
         RenderBatch(renderer, g_dynamic);
     }
     if (match.paused) {

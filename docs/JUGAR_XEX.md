@@ -1,5 +1,10 @@
 # Probar una partida local
 
+Esta guía conserva los controles de `v0.1.0-alpha.1`. Si compilaste `main`
+después del 16 de octubre de 2026, sigue el [recorrido con selección y menús
+originales](ORIGINAL_MENUS_AUDIO.md): se utiliza la mano y las fichas, Start
+abre escenarios y las reglas se ajustan en Rules.
+
 El XEX tiene un recorrido de intro, pantalla de titulo, menu y partida VS.
 Es una version experimental: las pruebas automatizadas corren en Xenia;
 el funcionamiento visual, de audio y con mandos en Xbox 360 aun necesita
