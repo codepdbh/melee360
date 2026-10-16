@@ -33,7 +33,7 @@ foreach($unit in $units) {
     $obj=Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($unit.File)+'.obj')
     $language=if($unit.Cpp){'/TP'}else{'/TC'}
     & $Compiler @('/nologo','/c',$language,'/O2','/MT','/GS-','/W3','/D_XBOX','/DXBOX','/DNDEBUG',
-        "/I$root/build-x360/gameplay-probe/include","/I$($unit.Dir)","/I$root/src/xdk","/I$src",
+        "/I$root/build-x360/gameplay-probe/include","/I$($unit.Dir)","/I$out","/I$root/src/xdk","/I$src",
         "/I$src/sdk_include","/I$env:XEDK/include/xbox","/I$env:XEDK/include/xbox/sys",
         "/FI$root/src/xdk/hsd_scene_compat.h","/Fo$obj",$unit.File) | ForEach-Object { Write-Host $_ }
     if($LASTEXITCODE -ne 0){throw "Menu compilation failed: $($unit.File)"}
