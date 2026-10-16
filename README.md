@@ -38,6 +38,9 @@ disco. [Recorrido y controles actuales](docs/ORIGINAL_MENUS_AUDIO.md).
 También corrige el cruce entre la tabla de sonido japonesa y los bancos US:
 4035 streams se resuelven ahora en su banco correcto. Se restauran los
 selectores originales de sonidos de menú y la escala original del mando.
+La música principal usa la tabla de cada escenario. Se verificaron las 36
+pistas referenciadas por los 21 escenarios disponibles, incluidos sus bucles;
+la elección de temas alternativos todavía está pendiente.
 [Revisión del fork y correcciones incorporadas](docs/UPSTREAM_AUDIT_20261016.md).
 
 **El ZIP `v0.1.0-alpha.1` todavía usa los controles anteriores descritos abajo.**

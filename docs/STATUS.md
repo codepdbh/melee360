@@ -24,11 +24,23 @@ selectors rather than passing action indices directly to the sample player.
 All 55 SSM filenames are checked against the original table. SEM sequencing
 and complete AX mixing are still incomplete.
 
+Stage backgrounds use authored StageParam BGM IDs and the original HPS file
+table, with the exact 1P StKind row for campaigns. The disc audit checks all
+21 available stage archives, 162 rows and 36 referenced tracks. All 36 decode
+through their authored loop with nonzero PCM and no ADPCM history mismatches.
+Alternate-track random/unlock selection and L/R override remain pending.
+
 The Xenia matrix covers normal opening/title/menu navigation to VS, Stock
 Rules, stage cancellation back to CSS/menu, Classic's first encounter and
-Adventure's first route. Its artifacts are under
+Adventure's first route, plus a one-stock match through results back to the
+original CSS. All six cases pass with zero GX decode errors, zero audio
+history mismatches and no watchdog. The last case preserves Mario, CPU
+Luigi and the closed slots through frame 4500. Its artifacts are under
 `build-x360/menu-port/oct16-matrix`, with paired XEX/map/script hashes and
-per-case results. These are execution/data checks, not visual/audio parity
+per-case results. The normal, non-scripted XEX also passes 1800 opening
+frames with 985 movie frames presented and zero movie/audio errors;
+evidence is in `build-x360/menu-port/final-normal-opening`.
+These are execution/data checks, not visual/audio parity
 or physical-console validation. Classic remains five normal encounters and
 Adventure remains twenty partially ported phases.
 

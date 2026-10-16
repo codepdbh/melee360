@@ -1,12 +1,55 @@
 #include "../../src/xdk/melee_audio_xdk.cpp"
 #include <assert.h>
 #include "ssm_files_original.h"
+#include "stage_music_files.h"
+
+static void TestStageMusic()
+{
+    static short pcm[4096 * M360_HPS_MAX_CHANNELS];
+    for (unsigned i = 0; i < sizeof(stageMusicFiles) / sizeof(stageMusicFiles[0]); ++i) {
+        MeleeAudioStatus music = {};
+        assert(LoadTrack(stageMusicFiles[i], &music));
+        m360_hps_stream stream;
+        assert(m360_hps_stream_open(&stream, s_track, music.fileSize));
+        m360_hps_block block;
+        unsigned offset = M360_HPS_HEADER_SIZE;
+        unsigned long long frames = 0;
+        unsigned blocks = 0;
+        for (;;) {
+            assert(m360_hps_parse_block(s_track, music.fileSize, offset,
+                                       stream.header.channels, &block));
+            frames += m360_hps_block_samples(block.end_nibble);
+            assert(++blocks < music.fileSize / M360_HPS_BLOCK_HEADER_SIZE);
+            if (block.next <= offset || block.next == M360_HPS_NO_NEXT) break;
+            offset = block.next;
+        }
+        // Stage backgrounds must carry their authored loop, not restart at
+        // the beginning as a fallback for a non-looping jingle.
+        assert(block.next != M360_HPS_NO_NEXT);
+        assert(block.next >= M360_HPS_HEADER_SIZE && block.next <= block.offset);
+        frames += 8192; // Cross the authored loop point and decode its next block.
+        bool nonzero = false;
+        while (frames) {
+            const size_t count = frames > 4096 ? 4096 : (size_t)frames;
+            assert(m360_hps_stream_read(&stream, pcm, count) == count);
+            for (size_t p = 0; p < count * stream.header.channels; ++p)
+                if (pcm[p]) nonzero = true;
+            frames -= count;
+        }
+        assert(nonzero && stream.loops > 0 && stream.history_mismatches == 0);
+        printf("PASS: stage BGM %s, %u Hz, %u blocks, authored loop decoded\n",
+               stageMusicFiles[i], stream.header.sample_rate, blocks);
+        free(s_track);
+        s_track = NULL;
+    }
+}
 
 int main(int argc, char** argv)
 {
     MeleeAudioStatus status;
     assert(argc == 2);
     assert(M360_AudioInit(argv[1], &status));
+    TestStageMusic();
     assert(LoadSfxSem());
     assert(sizeof(originalSsmFiles)/sizeof(originalSsmFiles[0])==56);
     for(unsigned i=0;i<55;++i) assert(strcmp(originalSsmFiles[i],kSfxBankFiles[i])==0);
