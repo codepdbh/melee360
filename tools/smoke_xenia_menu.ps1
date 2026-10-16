@@ -19,10 +19,15 @@ if(Get-CimInstance Win32_Process -Filter "Name='xenia_canary.exe'") { throw 'Clo
 $trace=Join-Path $BuildDir 'runtime-trace.txt'
 if(Test-Path -LiteralPath $trace) { throw 'Use a fresh diagnostic folder for each smoke run.' }
 Copy-Item -LiteralPath $ScriptPath -Destination (Join-Path $BuildDir 'input-script.txt')
-if(-not (Test-Path (Join-Path $BuildDir 'melee.iso'))) {
+$isoAlias=Join-Path $BuildDir 'melee.iso'
+$createdIsoLink=$false
+$sourceIso=''
+if(-not (Test-Path $isoAlias)) {
     $iso=@(Get-ChildItem -LiteralPath (Join-Path $root 'iso') -Filter '*.iso' -File)
     if($iso.Count -ne 1) { throw 'Expected one local disc image.' }
-    New-Item -ItemType HardLink -Path (Join-Path $BuildDir 'melee.iso') -Target $iso[0].FullName | Out-Null
+    $sourceIso=$iso[0].FullName
+    New-Item -ItemType HardLink -Path $isoAlias -Target $sourceIso | Out-Null
+    $createdIsoLink=$true
 }
 function Read-Shared([string]$path) {
     if(-not (Test-Path -LiteralPath $path)) { return '' }
@@ -49,6 +54,16 @@ try {
 } finally {
     $owned=Get-CimInstance Win32_Process -Filter "ProcessId=$($p.Id)"
     if($owned -and $owned.CommandLine.Contains($xex)) { Stop-Process -Id $p.Id -Force;$p.WaitForExit() }
+    # Delete only this run's temporary directory entry, after verifying that
+    # the separately retained original still names the same NTFS file.
+    if($createdIsoLink -and (Test-Path -LiteralPath $isoAlias)) {
+        $resolvedAlias=(Resolve-Path -LiteralPath $isoAlias).Path
+        if((Split-Path -Parent $resolvedAlias) -ne $BuildDir) { throw 'ISO cleanup path mismatch.' }
+        $sourceId=[regex]::Match((& fsutil.exe file queryfileid $sourceIso | Out-String),'0x[0-9a-fA-F]+').Value
+        $aliasId=[regex]::Match((& fsutil.exe file queryfileid $resolvedAlias | Out-String),'0x[0-9a-fA-F]+').Value
+        if(-not $sourceId -or $sourceId -ne $aliasId) { throw 'ISO cleanup file identity mismatch; link retained.' }
+        Remove-Item -LiteralPath $resolvedAlias -Force
+    }
 }
 $text=Read-Shared $trace
 $missing=@($Expect | Where-Object { -not $text.Contains($_) })
