@@ -125,6 +125,7 @@ enum { ChKind_None=33,CKind_GKoops=29 };
 struct gmClassicMatchup;
 struct gm_803DDEC8Struct { u8 x0,x1,x2,pad03;u16 x4,x6;u8 x8,pad09[3];gmClassicMatchup* xC; };
 struct Unk1PData_x24 { s8 ckind;u8 color,cpu_level,cpu_kind;float attack_ratio,defense_ratio; };
+struct Unk1PData { struct { u8 cpu_level; } x0;u8 (*x54)(u8,u8,u8); };
 struct MockMainData { u8 c_kind; } mockMainData;
 MockMainData* gmMainLib_8015CDC8() { return &mockMainData; }
 unsigned mockSceneMode;

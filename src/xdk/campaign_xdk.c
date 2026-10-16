@@ -60,6 +60,7 @@ int M360_CampaignPlayers(unsigned mode, const M360CampaignEncounter* e,
     PlayerInitData* players, int* itemFreq)
 {
     Unk1PData_x24 allies[3];
+    Unk1PData colorData;
     u8 enemies[3],colors[3];
     unsigned i, slot, count=0;
     f32 attack,defense;
@@ -81,10 +82,10 @@ int M360_CampaignPlayers(unsigned mode, const M360CampaignEncounter* e,
     *itemFreq=(s8)(mode==3 ? gm_8017EB3C((u8)e->ordinal,(u8)difficulty) : gm_8017E500((u8)e->ordinal,(u8)difficulty));
     attack=mode==3 ? gm_8017ED3C((u8)e->ordinal,(u8)difficulty) : gm_8017E528((u8)e->ordinal,(u8)difficulty);
     defense=mode==3 ? gm_8017ED8C((u8)e->ordinal,(u8)difficulty) : gm_8017E578((u8)e->ordinal,(u8)difficulty);
-    for(i=0;i<3;++i) {
-        unsigned index=(e->flags&8) ? 0 : i;
-        colors[i]=mode==3 ? gm_8017EB98((u8)e->ordinal,(u8)difficulty,(u8)index) : gm_8017E5FC((u8)e->ordinal,(u8)difficulty,(u8)index);
-    }
+    memset(&colorData,0,sizeof(colorData));
+    colorData.x0.cpu_level=(u8)difficulty;
+    colorData.x54=mode==3 ? gm_8017EB98 : gm_8017E5FC;
+    gm_8017CE34_SetupColors(&colorData,(s32)e->ordinal,(s8*)enemies,colors);
     gmRegSetupEnemyColorTable((s8)ckind,(u8)color,(s8*)enemies,colors);
     for(i=0;i<3;++i) if(enemies[i]!=ChKind_None) {
         unsigned index=(e->flags&8) ? 0 : i;

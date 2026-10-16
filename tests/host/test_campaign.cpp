@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "melee_classic_matchups.h"
+#include "melee_adventure_matchups.h"
 typedef unsigned char u8;
 typedef signed char s8;
 typedef unsigned short u16;
@@ -18,6 +19,7 @@ struct PlayerInitData {
     float attack_ratio,defense_ratio,model_scale;
 };
 struct Unk1PData_x24 { s8 ckind;u8 color,cpu_level,cpu_kind;float attack_ratio,defense_ratio; };
+struct Unk1PData { struct { u8 cpu_level; } x0;u8 (*x54)(u8,u8,u8); };
 struct MainData { u8 c_kind; } mainData;
 MainData* gmMainLib_8015CDC8() { return &mainData; }
 unsigned seed;
@@ -57,6 +59,7 @@ int main()
                 PlayerInitData players[6];int freq=-1;
                 const int count=M360_CampaignPlayers(3,&e,difficulty,ckind,0,3,players,&freq);
                 assert(count>=2 && count<=4);
+                assert(freq==(s8)gm_8017EB3C((u8)e.ordinal,(u8)difficulty));
                 assert(players[0].ckind==(int)ckind && players[0].stocks==3 && players[0].slot_type==0);
                 unsigned allies=0,enemies=0;
                 for(int i=1;i<count;++i) {
@@ -71,7 +74,12 @@ int main()
                         assert(players[i].attack_ratio==gm_8017EC00((u8)e.ordinal,(u8)difficulty));
                         assert(players[i].defense_ratio==gm_8017EC50((u8)e.ordinal,(u8)difficulty));
                     } else {
+                        const unsigned enemy=enemies;
+                        const unsigned index=(e.flags&8) ? 0 : enemy;
                         ++enemies;
+                        assert(players[i].cpu_level==gm_8017EB64((u8)e.ordinal,(u8)difficulty,(u8)index));
+                        assert(players[i].cpu_kind==((e.flags&4) ? 27 : gm_8017EBCC((u8)e.ordinal,(u8)difficulty,(u8)index)));
+                        assert(players[i].color==gm_8017EB98((u8)e.ordinal,(u8)difficulty,(u8)enemy)%6);
                         assert(players[i].model_scale==((e.flags&2) ? 2.0f : 1.0f));
                         assert(players[i].vs_metal==((e.flags&4)!=0));
                         assert(players[i].attack_ratio==gm_8017ED3C((u8)e.ordinal,(u8)difficulty));
@@ -86,5 +94,25 @@ int main()
     }
     puts("PASS: original Classic shuffle/selection for 26 characters x 128 seeds; seven combat rounds x five difficulties");
     puts("PASS: original allies, teams, levels, colors, ratios, giant and metal setup; no panic loops");
+    for(unsigned ckind=0;ckind<26;++ckind) for(unsigned difficulty=0;difficulty<5;++difficulty)
+        for(unsigned round=0;round<M360_ADVENTURE_ROUNDS;++round) {
+            const M360AdventureEncounter* source=&g_m360Adventure[round];
+            M360CampaignEncounter e={source->ordinal,source->flags,source->seconds,source->opponents,source->stkind,
+                {source->ckinds[0],source->ckinds[1],source->ckinds[2]}};
+            PlayerInitData players[6];int freq=-1;
+            const int count=M360_CampaignPlayers(4,&e,difficulty,ckind,0,3,players,&freq);
+            assert(count>=1 && count<=4);
+            assert(freq==(s8)gm_8017E500((u8)e.ordinal,(u8)difficulty));
+            for(int i=1;i<count;++i) {
+                const unsigned index=(e.flags&8) ? 0 : (unsigned)i-1;
+                assert(players[i].team==4 && players[i].team!=players[0].team);
+                assert(players[i].cpu_level==gm_8017E5C8((u8)e.ordinal,(u8)difficulty,(u8)index));
+                assert(players[i].cpu_kind==((e.flags&4) ? 27 : gm_8017E630((u8)e.ordinal,(u8)difficulty,(u8)index)));
+                assert(players[i].attack_ratio==gm_8017E528((u8)e.ordinal,(u8)difficulty));
+                assert(players[i].defense_ratio==gm_8017E578((u8)e.ordinal,(u8)difficulty));
+                assert(players[i].model_scale==((e.flags&2) ? 2.0f : 1.0f));
+            }
+        }
+    puts("PASS: all twenty Adventure phases x 26 characters x five difficulties use original enemy/item tables and no extra allies");
     return 0;
 }
