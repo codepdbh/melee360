@@ -62,8 +62,14 @@ int main()
                 for(int i=1;i<count;++i) {
                     assert(players[i].slot_type==1 && players[i].stocks==1);
                     if(players[i].team==players[0].team) {
+                        const unsigned ally=allies;
                         ++allies;
                         assert(players[i].ckind!=(int)ckind);
+                        assert(players[i].cpu_level==gm_8017ECA0((u8)e.ordinal,(u8)difficulty,(u8)ally));
+                        assert(players[i].cpu_kind==gm_8017ED08((u8)e.ordinal,(u8)difficulty,(u8)ally));
+                        assert(players[i].color==gm_8017ECD4((u8)e.ordinal,(u8)difficulty,(u8)ally));
+                        assert(players[i].attack_ratio==gm_8017EC00((u8)e.ordinal,(u8)difficulty));
+                        assert(players[i].defense_ratio==gm_8017EC50((u8)e.ordinal,(u8)difficulty));
                     } else {
                         ++enemies;
                         assert(players[i].model_scale==((e.flags&2) ? 2.0f : 1.0f));

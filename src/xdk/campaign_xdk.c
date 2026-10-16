@@ -71,7 +71,7 @@ int M360_CampaignPlayers(unsigned mode, const M360CampaignEncounter* e,
     /* Only Classic's intro calls gm_8017DB88. Adventure initializes an
      * empty ally list; giant flags alone must not create extra allies. */
     if(mode==3) gm_8017DB88(allies,(u8)e->flags,(s32)difficulty,(s32)e->ordinal,enemies,(u8)ckind,
-        AllyLevel,AllyColor,AllyKind,AllyAttack,AllyDefense);
+        AllyLevel,AllyKind,AllyColor,AllyAttack,AllyDefense);
     for(i=0;i<3;++i) if((u8)allies[i].ckind==ChKind_None) break;
     if(count+i+1>4) return 0;
     gm_SetupAllPlayerDefaults(players);
