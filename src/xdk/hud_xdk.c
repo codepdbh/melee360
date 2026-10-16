@@ -441,11 +441,12 @@ void M360_HudStart(unsigned slots, unsigned stocks, unsigned timeSeconds, int st
     memset(&s_controller, 0, sizeof(s_controller));
     r->match_kind = stockMatch ? MatchKind_Stock : MatchKind_Time;
     r->is_stock = stockMatch != 0;
+    r->is_teams = M360_MatchIsTeams() != 0;
     r->timer_enabled = timeSeconds != 0;
     r->time_limit = timeSeconds;
     r->x2_6 = 1;
     r->x0_3 = 4;
-    r->sd_penalty = -1;
+    r->sd_penalty = (s8)M360_MatchSelfDestructPenalty();
     r->is_vs = 1;
     s_controller.state.hud_enabled = 1;
     s_controller.state.timer_seconds = timeSeconds;

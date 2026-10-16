@@ -31,8 +31,9 @@ belong in Git.
 
 The full original collision engine and stage callbacks are not running.
 The native campaign flow still omits original presentation and several course
-systems. Classic is a five-normal-fight preview, with its special encounters,
-bonus stages and bosses unfinished. Adventure's mountain climb, race traffic,
+systems. Classic now links seven original combat encounters, including allies,
+teams, giant and metal; bonus stages, bosses and original presentation remain
+unfinished. Adventure's mountain climb, race traffic,
 maze hazards and transition animations remain unfinished. Rendering and console
 behavior also require comparison and validation.
 

@@ -3705,6 +3705,11 @@ int M360_FighterIndexForCharacter(unsigned ckind)
     return -1;
 }
 
+unsigned M360_FighterCharacterForIndex(unsigned index)
+{
+    return index<kKindCount ? (unsigned)CharacterForKind(s_kinds[index].kind) : 33u;
+}
+
 FighterKind Player_80036394(s32 slot)
 {
     Fighter* fp = SlotFighter(slot);

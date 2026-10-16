@@ -19,6 +19,7 @@ player_text = (source / 'pl/player.c').read_text(encoding='utf-8')
 player_table = re.search(r'ftMapping ftMapping_list\[ChKind_Max\] = \{(.*?)\n\};', player_text, re.S)[1]
 characters = re.findall(r'/\*\s*((?:CKind|ChKind)_\w+)\s*\*/\s*\{\s*(Ft_Kind_\w+)', player_table)
 character_names = dict(characters)
+character_ids = {name: index for index, (name, _) in enumerate(characters)}
 gr = {name: int(number, 16) for number, name in re.findall(r'/\*\s*0x([0-9A-Fa-f]+)\s*\*/\s*(Gr_Kind_\w+)', (source / 'gr/forward.h').read_text(encoding='utf-8'))}
 ft = {name: int(number, 16) for number, name in re.findall(r'/\*\s*([0-9A-Fa-f]{2})\s*\*/\s*(Ft_Kind_\w+)', (source / 'ft/forward.h').read_text(encoding='utf-8'))}
 # Traversal, Brinstar escape and native fighter encounters. The climbing
@@ -68,27 +69,31 @@ assert len(stats) == 110, 'Original Adventure difficulty table changed'
 assert len(ordinals) * 5 == len(stats), 'Adventure scene order does not match difficulty rows'
 lines = ['/* Generated from gmadventure.c, stage.c and player.c. */',
          '#ifndef MELEE360_ADVENTURE_MATCHUPS_H', '#define MELEE360_ADVENTURE_MATCHUPS_H',
-         'typedef struct M360AdventureEncounter { unsigned scene, flags, seconds, opponents, stkind; int grkind; int fighters[3]; } M360AdventureEncounter;',
+         'typedef struct M360AdventureEncounter { unsigned scene, flags, seconds, opponents, stkind; int grkind; int fighters[3]; unsigned ordinal, ckinds[3]; } M360AdventureEncounter;',
          'static const M360AdventureEncounter g_m360Adventure[] = {']
 for scene in scene_ids:
     row = records[scene]
     enemies = []
+    ckinds = []
     for character in row[7:10]:
         if character == 'ChKind_None':
             enemies.append(-1)
+            ckinds.append(33)
         else:
             if character.startswith('0x'):
                 character = characters[int(character, 0)][0]
             enemies.append(ft[character_names[character]])
+            ckinds.append(character_ids[character])
     slots = sum(enemy >= 0 for enemy in enemies)
     total = int(row[3], 0) or slots
     # grKinokoRoute_80207C88 calls gm_801674C4(0x11, 0xA, 3, 0xB3, ...):
     # ten Yoshis, with three active slots. The encounter row only names slots.
     if scene == 1:
         total = 10
-    lines.append('    { %d, %d, %d, %d, %d, %d, { %s } },' %
+    lines.append('    { %d, %d, %d, %d, %d, %d, { %s }, %d, { %s } },' %
                  (scene, int(row[1], 0), int(row[2], 0), total, int(row[4], 0),
-                  gr[stages[int(row[4], 0)]], ', '.join(map(str, enemies))))
+                  gr[stages[int(row[4], 0)]], ', '.join(map(str, enemies)),
+                  ordinals[scene], ', '.join(map(str, ckinds))))
 lines += ['};', '/* Attack and defense percentages: Very Easy through Very Hard. */',
           'static const unsigned short g_m360AdventureRatios[][5][2] = {']
 for scene in scene_ids:
@@ -109,5 +114,6 @@ for scene in scene_ids:
     lines.append('    { %s }, /* scene %d */' %
                  (', '.join('{ %d, %d, %d }' % tuple(row) for row in rows), scene))
 lines += ['};', '#define M360_ADVENTURE_LUIGI_KIND %d' % ft['Ft_Kind_Luigi'],
+          '#define M360_ADVENTURE_LUIGI_CHARACTER %d' % character_ids['CKind_Luigi'],
           '#define M360_ADVENTURE_ROUNDS (sizeof(g_m360Adventure) / sizeof(g_m360Adventure[0]))', '#endif']
 args.output.write_text('\n'.join(lines) + '\n', encoding='ascii')

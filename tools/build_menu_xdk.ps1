@@ -7,6 +7,8 @@ $out=Join-Path $Build 'menu'
 New-Item -ItemType Directory -Force $out | Out-Null
 & python (Join-Path $PSScriptRoot 'generate_menu_sources.py') --output $out | ForEach-Object { Write-Host $_ }
 if($LASTEXITCODE -ne 0) { throw 'Original menu dependency extraction failed.' }
+& python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
+if($LASTEXITCODE -ne 0) { throw 'Original campaign extraction failed.' }
 $units=@(
     @{File="$src/melee/mn/mncharsel.c"; Dir="$src/melee/mn"},
     @{File="$src/melee/mn/mnmainrule.c"; Dir="$src/melee/mn"},
@@ -24,6 +26,7 @@ $units=@(
     @{File="$out/audio_menu_select.c"; Dir="$src/melee/lb"},
     @{File="$root/src/xdk/sis_native_xdk.c"; Dir="$root/src/xdk"},
     @{File="$root/src/xdk/character_select_xdk.c"; Dir="$root/src/xdk"},
+    @{File="$root/src/xdk/campaign_xdk.c"; Dir="$root/src/xdk"},
     @{File="$out/discfont_sis.cpp"; Dir="$src/sysdolphin/baselib"; Cpp=$true}
 )
 foreach($unit in $units) {

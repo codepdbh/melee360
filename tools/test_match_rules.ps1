@@ -28,7 +28,8 @@ function Get-MatchFunction([string] $Signature) {
     $source.Substring($start, $cursor - $start)
 }
 $extracted = ''
-foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static unsigned TimeMinutes(void)',
+foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static int IsTimeMatch(void)', 'static unsigned TimeMinutes(void)',
+    'int M360_MatchFriendlyFire(', 'int M360_MatchSelfDestructPenalty(',
     'unsigned M360_MatchCampaignRounds(', 'static const M360AdventureEncounter* AdventureEncounter(',
     'unsigned M360_MatchNextCampaignRound(',
     'static unsigned CampaignSeconds(', 'int M360_MatchIsTeams(', 'int M360_MatchTeam(',
@@ -38,7 +39,7 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static unsign
     'static StageParam* MatchStageParam(', 'int M360_MatchBgmId(', 'int M360_MatchGroundKind(',
     'GrKind Stage_8022519C(', 'StKind Stage_80225194(',
     'static unsigned StartingStocks(', 'static int LoseStock(', 'static int StockResult(', 'static int MatchScore(',
-    'static int ClassicStageIndex(', 'static void CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
+    'static int CampaignStageIndex(', 'static int CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
     'void M360_MatchEnter(', 'void M360_MatchLeave(',
     'static int SelectInput(', 'static unsigned P1Slot(', ('static int SelectFrame(void)' + "`n{"),
     'static int OutsideBlastZone(', 'static void SetCollisionGroupEnabled(', 'static void DisableCollisionGroup(',
@@ -49,6 +50,14 @@ $source = (Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')).Repl
 $extracted = (Get-MatchFunction 'unsigned M360_FighterCostumeCount(') + "`r`n" +
     (Get-MatchFunction 'int M360_FighterIndexForKind(') + "`r`n" + $extracted
 Set-Content -LiteralPath (Join-Path $out 'match_rules_original.h') -Encoding ASCII $extracted
+& python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
+if($LASTEXITCODE -ne 0) { throw 'Campaign source extraction failed.' }
+$originalPath=Join-Path $out 'campaign_original.h'
+$original=Get-Content -Raw $originalPath
+Set-Content -Encoding ASCII $originalPath ($original.Replace('out = arg0;','out = (RegClearCharEntry*)arg0;'))
+$api=[regex]::Replace((Get-Content -Raw (Join-Path $root 'src/xdk/campaign_xdk.h')),'(?m)^#include[^\n]*\n','')
+Set-Content -Encoding ASCII (Join-Path $out 'campaign_api.h') $api
+Set-Content -Encoding ASCII (Join-Path $out 'campaign_native.h') ([regex]::Replace((Get-Content -Raw (Join-Path $root 'src/xdk/campaign_xdk.c')),'(?m)^#include[^\n]*\n',''))
 $stageSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/stage.c')
 $stageMap = [regex]::Match($stageSource, '(?s)struct StageIdMapEntry stage_id_map\[\] = \{.*?\n\};')
 $groundEnum = [regex]::Match((Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/forward.h')), '(?s)typedef enum GrKind \{.*?\} GrKind;')

@@ -26,7 +26,8 @@ estado pendiente. La edición de nombres también sigue pendiente.
 
 **1-P → Regular Match → Classic / Adventure** abre la selección original
 de esos modos y conecta con sus encuentros disponibles. Classic conserva
-su vista previa de cinco combates normales. Adventure conserva veinte
+una ruta parcial de siete combates con selección original, aliados, equipos,
+gigante y metal; faltan bonus y jefes. Adventure conserva veinte
 fases parcialmente portadas; faltan peligros, transiciones, carrera y
 escalada originales. Estos cambios no completan las campañas.
 
