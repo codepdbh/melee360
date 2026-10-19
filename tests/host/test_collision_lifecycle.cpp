@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdio>
 #include <initializer_list>
+#include <cstdlib>
 struct Vec3 { float x,y,z; };
 struct ftECB { Vec3 top,bottom,left,right; };
 typedef unsigned char u8;
@@ -10,7 +11,7 @@ typedef float f32;
 struct HSD_JObj { unsigned id; };
 struct Fighter_GObj;
 typedef Fighter_GObj HSD_GObj;
-enum { ECBSource_JObj=0, ECBSource_Fixed=1 };
+#include "collision_source_kind.h"
 struct ECBSource {
     int kind;
     HSD_JObj* x108_joint;
@@ -61,6 +62,7 @@ template<class T> static bool Zero(const T& value) {
     return true;
 }
 int main() {
+    _set_abort_behavior(0,_WRITE_ABORT_MSG | _CALL_REPORTFAULT);
     CollData cd; std::memset(&cd,0xA5,sizeof(cd)); cd.cur_pos={1,2,3};
     cd.x34_flags.b5=1; cd.x35_flags.other=31; cd.prev_env_flags=123;
     mpColl_80041EE4(&cd);
@@ -77,6 +79,7 @@ int main() {
     assert(cd.floor.normal.y==1 && cd.ceiling.normal.y==-1);
     assert(cd.right_facing_wall.normal.y==1 && cd.left_facing_wall.normal.y==-1);
     assert(Zero(cd.ecb) && Zero(cd.prev_ecb) && Zero(cd.xE4_ecb) && Zero(cd.ecb_source));
+    assert(cd.ecb_source.kind==ECBSource_None);
     assert(Zero(cd.desired_ecb) && Zero(cd.x64_ecb));
     // Copy only authored fields; source owner/filter/initialization state stays local.
     CollData src={}; src.cur_pos={4,5,6}; src.prev_pos={1,2,3}; src.last_pos={7,8,9};
