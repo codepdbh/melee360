@@ -1,6 +1,6 @@
 ﻿# Remaining work for playable Melee
 
-The XDK executable has a quick-match route from VS mode and a native match
+The XDK executable has a match route from the original VS menus and a native match
 loop. Scripted Xenia input verifies movement, attacks, hits, damage, stock loss,
 respawn, Mario's cape, CPU actions, music and SFX submissions. Interactive
 controller play on a physical Xbox 360 remains unverified.
@@ -8,7 +8,7 @@ controller play on a physical Xbox 360 remains unverified.
 ## Verified current path
 
 The normal build starts at the opening movie, then title, original menu,
-native fighter/stage selection and match. Diagnostic `-BootToMatch` and
+original fighter/stage selection and match. Diagnostic `-BootToMatch` and
 `-InputScript` builds are opt-in and must not replace the live-input release.
 
 Update 2026-10-16: `main` now uses original `mncharsel`, Rules and Stage Select,
@@ -18,6 +18,18 @@ Name editing, Coin/Bonus combat, original results, parts of advanced rules and
 full campaign flow remain pending. The US SEM/SSM mismatch is fixed and its
 4035 resolvable streams pass the same-bank audit; this is not complete AX/SEM
 sequencing, mixing or auditory parity.
+
+Update 2026-10-19: Classic now links seven original combat encounters with
+original selection, allied teams, giant and metal setup. It still omits
+bonus courses and bosses. All twenty partial Adventure phases use their
+original ordinals and difficulty/item tables. VS fixes timed Stock, unlimited
+Time, self-destruct penalties, team KOs and Friendly Fire. Original music
+selection now covers VS alternatives and all-human L/R requests; campaign
+alternatives, trophies and complete stage unlocks remain pending.
+See [campaign rules](CAMPAIGNS_VS_20261016.md) and
+[stage music selection](STAGE_MUSIC_SELECTION.md).
+The dated evidence below describes its original build, including older
+five-encounter or smaller Adventure previews.
 
 ### Experimental Underground Maze (2026-10-06)
 

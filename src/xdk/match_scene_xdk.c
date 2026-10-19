@@ -1710,7 +1710,6 @@ static void StartFight(void)
         M360_MatchTrace("match.select.costume", s_selCostume[i]);
     }
     s_phase = kPhaseFight;
-    SelectMatchMusic();
     s_frame = 0;
     s_suddenDeath = 0;
     s_draw = 0;
@@ -1726,6 +1725,9 @@ static void StartFight(void)
                   IsCampaign() ? CampaignSeconds() : TimeMinutes() * 60u,
                   !IsTimeMatch());
     CamUpdate(1);
+    /* fn_8016E730 chooses music after item/HUD initialization. The item
+     * spawn timer shares HSD's RNG; keep its roll before the music roll. */
+    SelectMatchMusic();
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
     TraceHeap("match.heap.used", "match.heap.largest_free");
     M360_MatchTrace("match.p2.human", s_human[1]);

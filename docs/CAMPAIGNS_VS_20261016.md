@@ -65,6 +65,9 @@ Stock con reloj y el indicador de equipos.
 
 La primera prueba ejecuta selección y configuración original para los 26
 personajes, 128 semillas por personaje, siete combates y cinco dificultades.
+Desde el 19 de octubre usa también `HSD_Rand`/`HSD_Randi` extraídos del
+original. Cubre además las veinte fases de Adventure, los 26 personajes y
+las cinco dificultades, incluidos sus niveles, ratios y objetos.
 La segunda ejecuta las funciones nativas de entrada, combate, fin, reintento
 y salida junto con el módulo original de campañas. Simula posiciones,
 render, carga y contactos; cubre reglas y ciclo de vida, no paridad visual
