@@ -23,8 +23,8 @@ function Get-Function([string]$source, [string]$signature) {
 }
 $extracted = ''
 foreach ($group in @(
-    @{ Path='upstream/melee-pc/src/melee/mp/mpcoll.c'; Functions=@('void mpColl_80041EE4(', 'void mpCopyCollData(') }
-    @{ Path='upstream/melee-pc/src/melee/ft/ft_081B.c'; Functions=@('GroundOrAir ft_80082708(') }
+    @{ Path='upstream/melee-pc/src/melee/mp/mpcoll.c'; Functions=@('void mpColl_80041EE4(', 'void mpColl_SetECBSource_JObj(', 'void mpColl_SetECBSource_Fixed(', 'void mpColl_SetLedgeSnap(', 'void mpCopyCollData(') }
+    @{ Path='upstream/melee-pc/src/melee/ft/ft_081B.c'; Functions=@('void ft_80081B38(', 'void ft_80081C88(', 'GroundOrAir ft_80082708(') }
 )) {
     $source = Get-Content -Raw (Join-Path $root $group.Path)
     foreach ($signature in $group.Functions) { $extracted += (Get-Function $source $signature) + "`r`n" }

@@ -193,10 +193,18 @@ int main()
         subject.fighter.parts = subject.parts; subject.fighter.x34_scale.y = 1;
         subject.partCount = 7;
         for (unsigned i = 0; i < 7; ++i) subject.parts[i].joint = &points[i];
+        assert(FighterCollisionBonesValid(&subject.fighter,7));
+        assert(!FighterCollisionBonesValid(&subject.fighter,0));
+        assert(!FighterCollisionBonesValid(&subject.fighter,6));
+        subject.parts[6].joint=0;
+        assert(!FighterCollisionBonesValid(&subject.fighter,7));
+        subject.parts[6].joint=&points[6];
         assert(FighterCollisionTop(&subject.fighter) == 11);
         authored.unk4 = 127; authored.unk6 = -1;
+        assert(!FighterCollisionBonesValid(&subject.fighter,7));
         assert(FighterCollisionTop(&subject.fighter) == 11);
         subject.fighter.ft_data = 0; subject.fighter.x34_scale.y = 2;
+        assert(!FighterCollisionBonesValid(&subject.fighter,7));
         assert(FighterCollisionTop(&subject.fighter) == 24);
         puts("PASS: ceiling height uses authored ECB bones, relative origin and scaled fallback");
     }
