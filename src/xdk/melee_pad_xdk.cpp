@@ -61,6 +61,8 @@ bool g_scriptLoaded;
 bool g_scriptLoop;
 unsigned g_scriptPasses;
 bool g_routePilot;
+/* "routepilot after": play the scripted menu steps first, then pilot. */
+bool g_routePilotAfterScript;
 unsigned g_routePilotTick;
 unsigned g_routeJumpCooldown;
 float g_routePreviousY;
@@ -479,8 +481,13 @@ void LoadScript()
             unsigned frames = 0;
             int sx = 0, sy = 0, cx = 0, cy = 0;
             char buttons[32] = "-";
+            if (end > line && end[-1] == '\r')
+                end[-1] = 0;
             if (!strcmp(line, "routepilot")) {
                 g_routePilot = true;
+            } else if (!strcmp(line, "routepilot after")) {
+                g_routePilot = true;
+                g_routePilotAfterScript = true;
             } else if (!strncmp(line, "loop", 4)) {
                 g_scriptLoop = true;
             } else if (sscanf(line, "snap %d %u", &snap, &frames) == 2) {
@@ -506,7 +513,8 @@ void ApplyScript(PADStatus* status)
 {
     if (!g_scriptLoaded)
         LoadScript();
-    if (g_routePilot) {
+    if (g_routePilot && (!g_routePilotAfterScript ||
+        (g_scriptIndex >= g_scriptCount && !g_scriptLeft && !g_scriptHold))) {
         ApplyRoutePilot(status);
         return;
     }

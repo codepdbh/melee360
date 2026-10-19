@@ -48,6 +48,9 @@ struct MapLine;
 const struct MapLine* M360_MatchMapLine(int line_id);
 unsigned M360_MatchCampaignRounds(unsigned mode);
 unsigned M360_MatchNextCampaignRound(void);
+/* Name of an unported original course skipped before this encounter,
+ * shown during the encounter's opening seconds; NULL otherwise. */
+const char* M360_MatchCampaignNotice(void);
 int M360_MatchTeam(unsigned slot);
 float M360_MatchCombatRatio(unsigned slot, int defense);
 float M360_MatchKnockbackRatio(void);

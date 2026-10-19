@@ -4,9 +4,12 @@ param([Parameter(Mandatory=$true)][string]$DiagnosticDir,
       [Parameter(Mandatory=$true)][ValidateSet(3,4)][int]$Mode,
       [ValidateRange(0,19)][int]$Round=0,
       [Parameter(Mandatory=$true)][string[]]$Markers,
-      [ValidateRange(10,1200)][int]$Seconds=300,
+      [ValidateRange(10,7200)][int]$Seconds=300,
       [ValidateRange(0,30)][int]$Player=18,
-      [string]$BuildDir='build-x360/menu-port/full-vs-smoke')
+      [ValidateRange(1,9)][int]$CpuLevel=1,
+      [string]$BuildDir='build-x360/menu-port/full-vs-smoke',
+      # Menu diagnostic: play these menu steps from the opening, then pilot.
+      [string]$MenuScript='')
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $scope=(Resolve-Path -LiteralPath (Join-Path $root 'build-x360')).Path
@@ -25,14 +28,19 @@ foreach($taskFile in @('default.xex','menus.map','build-info.json')) {
     Copy-Item -LiteralPath (Join-Path $image $taskFile) -Destination (Join-Path $run $taskFile) -Force
 }
 $record=Get-Content -Raw (Join-Path $run 'build-info.json') | ConvertFrom-Json
-if(-not $record.boot_to_match) { throw 'Pilot requires a BootToMatch diagnostic.' }
+if([bool]$record.boot_to_match -eq [bool]$MenuScript) { throw 'Use a menu diagnostic with -MenuScript, otherwise a BootToMatch diagnostic.' }
 if(-not (Test-Path (Join-Path $run 'melee.iso'))) { throw 'Reuse a run directory with an existing disc image.' }
 $xex=Join-Path $run 'default.xex'
 if((Get-FileHash -LiteralPath $xex).Hash -ne $record.xex_sha256 -or
    (Get-FileHash -LiteralPath (Join-Path $run 'menus.map')).Hash -ne $record.map_sha256) { throw 'Diagnostic hash mismatch.' }
-$config=@("mode $Mode","round $Round","p1 $Player",'cpu_level 1','seed 12000','human 1') -join "`n"
-[IO.File]::WriteAllText((Join-Path $run 'match-config.txt'),$config+"`n",[Text.Encoding]::ASCII)
-[IO.File]::WriteAllText((Join-Path $run 'input-script.txt'),"routepilot`n",[Text.Encoding]::ASCII)
+if($MenuScript) {
+    $steps=@(Get-Content -LiteralPath $MenuScript | Where-Object { $_ -and -not $_.StartsWith('#') })
+    [IO.File]::WriteAllText((Join-Path $run 'input-script.txt'),(($steps+'routepilot after') -join "`n")+"`n",[Text.Encoding]::ASCII)
+} else {
+    $config=@("mode $Mode","round $Round","p1 $Player","cpu_level $CpuLevel",'seed 12000','human 1') -join "`n"
+    [IO.File]::WriteAllText((Join-Path $run 'match-config.txt'),$config+"`n",[Text.Encoding]::ASCII)
+    [IO.File]::WriteAllText((Join-Path $run 'input-script.txt'),"routepilot`n",[Text.Encoding]::ASCII)
+}
 function Read-Shared([string]$path) {
     if(-not (Test-Path -LiteralPath $path)) { return '' }
     $f=[IO.FileStream]::new($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
@@ -57,7 +65,7 @@ try {
         $missing=@($Markers | Where-Object { $text -notmatch ('(?m)^'+[regex]::Escape($_)+'\r?$') })
         if($p.HasExited -or $text -match '(?m)^hang\.' -or $missing.Count -eq 0) { break }
         if((Get-Date) -ge $nextUpdate) {
-            Write-Host ("PILOT {0}: loop={1}, round={2}, hits={3}" -f $Name,(Last-Counter $text 'loop.frame'),(Last-Counter $text 'match.campaign.round'),(Last-Counter $text 'loop.match_hits'))
+            Write-Host ("PILOT {0}: loop={1}, round={2}, scene={3}, hits={4}" -f $Name,(Last-Counter $text 'loop.frame'),(Last-Counter $text 'match.campaign.round'),(Last-Counter $text 'match.adventure.scene'),(Last-Counter $text 'loop.match_hits'))
             $nextUpdate=(Get-Date).AddSeconds(30)
         }
     }

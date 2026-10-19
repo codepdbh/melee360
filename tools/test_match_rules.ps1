@@ -31,6 +31,7 @@ $extracted = ''
 foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static int IsTimeMatch(void)', 'static unsigned TimeMinutes(void)',
     'int M360_MatchFriendlyFire(', 'int M360_MatchSelfDestructPenalty(',
     'unsigned M360_MatchCampaignRounds(', 'static const M360AdventureEncounter* AdventureEncounter(',
+    'static const M360AdventureSkipped* SkippedBefore(', 'const char* M360_MatchCampaignNotice(',
     'unsigned M360_MatchNextCampaignRound(',
     'static unsigned CampaignSeconds(', 'int M360_MatchIsTeams(', 'int M360_MatchTeam(',
     'float M360_MatchKnockbackRatio(', 'int M360_MatchHandicap(', 'float M360_MatchCombatRatio(',

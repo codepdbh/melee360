@@ -1,0 +1,19 @@
+# Opening -> 1-P -> Regular Match -> Adventure -> CSS Jigglypuff (Normal) -> start; then "routepilot after" plays.
+60 0 0 0 0 -
+1 0 0 0 0 S
+45 0 0 0 0 -
+1 0 0 0 0 S
+180 0 0 0 0 -
+1 0 0 0 0 A
+160 0 0 0 0 -
+1 0 0 0 0 A
+160 0 0 0 0 -
+1 0 0 0 0 d
+45 0 0 0 0 -
+1 0 0 0 0 A
+150 0 0 0 0 -
+19 127 0 0 0 -
+19 0 127 0 0 -
+1 0 0 0 0 A
+60 0 0 0 0 -
+1 0 0 0 0 S

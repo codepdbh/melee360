@@ -737,6 +737,17 @@ void RenderMatchHud(SpriteRenderer& renderer, const M360MatchStatus& match)
         g_dynamic.count = 0;
         AddText(g_dynamic, 305, 24, progress, 2);
         RenderBatch(renderer, g_dynamic);
+        if (const char* skipped = M360_MatchCampaignNotice()) {
+            char line[96];
+            _snprintf(line, sizeof(line), "%s: NOT PORTED YET, SKIPPED", skipped);
+            line[sizeof(line) - 1] = 0;
+            DrawRect(renderer, 250, 580, 780, 50, D3DCOLOR_XRGB(0, 0, 0), 0.75f);
+            g_dynamic.count = 0;
+            g_dynamic.color = D3DCOLOR_XRGB(255, 220, 90);
+            AddText(g_dynamic, 265, 594, line, 2);
+            RenderBatch(renderer, g_dynamic);
+            g_dynamic.color = D3DCOLOR_XRGB(238, 244, 252);
+        }
     }
     if (match.suddenDeath && !match.matchOver) {
         DrawRect(renderer, 470, 16, 340, 54, D3DCOLOR_XRGB(0, 0, 0), 0.38f);
