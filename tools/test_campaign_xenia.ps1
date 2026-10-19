@@ -13,6 +13,7 @@ $OutDir=(Resolve-Path -LiteralPath $OutDir).Path
 if(-not $run.StartsWith($scope+'\',[StringComparison]::OrdinalIgnoreCase) -or
    -not $OutDir.StartsWith($scope+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Test paths out of scope.' }
 if(Test-Path (Join-Path $run 'runtime-trace.txt')) { throw 'Previous run was not archived.' }
+if(Get-CimInstance Win32_Process -Filter "Name='xenia_canary.exe'") { throw 'Close the existing Xenia run first.' }
 foreach($name in @('default.xex','menus.map','build-info.json')) {
     Copy-Item -LiteralPath (Join-Path $DiagnosticDir $name) -Destination (Join-Path $run $name) -Force
 }
