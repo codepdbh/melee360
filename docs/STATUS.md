@@ -1,5 +1,26 @@
 # Development status
 
+## Alpha.2 candidate: VS rules and hammer platform drop — 2026-10-19
+
+Source `c527ad4` connects the original VS Damage Ratio (`StartMeleeRules.x30`)
+and each player's handicap to the fighter code. The old adapters returned
+constant 1.0 and 9. Campaign defaults remain independent of previous VS rules.
+The original `ftCo_0C60.c` now supplies the hammer platform-drop transition.
+Host checks cover all menu ratio values and manual handicap levels; the
+hammer check mocks platform input and verifies HammerFall/state restoration.
+Xenia verifies the original Rules-to-match path at 1.1: 3600 frames, 31 hits,
+zero decode/audio-history errors and no watchdog.
+
+Normal XEX SHA-256:
+`2CA5D0DB8B37E1F347CC2CD1991DBE547084B7CA9292A4663EF75817A90CC92D`.
+The locally verified alpha.2 ZIP is 3,330,300 bytes and contains six files,
+without a disc image or diagnostic input. Publication is pending; GitHub's
+published alpha.1 retains its older executable and controls.
+All 38 current Xenia checks pass: 27 encounter entries, eight menu routes,
+Mushroom/Brinstar objectives and a normal opening (1800 frames, 898 movie
+frames). No decode/history/watchdog errors. [Candidate evidence](ALPHA2_VALIDATION.md).
+The preceding validation below identifies its own earlier build.
+
 ## Original campaign setup, VS rules and alternate music — 2026-10-19
 
 Current source replaces the five-normal-fight Classic preview with seven
