@@ -1,6 +1,7 @@
 # Probar una partida local
 
-Esta guía corresponde a `v0.1.0-alpha.2`. Utiliza la selección original
+Esta guía corresponde al paquete local `v0.1.0-alpha.2`, cuya publicación
+está pendiente. Utiliza la selección original
 con mano y fichas. [Detalles de los menús](ORIGINAL_MENUS_AUDIO.md).
 
 El XEX tiene un recorrido de intro, pantalla de titulo, menu y partida VS.

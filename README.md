@@ -10,7 +10,9 @@ es conservar el comportamiento y los recursos originales del juego.
 
 ## Estado de esta versión
 
-**`v0.1.0-alpha.2` es experimental.** Hay pruebas automatizadas de ejecución
+**`v0.1.0-alpha.2` es un candidato experimental con ZIP local; su publicación
+en GitHub está pendiente.** La última release publicada sigue siendo alpha.1.
+Hay pruebas automatizadas de ejecución
 en Xenia Canary; todavía no se ha validado esta versión en una Xbox 360 física.
 El proyecto no incluye la ISO ni recursos extraídos del disco.
 
@@ -46,7 +48,7 @@ escenarios y la elección alternativa en campañas siguen pendientes.
 [Selección de música y límites](docs/STAGE_MUSIC_SELECTION.md).
 [Revisión del fork y correcciones incorporadas](docs/UPSTREAM_AUDIT_20261016.md).
 
-El ZIP `v0.1.0-alpha.2` incluye estos menús y controles. Classic y Adventure
+El ZIP local `v0.1.0-alpha.2` incluye estos menús y controles. Classic y Adventure
 siguen incompletos; no se ha probado en consola física.
 
 Classic ahora enlaza siete combates de su secuencia original, con aliados,
@@ -56,7 +58,8 @@ VS respeta el reloj de Stock, Time sin límite y las reglas de autodestrucción
 y daño entre compañeros. El multiplicador Damage Ratio y el hándicap elegido
 se transmiten al combate; el martillo utiliza su transición original para
 bajar de plataformas. [Detalle y límites](docs/CAMPAIGNS_VS_20261016.md).
-[Compilación y comprobaciones del 19 de octubre](docs/VALIDATION_20261019.md).
+[Validación del candidato alpha.2](docs/ALPHA2_VALIDATION.md) (38 comprobaciones en Xenia).
+[Informe anterior del 19 de octubre](docs/VALIDATION_20261019.md).
 
 Los últimos cambios corrigen la articulación de las colisiones del escenario,
 el doble desplazamiento en plataformas y restauran funciones originales de
@@ -81,7 +84,10 @@ no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
 ### Descarga y copia
 
 1. Abre [Releases](https://github.com/codepdbh/melee360/releases) y descarga
-   el asset **`MELEE360-v0.1.0-alpha.2-xbox360.zip`**. **Source code** es el
+   el asset de la versión publicada. El nuevo ZIP local se llama
+   **`MELEE360-v0.1.0-alpha.2-xbox360.zip`** y su publicación está pendiente.
+   Para alpha.1 sigue su [guía de instalación y controles](https://github.com/codepdbh/melee360/blob/v0.1.0-alpha.1/docs/INSTALAR_XBOX360.md).
+   **Source code** es el
    código fuente y no contiene el ejecutable listo para usar.
 2. Extrae el ZIP y coloca tu ISO dentro de `MELEE360`, llamada exactamente
    **`melee.iso`**. Activa las extensiones de Windows para evitar `.iso.iso`.

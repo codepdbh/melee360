@@ -2,7 +2,7 @@
 
 Estos cambios pertenecen al código de `main`, después de `v0.1.0-alpha.1`.
 El ZIP de aquella prerelease conserva su ejecutable anterior.
-La [verificación del 19 de octubre](VALIDATION_20261019.md) identifica el
+La [validación del candidato alpha.2](ALPHA2_VALIDATION.md) identifica el
 XEX normal actualizado, sus diagnósticos y la cobertura de las pruebas.
 
 ## Entrar a una partida
@@ -32,6 +32,11 @@ una ruta parcial de siete combates con selección original, aliados, equipos,
 gigante y metal; faltan bonus y jefes. Adventure conserva veinte
 fases parcialmente portadas; faltan peligros, transiciones, carrera y
 escalada originales. Estos cambios no completan las campañas.
+
+La compilación candidata alpha.2 conecta además Damage Ratio y el hándicap
+manual de VS con las funciones de combate. Se compila la transición original
+para bajar de plataformas llevando el martillo. La publicación del ZIP alpha.2
+está pendiente; alpha.1 publicada conserva sus menús anteriores.
 
 ## Implementación
 

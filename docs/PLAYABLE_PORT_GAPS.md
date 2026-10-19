@@ -5,6 +5,16 @@ loop. Scripted Xenia input verifies movement, attacks, hits, damage, stock loss,
 respawn, Mario's cape, CPU actions, music and SFX submissions. Interactive
 controller play on a physical Xbox 360 remains unverified.
 
+## Alpha.2 candidate — 2026-10-19
+
+Source `c527ad4` connects the original Rules Damage Ratio and per-player
+handicap to combat, and compiles the original hammer platform-drop code.
+The normal live-input XEX and six-file ZIP are built and locally verified;
+publication remains pending. GitHub alpha.1 retains its previous executable.
+The new diagnostic passes all 27 campaign entries (seven Classic, twenty
+Adventure) at 1200 frames each, with music and no decode/history/watchdog
+errors. These are encounter-entry checks, not complete-campaign wins.
+
 ## Verified current path
 
 The normal build starts at the opening movie, then title, original menu,
