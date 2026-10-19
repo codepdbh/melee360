@@ -18,9 +18,14 @@ probabilities and the all-human L/R request. Campaign alternate selection,
 trophy persistence and all-stage unlock conditions remain pending.
 See [music selection](STAGE_MUSIC_SELECTION.md).
 
-The clean normal XEX was rebuilt from `d612dd0` without scripted input or
+Adventure now refreshes authored item weights and spawn scaling after
+choosing each encounter, including phases that reuse the same ground.
+The host reproducer failed on the previous code and now checks the actual
+native table loader across paired Kirby encounters and Battlefield variants.
+
+The clean normal XEX was rebuilt from `c74481e` without scripted input or
 BootToMatch. SHA-256:
-`A971E598400B2AD8A206079F7E1ADD5513A9727FF811DCC43D3F331DA4546E9C`.
+`ED9EC95EEC107D9970323410358D47FF662708F61121610972AFF7A68524A178`.
 Host campaign tests now use the original HSD RNG for all 26 characters
 and 128 seeds. Music tests cover all 162 authored rows; audio regression
 again resolves 4035 streams in their own banks and decodes all 36 stage
@@ -31,6 +36,16 @@ change PC launcher/platform code, with no changes to `src/melee` or
 `src/sysdolphin`. The source base and reviewed synth backport are retained.
 The published alpha.1 ZIP remains the previous binary. Physical Xbox 360
 play and complete current campaigns remain unverified.
+See [the current build and validation record](VALIDATION_20261019.md).
+
+The final diagnostics pass all seven Classic and twenty Adventure entry
+cases at 1200 frames, plus seven original-menu routes. The all-human L/R
+request reaches music selection; seeded Battlefield also opens its authored
+alternate BGM 38. PAD pilots clear Mushroom Kingdom and Brinstar escape and
+enter their following phases. The normal live-input XEX reaches opening
+frame 1800 with 900 presented movie frames, zero movie/audio errors, no
+watchdog and no scripted-input marker. These are bounded route checks,
+not complete-campaign or physical-console validation.
 
 The dated sections below retain results from their respective older builds.
 
