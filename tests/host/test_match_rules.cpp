@@ -56,7 +56,7 @@ float s_itemScale;
 unsigned mockRand;
 int HSD_Randi(int count) { assert(count > 0); return (int) (mockRand % (unsigned) count); }
 struct HSD_GObj {};
-struct Fighter { float x, y; unsigned reads, deaths, rebirths; } fighters[4];
+struct Fighter { float x, y; unsigned damage, reads, deaths, rebirths; } fighters[4];
 unsigned s_gameMode, s_campaignRound, s_campaignStocks, s_stocks;
 unsigned s_classicStKind;
 int s_classicRouteReady;
@@ -311,7 +311,7 @@ void M360_FighterGetState(void* f, float* x, float* y, float* facing,
                           unsigned* motion, unsigned* damage) {
     Fighter* fighter = (Fighter*) f;
     ++fighter->reads;
-    *x = fighter->x; *y = fighter->y; *facing = 1; *motion = *damage = 0;
+    *x = fighter->x; *y = fighter->y; *facing = 1; *motion = 0; *damage = fighter->damage;
 }
 
 // Extracted from the actual native match source by the runner.
@@ -948,6 +948,8 @@ int main() {
     assert(s_matchOver && s_winner==0 && !s_suddenDeath);
     assert(s_stocksRemaining[0]==2 && s_stocksRemaining[1]==1);
     s_matchOver=0;s_frame=3599;s_stocksRemaining[1]=2;
+    // Original fn_8016588C scores surviving Stock players by lives alone.
+    fighters[0].damage=10;fighters[1].damage=90;
     M360_MatchFrame();
     assert(s_suddenDeath && s_stocksRemaining[0]==1 && s_stocksRemaining[1]==1 && !s_stocksRemaining[2]);
     assert(!TimeMinutes() && !IsTimeMatch());

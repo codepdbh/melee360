@@ -40,7 +40,7 @@ También corrige el cruce entre la tabla de sonido japonesa y los bancos US:
 selectores originales de sonidos de menú y la escala original del mando.
 La música usa la tabla de cada escenario. VS ejecuta el selector original
 de temas alternativos y la petición con L/R de todos los jugadores humanos.
-Se verificaron las 36 pistas referenciadas por los 21 escenarios disponibles,
+Se verificaron las 36 pistas referenciadas por los 21 archivos de escenario examinados,
 incluidos sus bucles. Los desbloqueos por trofeos/plantilla completa de
 escenarios y la elección alternativa en campañas siguen pendientes.
 [Selección de música y límites](docs/STAGE_MUSIC_SELECTION.md).
@@ -55,6 +55,7 @@ equipos, gigante y metal. Classic y Adventure usan los selectores originales
 de nivel, comportamiento CPU, colores, proporciones y frecuencia de objetos.
 VS respeta el reloj de Stock, Time sin límite y las reglas de autodestrucción
 y daño entre compañeros. [Detalle y límites](docs/CAMPAIGNS_VS_20261016.md).
+[Compilación y comprobaciones del 19 de octubre](docs/VALIDATION_20261019.md).
 
 Los últimos cambios corrigen la articulación de las colisiones del escenario,
 el doble desplazamiento en plataformas y restauran funciones originales de

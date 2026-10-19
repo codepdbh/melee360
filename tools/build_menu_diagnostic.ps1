@@ -12,6 +12,9 @@ if((Get-FileHash (Join-Path $root 'dist/default.xex')).Hash -ne $record.xex_sha2
    (Get-FileHash (Join-Path $build 'melee360.map')).Hash -ne $record.map_sha256) {
     throw 'Normal build hashes do not match its provenance.'
 }
+if((Test-Path -LiteralPath $OutDir) -and @(Get-ChildItem -LiteralPath $OutDir -Force).Count) {
+    throw 'Diagnostic output is not empty; use a fresh directory to preserve existing evidence.'
+}
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $OutDir=(Resolve-Path -LiteralPath $OutDir).Path
 $obj=Join-Path $OutDir 'pad-script.obj'

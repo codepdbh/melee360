@@ -52,3 +52,5 @@ en esta prueba; no constituye una comparación auditiva.
 
 La segunda audita las 4035 muestras resolubles SEM/SSM, los 55 bancos y
 decodifica las 36 pistas de estos escenarios a través de su bucle original.
+El registro incluye 17 escenarios de VS y cuatro cursos; el curso de
+F-Zero permanece detrás de la opción de compilación experimental.

@@ -2,6 +2,8 @@
 
 Estos cambios pertenecen al código de `main`, después de `v0.1.0-alpha.1`.
 El ZIP de aquella prerelease conserva su ejecutable anterior.
+La [verificación del 19 de octubre](VALIDATION_20261019.md) identifica el
+XEX normal actualizado, sus diagnósticos y la cobertura de las pruebas.
 
 ## Entrar a una partida
 
