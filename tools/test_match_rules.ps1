@@ -33,7 +33,7 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static int Is
     'unsigned M360_MatchCampaignRounds(', 'static const M360AdventureEncounter* AdventureEncounter(',
     'unsigned M360_MatchNextCampaignRound(',
     'static unsigned CampaignSeconds(', 'int M360_MatchIsTeams(', 'int M360_MatchTeam(',
-    'float M360_MatchCombatRatio(',
+    'float M360_MatchKnockbackRatio(', 'int M360_MatchHandicap(', 'float M360_MatchCombatRatio(',
     'unsigned M360_MatchCpuLevel(',
     'unsigned M360_MatchCpuKind(',
     'static StageParam* MatchStageParam(', 'static void LoadItemTable(', 'int M360_MatchBgmId(', 'static void SelectMatchMusic(', 'int M360_MatchGroundKind(',
@@ -49,6 +49,8 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static int Is
 $source = (Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')).Replace("`r`n", "`n")
 $extracted = (Get-MatchFunction 'unsigned M360_FighterCostumeCount(') + "`r`n" +
     (Get-MatchFunction 'int M360_FighterIndexForKind(') + "`r`n" + $extracted
+$source = (Get-Content -Raw (Join-Path $root 'src/xdk/fighter_unported_xdk.c')).Replace("`r`n", "`n")
+$extracted += (Get-MatchFunction 'f32 gm_8016B248(') + "`r`n" + (Get-MatchFunction 'int Player_GetHandicap(') + "`r`n"
 Set-Content -LiteralPath (Join-Path $out 'match_rules_original.h') -Encoding ASCII $extracted
 & python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
 if($LASTEXITCODE -ne 0) { throw 'Campaign source extraction failed.' }

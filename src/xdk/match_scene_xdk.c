@@ -1454,6 +1454,23 @@ int M360_MatchTeam(unsigned slot) {
         s_selectedCss.vs.start.rules.is_teams ? s_selectedCss.vs.start.players[slot].team : (int)slot;
 }
 
+float M360_MatchKnockbackRatio(void)
+{
+    /* gm_8016B248 reads StartMeleeRules.x30. gm_80167BC8 has already
+     * converted Rules.damage_ratio to this multiplier. Campaign setup
+     * retains gm_SetupRulesDefaults' value; do not inherit the previous VS value. */
+    return !IsCampaign() && s_originalVsRules ? s_selectedCss.vs.start.rules.x30 : 1.0f;
+}
+
+int M360_MatchHandicap(unsigned slot)
+{
+    /* Player_GetHandicap is also used by grab escape, sleep and bury
+     * timers. Attack/defense ratios alone do not supply this value. */
+    if (slot >= kMaxFighters) return 9;
+    if (IsCampaign()) return (unsigned char)s_campaignPlayers[slot].handicap;
+    return s_originalVsRules ? (unsigned char)s_selectedCss.vs.start.players[slot].handicap : 9;
+}
+
 float M360_MatchCombatRatio(unsigned slot, int defense)
 {
     if (!IsCampaign() && s_originalVsRules && slot < 4)
@@ -1731,6 +1748,8 @@ static void StartFight(void)
     /* fn_8016E730 chooses music after item/HUD initialization. The item
      * spawn timer shares HSD's RNG; keep its roll before the music roll. */
     SelectMatchMusic();
+    M360_MatchTrace("match.rules.knockback_percent", (unsigned)(M360_MatchKnockbackRatio()*100.0f+0.5f));
+    M360_MatchTrace("match.rules.p1_handicap", (unsigned)M360_MatchHandicap(0));
     M360_MatchTrace("match.enter.fighters", s_fighterCount);
     TraceHeap("match.heap.used", "match.heap.largest_free");
     M360_MatchTrace("match.p2.human", s_human[1]);

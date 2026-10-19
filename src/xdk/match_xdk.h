@@ -50,6 +50,8 @@ unsigned M360_MatchCampaignRounds(unsigned mode);
 unsigned M360_MatchNextCampaignRound(void);
 int M360_MatchTeam(unsigned slot);
 float M360_MatchCombatRatio(unsigned slot, int defense);
+float M360_MatchKnockbackRatio(void);
+int M360_MatchHandicap(unsigned slot);
 unsigned M360_MatchCpuLevel(unsigned slot);
 unsigned M360_MatchCpuKind(unsigned slot);
 int M360_MatchIsTeams(void);

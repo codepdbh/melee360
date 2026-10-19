@@ -10,17 +10,17 @@ es conservar el comportamiento y los recursos originales del juego.
 
 ## Estado de esta versión
 
-**`v0.1.0-alpha.1` es experimental.** Hay pruebas automatizadas de ejecución
+**`v0.1.0-alpha.2` es experimental.** Hay pruebas automatizadas de ejecución
 en Xenia Canary; todavía no se ha validado esta versión en una Xbox 360 física.
 El proyecto no incluye la ISO ni recursos extraídos del disco.
 
 | Área | Disponible / pendiente |
 |---|---|
-| Inicio | Intro desde la ISO, título, menú y selección nativa de partida |
+| Inicio | Intro desde la ISO, título, menús y selección original con mano y fichas |
 | VS | Personajes, colores, escenarios, reglas, CPU y jugadores locales; paridad completa pendiente |
 | Combate | Estados originales, ataques, daño, vidas, reaparición, IA y objetos; quedan acciones y colisiones por portar |
 | Audio | Música, voces y efectos originales decodificados de HPS/SSM; envío a XAudio2 probado y audio confirmado por el usuario en Xenia |
-| Classic | Vista previa de cinco combates normales; faltan especiales, bonus y jefes |
+| Classic | Siete combates originales, con aliados, gigante y metal; faltan bonus y jefes |
 | Adventure | Veinte fases parcialmente implementadas; Mushroom Kingdom, laberinto y escape tienen pruebas de objetivo en Xenia; campaña actual completa sin validar |
 | Presentación | Modelos, animaciones y texturas originales; materiales, cámara y efectos aún incompletos |
 | Xbox 360 física | Compilación XEX disponible; ejecución, rendimiento y controles por validar en consola |
@@ -29,7 +29,7 @@ Adventure todavía necesita la carrera y escalada originales, peligros del
 laberinto y transiciones. No presentamos los combates provisionales como
 el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
-### Desarrollo en `main`, posterior a la prerelease
+### Cambios de alpha.2
 
 La compilación actual incorpora la **selección de personajes, Rules y Stage
 Select originales**, con mano y fichas. El texto SIS usa las fuentes de tu
@@ -46,15 +46,16 @@ escenarios y la elección alternativa en campañas siguen pendientes.
 [Selección de música y límites](docs/STAGE_MUSIC_SELECTION.md).
 [Revisión del fork y correcciones incorporadas](docs/UPSTREAM_AUDIT_20261016.md).
 
-**El ZIP `v0.1.0-alpha.1` todavía usa los controles anteriores descritos abajo.**
-Para usar estos cambios, compila `main` y utiliza `dist/default.xex` junto a
-tu ISO. Classic y Adventure siguen incompletos; no se ha probado en consola física.
+El ZIP `v0.1.0-alpha.2` incluye estos menús y controles. Classic y Adventure
+siguen incompletos; no se ha probado en consola física.
 
 Classic ahora enlaza siete combates de su secuencia original, con aliados,
 equipos, gigante y metal. Classic y Adventure usan los selectores originales
 de nivel, comportamiento CPU, colores, proporciones y frecuencia de objetos.
 VS respeta el reloj de Stock, Time sin límite y las reglas de autodestrucción
-y daño entre compañeros. [Detalle y límites](docs/CAMPAIGNS_VS_20261016.md).
+y daño entre compañeros. El multiplicador Damage Ratio y el hándicap elegido
+se transmiten al combate; el martillo utiliza su transición original para
+bajar de plataformas. [Detalle y límites](docs/CAMPAIGNS_VS_20261016.md).
 [Compilación y comprobaciones del 19 de octubre](docs/VALIDATION_20261019.md).
 
 Los últimos cambios corrigen la articulación de las colisiones del escenario,
@@ -80,7 +81,7 @@ no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
 ### Descarga y copia
 
 1. Abre [Releases](https://github.com/codepdbh/melee360/releases) y descarga
-   el asset **`MELEE360-v0.1.0-alpha.1-xbox360.zip`**. **Source code** es el
+   el asset **`MELEE360-v0.1.0-alpha.2-xbox360.zip`**. **Source code** es el
    código fuente y no contiene el ejecutable listo para usar.
 2. Extrae el ZIP y coloca tu ISO dentro de `MELEE360`, llamada exactamente
    **`melee.iso`**. Activa las extensiones de Windows para evitar `.iso.iso`.
@@ -103,9 +104,10 @@ no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
    incluye la carpeta de juegos entre sus rutas de escaneo.
    [Proyecto oficial Aurora](https://phoenix.xboxunity.net/).
 5. Pulsa **Start** para pasar de la intro al título y luego al menú.
-   En **VS**, entra en la primera opción de combate, elige personaje con
-   izquierda/derecha y confirma con **A**. Elige también el rival CPU.
-   Con un segundo mando conectado, P2 puede elegir su propio personaje.
+   En **VS → Melee**, mueve la mano con el stick y coloca la ficha sobre
+   un personaje con **A**. Activa un rival CPU desde su panel o conecta
+   otro mando. Pulsa **Start** para abrir Stage Select y **A** para elegir
+   escenario; **Start** selecciona uno al azar. **B** vuelve a personajes.
 
 Esta prerelease usa **XEX**: no requiere XeLL ni renombrar el archivo a ELF.
 Copia la ISO completa al dispositivo; un enlace local de Windows no basta.
@@ -126,15 +128,15 @@ copiar SDK, logs, mapas ni carpetas de compilación.
 | Agarre | RB |
 | Pausa / continuar | Start |
 | Volver al menú desde pausa | B |
-| Revancha / menú al terminar | A / B |
+| Selección de personajes / menú al terminar | A / B |
 
-En selección de VS: **X/Y** cambia color, **cruceta arriba/abajo** escenario,
-**RB** vidas, **LB** nivel CPU, **RT** cantidad de jugadores, **Start** objetos
- y **stick derecho arriba/abajo** reglas de vidas/tiempo. En Adventure,
-**LB** cambia dificultad. Las opciones también aparecen en pantalla.
-Un mando adicional puede incorporarse en selección o tomar un puesto CPU
-existente en combate. Si se desconecta un mando humano, reconéctalo y pulsa
-Start. [Más detalles del flujo actual](docs/JUGAR_XEX.md).
+En selección, mueve la mano con el stick, coloca/retira la ficha con A/B y
+cambia color con X/Y. Configura los rivales y su nivel desde los paneles
+HMN/CPU. **Rules** abre las reglas originales; **Start** abre escenarios.
+En Classic/Adventure se ajustan dificultad y vidas desde sus controles originales.
+Los mandos adicionales se incorporan en selección. Si se desconecta un
+mando humano durante el combate, reconéctalo y pulsa Start.
+[Recorrido y controles de los menús](docs/ORIGINAL_MENUS_AUDIO.md).
 
 ### Problemas comunes
 
@@ -191,7 +193,7 @@ Las opciones de diagnóstico son exclusivas de pruebas y el empaquetador
 rechaza esas variantes.
 
 ```powershell
-./tools/package_prerelease.ps1 -Version v0.1.0-alpha.1
+./tools/package_prerelease.ps1 -Version v0.1.0-alpha.2
 ```
 
 El empaquetador exige un checkout limpio y una compilación normal del mismo

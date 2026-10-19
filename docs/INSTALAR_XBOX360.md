@@ -1,6 +1,6 @@
 # Instalar y jugar MELEE360 en Xbox 360
 
-Version experimental `v0.1.0-alpha.1`. Probada mediante trazas de Xenia;
+Version experimental `v0.1.0-alpha.2`. Probada mediante trazas de Xenia;
 la ejecucion en Xbox 360 fisica todavia no esta verificada.
 Classic y Adventure siguen incompletos.
 
@@ -17,7 +17,7 @@ Classic y Adventure siguen incompletos.
 ## Copiar y abrir
 
 1. En https://github.com/codepdbh/melee360/releases descarga el asset
-   `MELEE360-v0.1.0-alpha.1-xbox360.zip`. Los botones **Source code**
+   `MELEE360-v0.1.0-alpha.2-xbox360.zip`. Los botones **Source code**
    descargan el codigo, no el juego ejecutable.
 2. Extrae el ZIP. Copia tu ISO a la carpeta `MELEE360` y llamala
    exactamente `melee.iso`; activa las extensiones en Windows para evitar
@@ -40,9 +40,10 @@ Classic y Adventure siguen incompletos.
    En Aurora puedes agregar la carpeta de juegos a sus rutas de escaneo.
    Referencia del proyecto Aurora: https://phoenix.xboxunity.net/.
 5. Pulsa Start para pasar de la intro al titulo y de ahi al menu.
-   En VS, elige la primera opcion de combate. Selecciona personaje con
-   izquierda/derecha y confirma con A; elige tambien el rival CPU.
-   Si hay un segundo mando, P2 puede elegir su personaje.
+   En VS -> Melee, mueve la mano con el stick y coloca la ficha con A.
+   Activa un rival CPU desde su panel HMN/CPU, o conecta otro mando.
+   Pulsa Start para abrir Stage Select y A para elegir escenario. Start
+   elige uno al azar; B regresa a personajes conservando la configuracion.
 
 Este paquete es **XEX**. No necesita XeLL ni se debe renombrar a `.elf`.
 Un enlace de archivo que funciona en tu PC no sustituye la copia completa
@@ -61,19 +62,23 @@ de la ISO al USB. No necesitas copiar SDK, mapas, logs ni carpetas de compilacio
 | Agarre | RB |
 | Pausa / continuar | Start |
 | Salir al menu desde la pausa | B |
-| Revancha / menu al terminar | A / B |
+| Seleccion de personajes / menu al terminar | A / B |
 
-En seleccion: X/Y cambia color; cruceta arriba/abajo cambia escenario;
-RB cambia vidas, LB nivel CPU, RT cantidad de jugadores, Start objetos y
-stick derecho arriba/abajo reglas de vidas/tiempo. En Adventure, LB cambia
-la dificultad. Un mando adicional puede incorporarse durante la seleccion.
+En seleccion: stick mueve la mano, A coloca la ficha, B la retira y X/Y
+cambia color. Ajusta CPU y su nivel en cada panel. Rules abre las reglas
+originales y sus submenus. Start abre la seleccion de escenario.
+Classic/Adventure se abren en 1-P -> Regular Match y conservan su seleccion
+original de dificultad y vidas. Un mando adicional se incorpora en seleccion.
 Si se desconecta un mando humano, reconectalo y pulsa Start para continuar.
+En VS, A en resultados regresa a personajes; B vuelve al menu principal.
 
 ## Lo que puedes probar
 
 VS tiene seleccion y combates con IA, objetos, musica y efectos originales
 leidos de la ISO. Algunas acciones, escenarios y materiales siguen pendientes.
-Classic ofrece cinco combates normales: faltan fases especiales y jefes.
+Classic ofrece siete combates originales, con aliados, gigante y metal;
+faltan bonus y jefes. El multiplicador Damage Ratio y el handicap manual
+de VS llegan al combate. El martillo conserva su bajada original de plataformas.
 Adventure tiene veinte fases implementadas parcialmente, con recorridos de
 Mushroom Kingdom, laberinto y escape de Brinstar. Faltan la carrera original,
 escalada, peligros y transiciones; la campana completa actual no esta validada.

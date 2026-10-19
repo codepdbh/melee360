@@ -254,6 +254,7 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_SquatRv.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_RunDirect.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_Pass.c') },
+    @{ Path = (Join-Path $src 'melee/ft/kinds/ftCommon/ftCo_0C60.c') },
     @{ Path = (Join-Path $src 'melee/ft/ft_0DF1.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftattacks4combo.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftwalkcommon.c') },
