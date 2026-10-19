@@ -2252,18 +2252,6 @@ bool mpCollGetSpeedFloor(CollData* coll, Vec3* speed)
     return mpGetSpeed(index, &top, speed);
 }
 
-void mpColl_SetECBSource_Fixed(CollData* cd, HSD_GObj* gobj, float up, float down, float front,
-                               float back)
-{
-    cd->x0_gobj = gobj;
-    cd->ecb_source.kind = ECBSource_Fixed;
-    cd->ecb_source.up = up;
-    cd->ecb_source.down = down;
-    cd->ecb_source.front = front;
-    cd->ecb_source.back = back;
-    cd->ecb_source.angle = 0.0f;
-}
-
 void mpColl_800436E4(CollData* coll, float angle)
 {
     coll->ecb_source.angle = angle;
@@ -3242,6 +3230,32 @@ static void RemoveUserData(void* data)
     (void) data;
 }
 
+/* ft_80081B38 indexes six authored bones directly. Validate native costume
+ * bindings before entering it; an unavailable binding is a load failure. */
+static int FighterCollisionBonesValid(Fighter* fp, unsigned partCount)
+{
+    const ftData_x44_t* source = fp->ft_data ? DP(ftData_x44_t, fp->ft_data->x44) : NULL;
+    s16 indices[6];
+    unsigned i;
+    if (!source || !partCount || !fp->parts || !fp->parts[0].joint) return 0;
+    indices[0]=source->unk0; indices[1]=source->unk2; indices[2]=source->unk4;
+    indices[3]=source->unk6; indices[4]=source->unk8; indices[5]=source->unkA;
+    for (i=0; i<6; ++i)
+        if (indices[i]<0 || (unsigned)indices[i]>=partCount || !fp->parts[indices[i]].joint)
+            return 0;
+    return 1;
+}
+
+static void InitFighterCollision(HSD_GObj* gobj)
+{
+    /* Original life setup: owner, six ECB bones, initial buffers, filters,
+     * normals, weight, scale and ledge-snap dimensions. The native contact
+     * solver still does not implement the complete original ECB pipeline. */
+    ft_80081B38(gobj);
+    M360_MatchTrace("fighter.collision.init.kind", (unsigned)GET_FIGHTER(gobj)->kind);
+    M360_MatchTrace("fighter.collision.init.top", (unsigned)GET_FIGHTER(gobj)->coll_data.ecb.top.y);
+}
+
 static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned costumeSel,
                                float x, float y, float facing, int port)
 {
@@ -3320,6 +3334,11 @@ static HSD_GObj* CreateFighter(int slot, int sub, unsigned kindIndex, unsigned c
         efAsync_LoadSync(ftData_UnkBytePerCharacter[desc->kind]);
     if (desc->onLoad)
         desc->onLoad(gobj);
+    if (!FighterCollisionBonesValid(fp, f->partCount)) {
+        M360_MatchTrace("fighter.collision.bones_failed", kindIndex);
+        HSD_GObjFree(gobj);
+        return NULL;
+    }
     SetupAnimationLengths(fp);
     M360_MatchTrace("fighter.anim.landing_frames_x100", (unsigned) (fp->x2EC * 100.0f));
     ftCo_800A101C(fp, (int) M360_MatchCpuKind(fp->player_id), (int) M360_MatchCpuLevel(fp->player_id), 0);
@@ -3549,10 +3568,7 @@ void M360_FighterRespawn(void* handle, float x, float y)
     fp->gr_vel = 0.0f;
     fp->x1968_jumpsUsed = 1;
     fp->ground_or_air = GA_Air;
-    fp->coll_data.cur_pos = fp->cur_pos;
-    fp->coll_data.last_pos = fp->cur_pos;
-    fp->coll_data.floor.index = -1;
-    fp->coll_data.floor_skip = -1;
+    InitFighterCollision(gobj);
     ftCo_Fall_Enter(gobj);
 }
 
@@ -3573,10 +3589,7 @@ void Fighter_UnkProcessDeath_80068354(Fighter_GObj* gobj)
     fp->self_vel.x = fp->self_vel.y = fp->self_vel.z = 0.0f;
     fp->x8c_kb_vel.x = fp->x8c_kb_vel.y = fp->x8c_kb_vel.z = 0.0f;
     fp->gr_vel = 0.0f;
-    fp->coll_data.cur_pos = fp->cur_pos;
-    fp->coll_data.last_pos = fp->cur_pos;
-    fp->coll_data.floor.index = -1;
-    fp->coll_data.floor_skip = -1;
+    InitFighterCollision(gobj);
     ftColl_8007AFF8(gobj);
     ftColl_8007B0C0(gobj, HurtCapsule_Enabled);
     OnDeath(gobj);

@@ -732,7 +732,7 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopaspecialn.c') },
     @{ Path = (Join-Path $src 'melee/ft/kinds/ftKoopa/ftkoopaspecials.c') }
 )
-$units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80081C88(', 'GroundOrAir ft_80082708(', 'void ft_80082B1C(', 'void ft_800849EC(', 'Fighter_GObj* ft_80082E3C(', 'void ft_80084DB0(') 'ft_081B_slice'
+$units += New-Slice 'melee/ft/ft_081B.c' 'void ft_80081B38(' @('void ft_80081B38(', 'void ft_80081C88(', 'GroundOrAir ft_80082708(', 'void ft_80082B1C(', 'void ft_800849EC(', 'Fighter_GObj* ft_80082E3C(', 'void ft_80084DB0(') 'ft_081B_slice'
 $units += New-Slice 'melee/ft/ft_0881.c' 'void ft_800881D8(' @('void ft_800881D8(', 'void ft_80088328(', 'void ft_80088478(', 'void ft_80088510(', 'void ft_800885A8(', 'void ft_80088640(', 'void ft_80088770(', 'void ft_800887CC(', 'void ft_80088828(', 'void ft_80088884(', 'void ft_800888E0(', 'void ft_8008893C(', 'void ft_800889F4(', 'static inline int inline0(', 'void ftCo_800886D8(', 'void ft_80088998(', 'void ft_800890BC(', 'static inline void inlineB0(', 'void ft_800890D0(', 'static f32 ft_80089118(', 'f32 ft_80089228(', 'static inline void inlineC0(', 'void ft_800892A0(') 'ft_0881_stale_slice'
 # Ground pose and two-bone IK remain original code. Optional counters prove
 # that authored commands and active branches run; they are absent normally.
@@ -748,7 +748,7 @@ if ($CallTrace) {
 $units += New-Adapted 'melee/ft/ft_0899.c' $poseDiagnostics 'fighter_ground_pose'
 $units += New-Adapted 'melee/lb/lb_020A.c' $ikDiagnostics 'fighter_foot_ik'
 $units += New-Slice 'melee/ft/ftCo_800C7CA0.c' 'bool ftCo_800C7CA0(' @('bool ftCo_800C7CA0(', 'void fn_800C7DC4(', 'void ftCo_DownReflect_Anim(', 'void ftCo_DownReflect_IASA(', 'void ftCo_DownReflect_Phys(', 'void ftCo_DownReflect_Coll(') 'fighter_down_reflect'
-$units += New-Slice 'melee/mp/mpcoll.c' 'void mpColl_80041C78(' @('void mpColl_80041EE4(', 'void mpCopyCollData(') 'collision_lifecycle'
+$units += New-Slice 'melee/mp/mpcoll.c' 'void mpColl_80041C78(' @('void mpColl_80041EE4(', 'void mpColl_SetECBSource_JObj(', 'void mpColl_SetECBSource_Fixed(', 'void mpColl_SetLedgeSnap(', 'void mpCopyCollData(') 'collision_lifecycle'
 $units += New-Slice 'melee/ft/ftanim.c' 'void ftAnim_GetNextAnimJointInTree(' @('static void scale_inline(', 'void ftAnim_8006E054(') 'fighter_root_motion'
 $units += New-Slice 'melee/ft/ftparts.c' 'static inline FighterPartsTable* get_parts_tbl(' @('static inline FighterPartsTable* get_parts_tbl(', 'Fighter_Part ftParts_GetBoneIndex(', 'FighterBone* ftParts_GetBone(') 'fighter_bone_lookup'
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
