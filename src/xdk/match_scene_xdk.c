@@ -1653,6 +1653,9 @@ static void StartFight(void)
             M360_MatchTrace("match.adventure.encounter_unavailable", encounter->scene);
             s_active = 0; return;
         }
+        /* Paired 1P encounters may reuse the archive that MatchEnter built
+         * before CampaignOpponent selected the new StKind. */
+        LoadItemTable();
         M360_MatchTrace("match.adventure.scene", encounter->scene);
         if (encounter->scene == 17 && !InitMaze()) {
             M360_MatchTrace("match.adventure.maze_load_failed", 1);
