@@ -6,6 +6,7 @@
 typedef unsigned char u8;
 typedef signed char s8;
 typedef unsigned short u16;
+typedef unsigned int u32;
 typedef int s32;
 typedef float f32;
 #define ASSERT_SIZE(type,size)
@@ -22,8 +23,7 @@ struct Unk1PData_x24 { s8 ckind;u8 color,cpu_level,cpu_kind;float attack_ratio,d
 struct Unk1PData { struct { u8 cpu_level; } x0;u8 (*x54)(u8,u8,u8); };
 struct MainData { u8 c_kind; } mainData;
 MainData* gmMainLib_8015CDC8() { return &mainData; }
-unsigned seed;
-int HSD_Randi(int count) { assert(count>0);seed=seed*1664525u+1013904223u;return (int)((seed>>8)%(unsigned)count); }
+#include "campaign_random.h"
 bool gm_IsCKindUnlocked(unsigned kind) { return kind<26; }
 int Stage_8022519C(unsigned kind) { assert(kind<286);return g_m360StageGroundKinds[kind]; }
 bool gm_80164430(unsigned stage) {

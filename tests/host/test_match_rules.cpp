@@ -6,6 +6,7 @@
 #include "melee_adventure_matchups.h"
 #include "stage_identity_reference.h"
 #include "../../src/xdk/match_xdk.h"
+#include "../../src/xdk/stage_music_xdk.h"
 
 enum { kMaxFighters = 4, kStartingStocks = 3, kCampaignRounds = 7,
        kGameModeClassic = 3, kGameModeAdventure = 4,
@@ -105,6 +106,8 @@ unsigned s_winner, s_frame, s_autoPlayed, s_autoResultFrames;
 unsigned s_slotCount, s_selKind[4], s_selCostume[4], s_selReady[4];
 int s_selHuman[4], s_itemFreq, s_selProbeP2;
 int s_closed[4], s_originalVsRules;
+int s_matchBgm=-1;
+unsigned s_matchBgmStKind=~0u;
 unsigned s_creditedKOs[4];
 enum { Gm_PKind_Human=0, Gm_PKind_Cpu=1, Gm_PKind_NA=3 };
 struct PlayerInitData {
@@ -121,7 +124,7 @@ typedef int s32;
 typedef float f32;
 #define ASSERT_SIZE(type,size)
 #define HSD_ASSERTREPORT(line,expr,...) assert(expr)
-enum { ChKind_None=33,CKind_GKoops=29 };
+enum { ChKind_None=33,CKind_GKoops=29,CKind_Mars=9,CKind_CLink=21,CKind_Playable_Count=26 };
 struct gmClassicMatchup;
 struct gm_803DDEC8Struct { u8 x0,x1,x2,pad03;u16 x4,x6;u8 x8,pad09[3];gmClassicMatchup* xC; };
 struct Unk1PData_x24 { s8 ckind;u8 color,cpu_level,cpu_kind;float attack_ratio,defense_ratio; };
@@ -236,6 +239,14 @@ void M360_FighterResetMatch() {}
 int M360_MatchLoad() { return 1; }
 void ApplyAutoConfig() {}
 void M360_AudioStopAllSfx() {}
+unsigned M360_StageMusicInput(void*) { return 0; }
+int M360_StageMusicChoose(void* param,unsigned kind,unsigned,unsigned,unsigned,int* alternate) {
+    GroundParam* ground=(GroundParam*)param;
+    *alternate=0;
+    for(int i=0;i<ground->stage_param_count;++i)
+        if(ground->stage_params[i].stkind==kind) return ground->stage_params[i].x4;
+    return -1;
+}
 void M360_HsdRenderClearTextures() {}
 void FreeAllGObjs() { ++cleanupCalls; }
 int BuildStage(unsigned stage) {
