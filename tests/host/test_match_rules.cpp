@@ -372,6 +372,7 @@ static void Reset(unsigned count) {
 }
 
 int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);
     Reset(4);
     assert(M360_MatchKnockbackRatio()==1.0f);
     assert(M360_MatchHandicap(0)==9);
@@ -474,6 +475,33 @@ int main() {
     s_campaignRound = 7;
     assert(CampaignOpponent());
     assert(M360_MatchCombatRatio(1, 1) == 1.0f);
+    {
+        /* Unported original courses (race ordinal 14, Icicle Mountain 17)
+         * are reported by the next native encounter during its opening. */
+        const int active = s_active, phase = s_phase, over = s_matchOver;
+        const unsigned frame = s_frame, round = s_campaignRound;
+        unsigned notices = 0;
+        bool race = false;
+        for (const auto& encounter : g_m360Adventure) race = race || encounter.scene == 58;
+        s_active = 1; s_phase = kPhaseFight; s_matchOver = 0; s_frame = 0;
+        for (s_campaignRound = 0; s_campaignRound < M360_ADVENTURE_ROUNDS; ++s_campaignRound) {
+            const char* notice = M360_MatchCampaignNotice();
+            const unsigned scene = g_m360Adventure[s_campaignRound].scene;
+            assert((notice != NULL) == ((scene == 59 && !race) || scene == 81));
+            if (scene == 59 && !race) { assert(!strcmp(notice, "F-ZERO GRAND PRIX RACE")); ++notices; }
+            if (scene == 81) {
+                assert(!strcmp(notice, "ICICLE MOUNTAIN CLIMB")); ++notices;
+                s_frame = 479; assert(M360_MatchCampaignNotice());
+                s_frame = 480; assert(!M360_MatchCampaignNotice());
+                s_frame = 0; s_matchOver = 1; assert(!M360_MatchCampaignNotice());
+                s_matchOver = 0; s_phase = kPhaseSelect; assert(!M360_MatchCampaignNotice());
+                s_phase = kPhaseFight;
+            }
+        }
+        assert(notices == (race ? 1u : 2u));
+        s_active = active; s_phase = phase; s_matchOver = over; s_frame = frame; s_campaignRound = round;
+        printf("PASS: unported race and Icicle Mountain courses are reported, not silently skipped\n");
+    }
     s_gameMode = 0;
     assert(M360_MatchCombatRatio(1, 0) == 1.0f);
     assert(M360_MatchCpuLevel(1) == 5);

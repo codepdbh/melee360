@@ -113,7 +113,18 @@ for scene in scene_ids:
     rows = cpu_kinds[ordinals[scene] * 5:ordinals[scene] * 5 + 5]
     lines.append('    { %s }, /* scene %d */' %
                  (', '.join('{ %d, %d, %d }' % tuple(row) for row in rows), scene))
-lines += ['};', '#define M360_ADVENTURE_LUIGI_KIND %d' % ft['Ft_Kind_Luigi'],
+# Original GS_VS courses whose ground systems are not ported. The native
+# sequence omits them; the following encounter reports the skip on screen.
+skipped = [(0x49, 'ICICLE MOUNTAIN CLIMB')]
+if not args.experimental_race:
+    skipped.insert(0, (0x3A, 'F-ZERO GRAND PRIX RACE'))
+lines += ['};', 'typedef struct M360AdventureSkipped { unsigned scene, ordinal; const char* name; } M360AdventureSkipped;',
+          'static const M360AdventureSkipped g_m360AdventureSkipped[] = {']
+for scene, name in skipped:
+    assert scene not in scene_ids and scene in ordinals
+    lines.append('    { %d, %d, "%s" },' % (scene, ordinals[scene], name))
+lines += ['};', '#define M360_ADVENTURE_SKIPPED (sizeof(g_m360AdventureSkipped) / sizeof(g_m360AdventureSkipped[0]))']
+lines += ['#define M360_ADVENTURE_LUIGI_KIND %d' % ft['Ft_Kind_Luigi'],
           '#define M360_ADVENTURE_LUIGI_CHARACTER %d' % character_ids['CKind_Luigi'],
           '#define M360_ADVENTURE_ROUNDS (sizeof(g_m360Adventure) / sizeof(g_m360Adventure[0]))', '#endif']
 args.output.write_text('\n'.join(lines) + '\n', encoding='ascii')

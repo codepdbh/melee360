@@ -1423,6 +1423,29 @@ static const M360AdventureEncounter* AdventureEncounter(void)
                ? &g_m360Adventure[s_campaignRound] : NULL;
 }
 
+/* An original course between the previous native encounter and this one
+ * whose ground system is not ported yet; the sequence goes past it. */
+static const M360AdventureSkipped* SkippedBefore(void)
+{
+    const M360AdventureEncounter* encounter = AdventureEncounter();
+    const unsigned previous = s_campaignRound ? g_m360Adventure[s_campaignRound - 1].ordinal : 0;
+    unsigned i;
+    if (!encounter || !s_campaignRound) return NULL;
+    for (i = 0; i < M360_ADVENTURE_SKIPPED; ++i)
+        if (g_m360AdventureSkipped[i].ordinal > previous &&
+            g_m360AdventureSkipped[i].ordinal < encounter->ordinal)
+            return &g_m360AdventureSkipped[i];
+    return NULL;
+}
+
+const char* M360_MatchCampaignNotice(void)
+{
+    const M360AdventureSkipped* skipped;
+    if (!s_active || s_phase != kPhaseFight || s_matchOver || s_frame >= 480u) return NULL;
+    skipped = SkippedBefore();
+    return skipped ? skipped->name : NULL;
+}
+
 unsigned M360_MatchNextCampaignRound(void)
 {
     unsigned next = s_campaignRound + 1;
@@ -1674,6 +1697,8 @@ static void StartFight(void)
          * before CampaignOpponent selected the new StKind. */
         LoadItemTable();
         M360_MatchTrace("match.adventure.scene", encounter->scene);
+        if (SkippedBefore())
+            M360_MatchTrace("match.adventure.course_unported", SkippedBefore()->scene);
         if (encounter->scene == 17 && !InitMaze()) {
             M360_MatchTrace("match.adventure.maze_load_failed", 1);
             s_active = 0; return;

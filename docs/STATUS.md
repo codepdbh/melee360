@@ -1,5 +1,18 @@
 # Development status
 
+## Adventure course notices and menu-route pilot — 2026-10-19
+
+When Adventure reaches an original course whose system is not ported yet,
+the campaign skips it and shows the course name during the opening seconds
+of the next encounter (`M360_MatchCampaignNotice`) instead of stalling.
+Input scripts accept `routepilot after`, which plays scripted menu steps
+before the course pilot, and tolerate CRLF lines; a menu-entered Adventure
+fixture drives 1P → Adventure from the real menus. Host match, flow (five
+Classic rounds, twenty-one Adventure phases) and collision lifecycle tests
+pass. The normal XEX builds and boots in Xenia to the original menus and
+character select. A full Adventure playthrough to the ending, physical
+Xbox 360 play and the remaining course systems are not verified.
+
 ## Alpha.2 candidate: VS rules and hammer platform drop — 2026-10-19
 
 Source `c527ad4` connects the original VS Damage Ratio (`StartMeleeRules.x30`)
