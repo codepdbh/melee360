@@ -8,6 +8,10 @@ if (-not $install) { throw 'MSVC host compiler not found.' }
 $vcvars = Join-Path $install 'VC/Auxiliary/Build/vcvars64.bat'
 $out = Join-Path $root 'build-x360/host-tests/collision-lifecycle'
 New-Item -ItemType Directory -Force $out | Out-Null
+$kindSource = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/lb/forward.h')
+$kindEnum = [regex]::Match($kindSource, '(?s)typedef enum ECBSourceKind \{.*?\} ECBSourceKind;')
+if (-not $kindEnum.Success) { throw 'Missing original ECB source enum.' }
+Set-Content (Join-Path $out 'collision_source_kind.h') -Encoding ASCII $kindEnum.Value
 function Get-Function([string]$source, [string]$signature) {
     $start = $source.IndexOf($signature)
     if ($start -lt 0) { throw "Missing function: $signature" }
