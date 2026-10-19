@@ -39,6 +39,9 @@ de `gm_17E4.c`, sin desplazar la dificultad por los cursos todavía omitidos.
 Se conserva la lista vacía de aliados de Adventure: el flag de gigante no
 crea aliados por sí solo. Se restaura también la frecuencia de objetos de
 cada encuentro; antes el adaptador los desactivaba en toda campaña.
+La entrada a combate también vuelve a cargar los pesos y la escala de
+aparición de objetos después de elegir el StKind. Esto evita conservar la
+tabla anterior en fases consecutivas que reutilizan el mismo escenario.
 
 No se completan con esto la escalada, tráfico de la carrera, peligros del
 laberinto ni transiciones originales. Los cursos y las oleadas conservan sus

@@ -44,13 +44,15 @@ const CostumeDesc s_kinds[] = {
 };
 struct StageDesc { int grkind; };
 const StageDesc s_stages[] = { {36}, {37}, {28}, {10}, {12}, {29}, {7}, {30}, {5}, {2}, {4}, {8}, {13}, {14}, {16}, {20}, {18}, {31}, {33}, {32}, {34} };
-struct StageParam { unsigned stkind; int x4; unsigned xC; };
+struct StageParam { unsigned stkind; int x4; unsigned xC;short x18,x1A[35]; };
 typedef unsigned StKind;
-struct GroundParam { StageParam* stage_params; int stage_param_count; };
+struct GroundParam { StageParam* stage_params; int stage_param_count;short x68,x6A[35]; };
 StageParam mockStageParams[64];
 GroundParam mockGround;
 GroundParam* s_param = &mockGround;
-void LoadItemTable() {}
+static void LoadItemTable(void);
+int s_itemCounts[35];
+float s_itemScale;
 unsigned mockRand;
 int HSD_Randi(int count) { assert(count > 0); return (int) (mockRand % (unsigned) count); }
 struct HSD_GObj {};
@@ -265,12 +267,20 @@ int BuildStage(unsigned stage) {
     for (unsigned i = 0; i < 64; ++i) mockLines[i].hi_flags = i % 2 ? 1 : 4;
     mockGround.stage_params = mockStageParams;
     mockGround.stage_param_count = 1;
+    mockGround.x68=50;
+    for(unsigned j=0;j<35;++j) mockGround.x6A[j]=(short)(j+2);
+    memset(mockStageParams,0,sizeof(mockStageParams));
     mockStageParams[0].stkind = 0;
     mockStageParams[0].x4 = 11; mockStageParams[0].xC = 22;
+    mockStageParams[0].x18=1;
+    for(unsigned j=0;j<35;++j) mockStageParams[0].x1A[j]=(short)(j+1);
     for (unsigned i=0;i<286;++i) if(g_m360StageGroundKinds[i]==s_stages[stage].grkind) {
         StageParam& row=mockStageParams[mockGround.stage_param_count++];
         row.stkind=i;row.x4=1000+i;row.xC=2000+i;
+        row.x18=(short)(i+1);
+        for(unsigned j=0;j<35;++j) row.x1A[j]=(short)(i+j+1);
     }
+    LoadItemTable();
     return 1;
 }
 void* M360_FighterSpawn(int slot, float, float, float, int) {
@@ -986,4 +996,23 @@ int main() {
     s_phase=kPhaseSelect;
     assert(M360_MatchBgmId()==22 && musicSelections==2);
     puts("PASS: music is chosen once per fight, retains all-human L/R and does not consume RNG on frame queries");
+
+    Reset(2);
+    s_gameMode=4;s_campaignRound=8;s_cpuLevel=3;
+    assert(CampaignOpponent());
+    BuildStage((unsigned)CampaignStageIndex(s_classicStKind));
+    assert(s_itemCounts[0]==2*(int)(g_m360Adventure[8].stkind+1));
+    const unsigned reusedStage=s_builtStage;
+    s_campaignRound=9;
+    StartFight();
+    assert(s_builtStage==reusedStage);
+    for(unsigned j=0;j<35;++j)
+        assert(s_itemCounts[j]==(int)(j+2)*(int)(g_m360Adventure[9].stkind+j+1));
+    assert(fabsf(s_itemScale-0.005f*(g_m360Adventure[9].stkind+1))<0.000001f);
+    Reset(2);
+    s_gameMode=4;s_campaignRound=17;s_classicStKind=~0u;s_cpuLevel=3;
+    BuildStage(0); // Initial Battlefield archive, before selecting its 1P variant.
+    StartFight();
+    assert(s_builtStage==0 && s_itemCounts[0]==2*(int)(g_m360Adventure[17].stkind+1));
+    puts("PASS: Adventure reloads its authored item table when reusing a ground or entering a 1P variant");
 }
