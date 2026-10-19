@@ -1,5 +1,19 @@
 # Revisión de melee-pc — 16 de octubre de 2026
 
+## Nueva consulta — 19 de octubre de 2026
+
+`git fetch --prune origin` actualizó `origin/master` a
+`0cc24fee6b8e7dd7a9233daa126829d374fe1f40`: 11 commits después de
+`88cda55`, 223 desde nuestra base. Cambian 42 archivos del lanzador,
+ajustes F1, teclado, rutas de almacenamiento y empaquetado de PC/Android.
+El diff de `src/melee` y `src/sysdolphin` está vacío. El cambio de
+`music_stream.cpp` ajusta rutas para instalaciones portables de PC;
+no cambia la decodificación HPS ni el backend XAudio2 de Xbox.
+No se incorporan esos componentes SDL/RmlUi al XEX. La base y el
+backport `memmove` descritos abajo se conservan.
+
+## Consulta anterior — 16 de octubre de 2026
+
 Se ejecutó `git fetch --prune origin` en el checkout existente, sin crear
 otra copia del proyecto ni de la ISO.
 

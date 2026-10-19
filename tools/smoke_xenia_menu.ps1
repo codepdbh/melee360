@@ -51,7 +51,7 @@ try {
     if($owned -and $owned.CommandLine.Contains($xex)) { Stop-Process -Id $p.Id -Force;$p.WaitForExit() }
 }
 $text=Read-Shared $trace
-$missing=@($Expect | Where-Object { -not $text.Contains($_) })
+$missing=@($Expect | Where-Object { $text -notmatch ('(?m)^'+[regex]::Escape($_)+'\r?$') })
 $result=[ordered]@{
     XexSha256=$record.xex_sha256;MapSha256=$record.map_sha256
     LoopFrame=Last-Counter $text 'loop.frame';Hits=Last-Counter $text 'loop.match_hits'

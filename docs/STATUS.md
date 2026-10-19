@@ -1,5 +1,39 @@
 # Development status
 
+## Original campaign setup, VS rules and alternate music — 2026-10-19
+
+Current source replaces the five-normal-fight Classic preview with seven
+original combat encounters: singles, an allied team, a giant with two
+allies, a team of ten and metal. Original selection, ally helpers, colors,
+CPU/difficulty ratios and item frequencies are compiled from the pinned
+source. Adventure uses its original encounter ordinals and setup tables
+for the twenty available partial phases. Bonus courses, Classic bosses,
+full Adventure course systems and original campaign presentation remain
+unfinished. See [campaign and VS changes](CAMPAIGNS_VS_20261016.md).
+
+VS distinguishes timed Stock from Time with no time limit, applies original
+self-destruct/team-KO scoring and Friendly Fire, and preserves CPU slots
+during combat. Original stage music selection now handles VS alternatives,
+probabilities and the all-human L/R request. Campaign alternate selection,
+trophy persistence and all-stage unlock conditions remain pending.
+See [music selection](STAGE_MUSIC_SELECTION.md).
+
+The clean normal XEX was rebuilt from `d612dd0` without scripted input or
+BootToMatch. SHA-256:
+`A971E598400B2AD8A206079F7E1ADD5513A9727FF811DCC43D3F331DA4546E9C`.
+Host campaign tests now use the original HSD RNG for all 26 characters
+and 128 seeds. Music tests cover all 162 authored rows; audio regression
+again resolves 4035 streams in their own banks and decodes all 36 stage
+tracks through their authored loops.
+
+The upstream review was refreshed to `0cc24fe`: eleven newer commits
+change PC launcher/platform code, with no changes to `src/melee` or
+`src/sysdolphin`. The source base and reviewed synth backport are retained.
+The published alpha.1 ZIP remains the previous binary. Physical Xbox 360
+play and complete current campaigns remain unverified.
+
+The dated sections below retain results from their respective older builds.
+
 ## Original selection, rules and US sound tables — 2026-10-16
 
 The normal path now runs original `mncharsel`, Rules / More Rules / Item

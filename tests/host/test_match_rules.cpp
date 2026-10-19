@@ -239,8 +239,12 @@ void M360_FighterResetMatch() {}
 int M360_MatchLoad() { return 1; }
 void ApplyAutoConfig() {}
 void M360_AudioStopAllSfx() {}
-unsigned M360_StageMusicInput(void*) { return 0; }
-int M360_StageMusicChoose(void* param,unsigned kind,unsigned,unsigned,unsigned,int* alternate) {
+unsigned musicSelections,musicInput,musicFlags,musicUnlocks;
+unsigned initSequence,musicInitOrder,itemInitOrder,hudInitOrder;
+unsigned M360_StageMusicInput(void*) { return musicInput; }
+int M360_StageMusicChoose(void* param,unsigned kind,unsigned flags,unsigned,unsigned unlocks,int* alternate) {
+    ++musicSelections;musicFlags=flags;musicUnlocks=unlocks;
+    musicInitOrder=++initSequence;
     GroundParam* ground=(GroundParam*)param;
     *alternate=0;
     for(int i=0;i<ground->stage_param_count;++i)
@@ -272,13 +276,14 @@ int BuildStage(unsigned stage) {
 void* M360_FighterSpawn(int slot, float, float, float, int) {
     return slot == failSlot ? NULL : &fighters[slot];
 }
-void it_8026D018() {}
+void it_8026D018() { itemInitOrder=++initSequence; }
 HSD_GObj* GObj_Create(int, int, int) { return NULL; }
 void DebugRender(HSD_GObj*, int) {}
 void GObj_SetupGXLink(HSD_GObj*, void (*)(HSD_GObj*, int), int, int) {}
 unsigned hudTimeLimit;
 int hudStockMatch;
 void M360_HudStart(unsigned, unsigned, unsigned seconds, int stockMatch) {
+    hudInitOrder=++initSequence;
     ++hudStarts; hudTimeLimit = seconds; hudStockMatch = stockMatch;
 }
 void* M360_FighterActive(int) { return NULL; }
@@ -966,4 +971,19 @@ int main() {
     M360_MatchFrame();
     assert(!s_human[1]);
     puts("PASS: CPU slots cannot be taken over by a pad during combat");
+
+    Reset(2);
+    s_originalVsRules=1;musicSelections=0;musicInput=1;
+    StartFight();
+    assert(musicSelections==1 && musicFlags==68 && musicUnlocks==11);
+    assert(itemInitOrder<hudInitOrder && hudInitOrder<musicInitOrder);
+    const int selectedMusic=M360_MatchBgmId();
+    for(unsigned frame=0;frame<10000;++frame) assert(M360_MatchBgmId()==selectedMusic);
+    assert(musicSelections==1);
+    musicInput=0;
+    StartFight();
+    assert(musicSelections==2 && musicFlags==4);
+    s_phase=kPhaseSelect;
+    assert(M360_MatchBgmId()==22 && musicSelections==2);
+    puts("PASS: music is chosen once per fight, retains all-human L/R and does not consume RNG on frame queries");
 }

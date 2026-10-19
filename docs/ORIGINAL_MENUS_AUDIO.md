@@ -53,8 +53,12 @@ escalada originales. Estos cambios no completan las campañas.
 
 ## Música de cada escenario
 
-La pista principal se obtiene de `grGroundParam::stage_params` del escenario:
-VS usa su columna VS y Classic/Adventure la fila de su `StKind` y columna
+La pista se obtiene de `grGroundParam::stage_params` del escenario.
+Desde el 19 de octubre, VS ejecuta `Ground_801C24F8` y la petición L/R
+original de `fn_8016E5C0`. El adaptador anterior elegía siempre `xC`; el
+original usa los flags de `Stage_80225074`, que para VS normal parten de 4
+y seleccionan `x4`/`x8` según la regla y probabilidad del escenario.
+Classic/Adventure conservan la fila exacta de su `StKind` y su pista principal
 de un jugador. El ID se convierte a archivo con `hps_files` original.
 Por ejemplo, Fountain usa `izumi.hps`, Corneria `corneria.hps`, Onett
 `onetto.hps` y Final Destination `sp_end.hps`.
@@ -65,8 +69,11 @@ en la ISO GALE01 1.02. La regresión decodifica cada pista completa, cruza su
 punto de bucle original y comprueba PCM no silencioso y cero desajustes de
 historial ADPCM. No extrae música al repositorio.
 
-La elección aleatoria/condicional de música alternativa y su activación con
-L/R todavía están pendientes; disponer del archivo no implementa esa lógica.
+Las alternativas de VS conservan probabilidades, requisitos de personajes y
+la petición L/R de todos los humanos al comenzar. Solo se sortea una vez por
+combate. Los desbloqueos por trofeos y por todos los escenarios, así como la
+elección alternativa en campañas, siguen pendientes.
+[Implementación y pruebas](STAGE_MUSIC_SELECTION.md).
 
 ## Repetir las comprobaciones
 
@@ -74,6 +81,7 @@ L/R todavía están pendientes; disponer del archivo no implementa esa lógica.
 python tests/test_menu_sources.py
 ./tools/test_sis_native.ps1
 ./tools/test_audio_xdk.ps1
+./tools/test_stage_music.ps1
 ./tools/test_match_rules.ps1
 ./tools/build_xex.ps1
 ./tools/build_menu_diagnostic.ps1 -OutDir build-x360/menu-check
