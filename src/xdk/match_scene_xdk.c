@@ -25,6 +25,7 @@
 #include "match_xdk.h"
 #include "character_select_xdk.h"
 #include "campaign_xdk.h"
+#include "stage_music_xdk.h"
 #include "menu_scene_xdk.h"
 #include <melee/gm/gm_1601.h>
 #include <melee/gm/gmmain_lib.h>
@@ -335,6 +336,8 @@ static int s_selHuman[kMaxFighters];
 static int s_closed[kMaxFighters];
 static CSSData s_selectedCss;
 static int s_originalVsRules;
+static int s_matchBgm = -1;
+static unsigned s_matchBgmStKind = ~0u;
 int M360_FighterIndexForCharacter(unsigned ckind);
 static float s_selPrevStick[kMaxFighters];
 static int s_selProbeP2;
@@ -1258,9 +1261,36 @@ int M360_MatchBgmId(void)
     StageParam* row = MatchStageParam();
     if (!row)
         return -1;
-    /* The base stage row precedes its event/1P variants. Ground_801C24F8
-     * selects xC for VS and x4 for 1P; alternate/random tracks remain pending. */
+    if (s_phase == kPhaseFight && s_matchBgm >= 0 && s_matchBgmStKind == (unsigned)row->stkind)
+        return s_matchBgm;
     return IsCampaign() ? row->x4 : (int) row->xC;
+}
+
+static void SelectMatchMusic(void)
+{
+    StageParam* row = MatchStageParam();
+    unsigned flags = IsCampaign() ? 1u : 4u;
+    unsigned unlocks = 0, ckind, i;
+    int alternate = 0;
+    s_matchBgm = -1;
+    s_matchBgmStKind = ~0u;
+    if (!row) return;
+    /* Stage_80225074 uses random selection (4) for ordinary VS. All
+     * human players must hold L/R; fn_8016E5C0 checks the original pads. */
+    if (!IsCampaign() && s_originalVsRules && !s_auto.enabled &&
+        M360_StageMusicInput(&s_selectedCss.vs.start)) flags |= 0x40;
+    if (gm_IsCKindUnlocked(CKind_Mars)) unlocks |= M360_MUSIC_MARTH;
+    if (gm_IsCKindUnlocked(CKind_CLink)) unlocks |= M360_MUSIC_YOUNG_LINK;
+    for (i=0; i<CKind_Playable_Count; ++i)
+        if (!gm_IsCKindUnlocked((u8)i)) break;
+    if (i==CKind_Playable_Count) unlocks |= M360_MUSIC_ALL_CHARACTERS;
+    /* Trophy persistence and the complete stage roster are not ported;
+     * do not invent those unlock conditions for music. */
+    ckind=(unsigned)M360_FighterCharacterForIndex(s_selKind[0]);
+    s_matchBgm=M360_StageMusicChoose(s_param,(unsigned)row->stkind,flags,ckind,unlocks,&alternate);
+    s_matchBgmStKind=(unsigned)row->stkind;
+    M360_MatchTrace("audio.match.alternate",(unsigned)alternate);
+    M360_MatchTrace("audio.match.selector_flags",flags);
 }
 
 int M360_MatchGroundKind(void)
@@ -1591,6 +1621,7 @@ static void ResolveCostumes(void)
 static void StartFight(void)
 {
     unsigned i;
+    s_matchBgm = -1;
     s_adventureCheckpoint = 0;
     s_campaignClearFrames = 0;
     if (IsCampaign() && !CampaignOpponent()) {
@@ -1679,6 +1710,7 @@ static void StartFight(void)
         M360_MatchTrace("match.select.costume", s_selCostume[i]);
     }
     s_phase = kPhaseFight;
+    SelectMatchMusic();
     s_frame = 0;
     s_suddenDeath = 0;
     s_draw = 0;

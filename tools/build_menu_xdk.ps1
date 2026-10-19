@@ -9,6 +9,8 @@ New-Item -ItemType Directory -Force $out | Out-Null
 if($LASTEXITCODE -ne 0) { throw 'Original menu dependency extraction failed.' }
 & python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
 if($LASTEXITCODE -ne 0) { throw 'Original campaign extraction failed.' }
+& python (Join-Path $PSScriptRoot 'generate_stage_music_sources.py') (Join-Path $out 'stage_music_original.h')
+if($LASTEXITCODE -ne 0) { throw 'Original stage music extraction failed.' }
 $units=@(
     @{File="$src/melee/mn/mncharsel.c"; Dir="$src/melee/mn"},
     @{File="$src/melee/mn/mnmainrule.c"; Dir="$src/melee/mn"},
@@ -27,6 +29,7 @@ $units=@(
     @{File="$root/src/xdk/sis_native_xdk.c"; Dir="$root/src/xdk"},
     @{File="$root/src/xdk/character_select_xdk.c"; Dir="$root/src/xdk"},
     @{File="$root/src/xdk/campaign_xdk.c"; Dir="$root/src/xdk"},
+    @{File="$root/src/xdk/stage_music_xdk.c"; Dir="$root/src/xdk"},
     @{File="$out/discfont_sis.cpp"; Dir="$src/sysdolphin/baselib"; Cpp=$true}
 )
 foreach($unit in $units) {

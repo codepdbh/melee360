@@ -130,6 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--iso', type=Path, default=ROOT / 'iso/MeleeUSAv1.02.iso')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--header', type=Path)
+    parser.add_argument('--selection-header', type=Path)
     args = parser.parse_args()
     result = audit(args.iso)
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -138,6 +139,16 @@ if __name__ == '__main__':
         args.header.parent.mkdir(parents=True, exist_ok=True)
         paths = ',\n'.join('    ' + json.dumps(p) for p in sorted(result['tracks']))
         args.header.write_text('static const char* stageMusicFiles[] = {\n' + paths + '\n};\n', encoding='ascii')
+    if args.selection_header:
+        rows = [row for stage in result['stages'] for row in stage['rows']]
+        fields = ('stkind', 'one_player', 'one_player_alt', 'vs', 'vs_alt',
+                  'alternate_rule', 'alternate_chance')
+        initializers = ',\n'.join('    { ' + ', '.join(
+            ('(u32)' if key in ('vs', 'vs_alt') else '') + str(row[key])
+            for key in fields) + ' }' for row in rows)
+        args.selection_header.parent.mkdir(parents=True, exist_ok=True)
+        args.selection_header.write_text('static StageParam originalMusicRows[] = {\n' +
+                                         initializers + '\n};\n', encoding='ascii')
     print(f'PASS: {len(result["stages"])} stage archives; '
           f'{sum(len(s["rows"]) for s in result["stages"])} authored rows; '
           f'{len(result["tracks"])} HPS files present and structurally valid')

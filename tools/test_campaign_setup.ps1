@@ -4,6 +4,11 @@ $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $out=Join-Path $root 'build-x360/host-tests/campaign'
 New-Item -ItemType Directory -Force $out | Out-Null
+# Exercise seed-dependent selection with the same RNG compiled by the port.
+$rng=Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/sysdolphin/baselib/random.c')
+$rng=$rng.Substring(0,$rng.IndexOf('void _HSD_RandForgetMemory'))
+$rng=[regex]::Replace($rng,'(?m)^#include[^\n]*\n','')
+Set-Content -Encoding ASCII (Join-Path $out 'campaign_random.h') $rng
 & python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
 if($LASTEXITCODE -ne 0) { throw 'Campaign extraction failed.' }
 # C permits this void* conversion; the C++ host harness needs its explicit cast.
