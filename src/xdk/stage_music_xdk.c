@@ -8,7 +8,7 @@
 /* The original selector writes only param and the alternate-track bit.
  * Keep this context private so music cannot reset collision/stage state. */
 static struct {
-    UnkArchiveStruct* param;
+    GroundParam* param;
     struct { unsigned b0; } unk8C;
 } s_musicContext;
 static unsigned s_musicCharacter, s_musicUnlocks;
@@ -29,7 +29,7 @@ int M360_StageMusicChoose(void* param, unsigned stkind, unsigned flags,
     StageParam* rows;
     int i, bgm = -1;
     if (alternate) *alternate = 0;
-    s_musicContext.param = (UnkArchiveStruct*)param;
+    s_musicContext.param = (GroundParam*)param;
     if (!param || !s_musicContext.param->stage_params ||
         s_musicContext.param->stage_param_count <= 0) return -1;
     rows = DP(StageParam, s_musicContext.param->stage_params);

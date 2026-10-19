@@ -10,7 +10,7 @@ typedef int enum_t;
 typedef unsigned StKind;
 enum { CKind_Mars=9, CKind_CLink=21, HSD_PAD_L=0x40, HSD_PAD_R=0x20, Gm_PKind_Human=0 };
 struct StageParam { StKind stkind;int x4,x8;u32 xC,x10;short x14,x16; };
-struct UnkArchiveStruct { StageParam* stage_params;int stage_param_count; };
+struct GroundParam { StageParam* stage_params;int stage_param_count; };
 struct StartMeleeData { struct { int xA; } rules;struct { int slot_type; } players[6]; };
 struct Pad { unsigned button; } HSD_PadCopyStatus[6];
 unsigned roll, randomCalls;
@@ -30,7 +30,7 @@ static int Theme(int bgm,unsigned character) {
 int main()
 {
     StageParam row={7,10,11,20,21,0,35};
-    UnkArchiveStruct param={&row,1};
+    GroundParam param={&row,1};
     int alternate=-1;
     // Every probability boundary, unlock combination and forced L/R condition.
     for(int rule=0;rule<=8;++rule) for(unsigned unlocks=0;unlocks<32;++unlocks)
