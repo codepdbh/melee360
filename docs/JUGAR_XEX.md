@@ -1,9 +1,7 @@
 # Probar una partida local
 
-Esta guía conserva los controles de `v0.1.0-alpha.1`. Si compilaste `main`
-después del 16 de octubre de 2026, sigue el [recorrido con selección y menús
-originales](ORIGINAL_MENUS_AUDIO.md): se utiliza la mano y las fichas, Start
-abre escenarios y las reglas se ajustan en Rules.
+Esta guía corresponde a `v0.1.0-alpha.2`. Utiliza la selección original
+con mano y fichas. [Detalles de los menús](ORIGINAL_MENUS_AUDIO.md).
 
 El XEX tiene un recorrido de intro, pantalla de titulo, menu y partida VS.
 Es una version experimental: las pruebas automatizadas corren en Xenia;
@@ -14,8 +12,8 @@ Classic ya elige parejas originales de escenario y rival entre los escenarios
 portados. Sus combates normales tienen cinco minutos y vidas limitadas. Si
 se acaba el tiempo, pierdes una vida y A permite repetir el mismo encuentro
 mientras te queden vidas. Si las agotas, A ofrece continuar con tres vidas
-en el mismo encuentro. La secuencia de cinco combates sigue siendo una
-vista previa: no incluye todavia las fases especiales ni el jefe final.
+en el mismo encuentro. La secuencia de siete combates sigue siendo una
+vista previa: incluye aliados, gigante y metal; faltan bonus y jefes.
 
 Adventure tiene veinte fases, incluido el laberinto experimental. En Mushroom Kingdom, avanza a la derecha,
 derrota a los diez Yoshis del checkpoint y alcanza la salida. Este recorrido
@@ -45,8 +43,8 @@ ejecucion en Xbox 360. Consulta
 `PLAYABLE_PORT_GAPS.md` para el estado y la version de cada prueba.
 
 Los enemigos de Adventure usan los valores originales de ataque, resistencia
-y nivel y comportamiento de IA de cada encuentro. En la seleccion de Aventura,
-LB cambia entre Very Easy, Easy, Normal, Hard y Very Hard. Giga Bowser
+y nivel y comportamiento de IA de cada encuentro. La seleccion original de Aventura
+permite elegir Very Easy, Easy, Normal, Hard y Very Hard. Giga Bowser
 solo aparece desde dificultad Normal y al completar
 los combates anteriores en menos de dieciocho minutos acumulados.
 
@@ -66,11 +64,11 @@ descarga recursos ni incluye los datos del disco en el repositorio.
 1. Abre `default.xex` en Xenia o en un cargador compatible con XEX en tu consola.
 2. Pulsa Start para saltar la intro al titulo y otra vez para entrar al menu.
 3. Selecciona VS y su primera opcion de combate.
-4. Elige tu personaje con izquierda/derecha y confirma con A.
-5. Si juegas solo, elige tambien el personaje de la CPU y confirma con A.
-   Con un segundo mando conectado, P2 elige y confirma su propio personaje.
-6. Espera la cuenta inicial. Al terminar la partida, A inicia una revancha
-   con los mismos personajes, colores y reglas; B vuelve al menu principal.
+4. Mueve la mano con el stick y coloca la ficha con A; B la retira.
+5. Activa un rival CPU desde su panel HMN/CPU o conecta otro mando.
+   Pulsa Start para abrir Stage Select y A para elegir escenario.
+6. Espera la cuenta inicial. Al terminar, A vuelve a personajes conservando
+   la configuracion; B vuelve al menu principal.
 
 ## Controles del mando Xbox
 
@@ -92,20 +90,15 @@ conectado puede usar B para salir desde la pausa.
 
 ## Opciones antes del combate
 
-P1 configura la partida desde la seleccion de personajes:
+La mano y las fichas utilizan el menu original. X/Y cambia color; los
+paneles HMN/CPU permiten configurar rivales y niveles. Rules abre reglas,
+More Rules, Item Switch y Random Stage Switch. Damage Ratio y el handicap
+manual se aplican al combate; las reglas avanzadas restantes siguen parciales.
+No se admiten Coin/Bonus ni edicion de nombres todavia.
 
-- X/Y: cambiar color del personaje que estas eligiendo.
-- Cruceta arriba/abajo: cambiar escenario.
-- RB: cambiar vidas; LB: cambiar nivel de CPU.
-- RT: cambiar cantidad de jugadores, de dos a cuatro.
-- Start: cambiar frecuencia de objetos.
-- Stick derecho arriba/abajo: cambiar entre vidas y limite de tiempo.
-- B: deshacer la confirmacion o volver al menu.
-
-Las opciones disponibles tambien aparecen en pantalla. Un mando adicional
-puede pulsar un boton durante la seleccion para incorporarse. Durante el
-combate puede tomar un puesto CPU existente. No se crean nuevos puestos a
-mitad de partida.
+Los mandos adicionales se incorporan durante la seleccion; los puestos CPU
+no se convierten en humanos durante el combate. En Stage Select, Start elige
+un escenario al azar y B vuelve a personajes conservando la configuracion.
 
 ## Audio en Xenia
 

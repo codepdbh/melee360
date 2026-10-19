@@ -198,7 +198,6 @@ HSD_GObjEvent ftData_SpecialAirS[Ft_Kind_Max];
 HSD_GObjEvent ftData_SpecialAirLw[Ft_Kind_Max];
 
 UNPORTED_VOID(pl_8003E854, (int a, int b, Item_GObj* c))
-UNPORTED_BOOL(ftCo_800C60C8, (Fighter_GObj* gobj))
 bool gm_8016B0FC(void) { return false; }
 
 DbLKind DbLevel;
@@ -226,7 +225,7 @@ void ftParts_JObjSetRotation(HSD_JObj* jobj, Quaternion* rotation)
 
 f32 gm_8016B248(void)
 {
-    return 1.0f;
+    return M360_MatchKnockbackRatio();
 }
 
 #undef sqrtf_accurate
@@ -382,10 +381,10 @@ int un_80322598(int spawn_id, float y) { (void) spawn_id; (void) y; return 0; }
 /* Grab/throw dependencies outside the Mario-vs-Mario match: item grabs,
  * tether/hookshot items, cargo throws, Kirby/Yoshi/Samus/Mewtwo/Fox hooks. */
 SILENT_VOID(pl_80040614, (int slot, bool sub, float damage))
-/* Standing rank (gm_8016C5C0) and handicap: tied players at the default
- * VS handicap of 9 (gm_1601.c). */
+/* Standing rank (gm_8016C5C0) remains provisional. Handicap comes from
+ * the original player setup, including manual CSS and campaign defaults. */
 s32 Player_80033BB8(int slot) { (void) slot; return 0; }
-int Player_GetHandicap(int slot) { (void) slot; return 9; }
+int Player_GetHandicap(int slot) { return M360_MatchHandicap((unsigned)slot); }
 /* Link hookshot, Samus grapple and boomerang items used by the tether-grab
  * branches of ftCo_0D8E/ftCo_0D95; unreachable for Mario. */
 

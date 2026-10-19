@@ -114,6 +114,7 @@ unsigned s_creditedKOs[4];
 enum { Gm_PKind_Human=0, Gm_PKind_Cpu=1, Gm_PKind_NA=3 };
 struct PlayerInitData {
     unsigned ckind,color,slot_type,cpu_level,team,stocks,cpu_kind,slot,xD_b1,xC_b1,xB,vs_metal;
+    signed char handicap;
     float attack_ratio,defense_ratio,model_scale;
 };
 #include "campaign_api.h"
@@ -141,14 +142,14 @@ bool gm_80164430(unsigned stage) {
     return false;
 }
 void gm_SetupPlayerDefaults(PlayerInitData* p) {
-    memset(p,0,sizeof(*p));p->attack_ratio=p->defense_ratio=p->model_scale=1;
+    memset(p,0,sizeof(*p));p->attack_ratio=p->defense_ratio=p->model_scale=1;p->handicap=9;
 }
 void gm_SetupAllPlayerDefaults(PlayerInitData* p) { for(unsigned i=0;i<6;++i) gm_SetupPlayerDefaults(&p[i]); }
 u8 gm_GetNumCostumesForCKind(u8 kind) { return (u8)M360_FighterCostumeCount((unsigned)M360_FighterIndexForCharacter(kind)); }
 s32 fn_8017DE54(u8,u8*);
 s32 fn_8017D9C0(const u8*,const u8*);
 extern u8 lbl_803D79F0[];
-struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind,timer_enabled,time_limit,friendly_fire;int item_freq,sd_penalty; };
+struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind,timer_enabled,time_limit,friendly_fire;int item_freq,sd_penalty;float x30; };
 struct MockVs { struct { MockStartRules rules;PlayerInitData players[6]; } start; };
 struct CSSData { MockVs vs; } s_selectedCss;
 struct GameRules { unsigned time_limit,stock_count; } mockGameRules;
@@ -371,6 +372,28 @@ static void Reset(unsigned count) {
 }
 
 int main() {
+    Reset(4);
+    assert(M360_MatchKnockbackRatio()==1.0f);
+    assert(M360_MatchHandicap(0)==9);
+    s_originalVsRules=1;
+    for(unsigned value=5;value<=20;++value) {
+        s_selectedCss.vs.start.rules.x30=0.1f*value;
+        assert(gm_8016B248()==s_selectedCss.vs.start.rules.x30);
+    }
+    for(unsigned slot=0;slot<4;++slot) for(int value=1;value<=9;++value) {
+        s_selectedCss.vs.start.players[slot].handicap=(signed char)value;
+        assert(Player_GetHandicap((int)slot)==value);
+    }
+    s_suddenDeath=1;
+    assert(M360_MatchKnockbackRatio()==2.0f);
+    assert(M360_MatchHandicap(3)==9);
+    for(unsigned mode=3;mode<=4;++mode) {
+        s_gameMode=mode;
+        assert(M360_MatchKnockbackRatio()==1.0f);
+        for(unsigned slot=0;slot<4;++slot) assert(M360_MatchHandicap(slot)==9);
+    }
+    assert(M360_MatchHandicap(4)==9 && M360_MatchHandicap(~0u)==9);
+    puts("PASS: original VS knockback multiplier, all manual handicaps, sudden death and campaign isolation");
     const unsigned stageIdCount = sizeof(referenceStageIds) / sizeof(referenceStageIds[0]);
     assert(stageIdCount == sizeof(g_m360StageGroundKinds) / sizeof(g_m360StageGroundKinds[0]));
     for (unsigned i = 0; i < stageIdCount; ++i)

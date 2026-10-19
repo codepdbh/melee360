@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^v[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$')]
-    [string] $Version = 'v0.1.0-alpha.1'
+    [string] $Version = 'v0.1.0-alpha.2'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -23,6 +23,9 @@ if ($LASTEXITCODE -ne 0 -or $upstream -ne $info.upstream -or $info.upstream_dirt
     (& git -C (Join-Path $root 'upstream/melee-pc') status --porcelain --untracked-files=normal)) {
     throw 'Upstream must match the clean revision used for this build.'
 }
+if ((Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'upstream_backports.json')).Hash -ne $info.backports_sha256) {
+    throw 'Backport manifest does not match this build.'
+}
 $xex = Join-Path $dist 'default.xex'
 $map = Join-Path $root 'build-x360/xdk/melee360.map'
 if ((Get-FileHash -LiteralPath $xex).Hash -ne $info.xex_sha256 -or
@@ -40,11 +43,12 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 function Write-Utf8([string] $path, [string] $content) { [IO.File]::WriteAllText($path, $content, $utf8) }
 Copy-Item -LiteralPath $xex -Destination (Join-Path $stage 'default.xex')
 Copy-Item -LiteralPath (Join-Path $dist 'assets/sprite_atlas.png') -Destination (Join-Path $stage 'assets/sprite_atlas.png')
-$guide = [IO.File]::ReadAllText((Join-Path $root 'docs/INSTALAR_XBOX360.md')).Replace('v0.1.0-alpha.1', $Version)
+$guide = [regex]::Replace([IO.File]::ReadAllText((Join-Path $root 'docs/INSTALAR_XBOX360.md')), 'v[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+', $Version)
 Write-Utf8 (Join-Path $stage 'INSTRUCCIONES.md') $guide
 $record = [ordered]@{
     version = $Version; commit = $commit; built_utc = $info.built_utc
     source_url = "https://github.com/codepdbh/melee360/tree/$commit"
+    backports_sha256 = $info.backports_sha256
     upstream = $upstream; upstream_url = "https://github.com/999sian/melee-pc/tree/$upstream"
     boot_to_match = $false; input_script = $false; call_trace = $false; experimental_race = $false
     xex_sha256 = $info.xex_sha256; map_sha256 = $info.map_sha256

@@ -25,6 +25,7 @@ if($Menus) {
         @{Name='vs';Script='menu_vs_original.txt';Frame=3000;Flow=3;Expect=@('match.select.original: 0','match.select.stage.enter: 0','match.enter.fighters: 2','audio.match.selector_flags: 4')},
         @{Name='vs-music-lr';Script='menu_vs_music_lr.txt';Frame=3000;Flow=3;Expect=@('match.select.original: 0','match.enter.fighters: 2','audio.match.selector_flags: 68','audio.match.background: 1')},
         @{Name='rules-stock';Script='menu_rules_stock.txt';Frame=3600;Flow=3;Expect=@('menu.kind: 13','match.enter.fighters: 2')},
+        @{Name='rules-damage';Script='menu_rules_damage.txt';Frame=3600;Flow=3;Expect=@('menu.kind: 13','match.enter.fighters: 2','match.rules.knockback_percent: 110')},
         @{Name='stage-back';Script='menu_stage_back.txt';Frame=2100;Flow=2;Expect=@('match.select.stage.cancel: 1')},
         @{Name='classic';Script='menu_classic_original.txt';Frame=2400;Flow=3;Expect=@('match.select.original: 11','match.classic.ordinal: 0','match.enter.fighters: 2')},
         @{Name='adventure';Script='menu_adventure_original.txt';Frame=2400;Flow=3;Expect=@('match.select.original: 12','match.adventure.scene: 1','match.enter.fighters: 1')},
