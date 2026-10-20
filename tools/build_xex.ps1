@@ -192,6 +192,8 @@ $adventureGeneratorArgs = @((Join-Path $PSScriptRoot 'generate_adventure_matchup
 if ($ExperimentalRace) { $adventureGeneratorArgs += '--experimental-race' }
 & python $adventureGeneratorArgs
 if ($LASTEXITCODE -ne 0) { throw 'Adventure encounter generation failed.' }
+& python (Join-Path $PSScriptRoot 'generate_stage_collision_init.py') (Join-Path $build 'stage_collision_initial.h')
+if ($LASTEXITCODE -ne 0) { throw 'Original stage collision startup extraction failed.' }
 
 # -CallTrace also instruments the C units compiled here (HSD baselib and
 # original lb/menu code) with /Gh; C++ bridges stay uninstrumented.

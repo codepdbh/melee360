@@ -5,6 +5,7 @@
 #include "melee_classic_matchups.h"
 #include "melee_adventure_matchups.h"
 #include "stage_identity_reference.h"
+#include "stage_collision_initial.h"
 #include "../../src/xdk/match_xdk.h"
 #include "../../src/xdk/stage_music_xdk.h"
 #include "../../src/xdk/presentation_xdk.h"
@@ -101,9 +102,9 @@ unsigned gateHidden;
 void HideMapJoint(int map, int joint) { assert(map == 3 && joint == 0x53); ++gateHidden; }
 unsigned M360_MatchStageCount() { return kStageCount - 4; }
 struct MapJoint { int floor_start, floor_count, ceiling_start, ceiling_count, right_wall_start, right_wall_count, left_wall_start, left_wall_count, dynamic_start, dynamic_count; };
-MapJoint mockGroups[14];
+MapJoint mockGroups[16];
 struct MapLine { unsigned hi_flags; } mockLines[64];
-struct MapCollData { int joint_count; MapJoint* joints; MapLine* lines; } mockColl = {14, mockGroups, mockLines};
+struct MapCollData { int joint_count; MapJoint* joints; MapLine* lines; } mockColl = {16, mockGroups, mockLines};
 MapCollData* s_coll = &mockColl;
 int mockFloorLine = -1;
 int M360_FighterFloorLine(void*) { return mockFloorLine; }
@@ -455,6 +456,25 @@ int main() {
     SetCollisionGroupEnabled(0,1);
     for(unsigned i=0;i<5;++i) assert(s_stage.lines[i].kind==(1u<<i));
     puts("PASS: hidden platforms lose floor/wall/ceiling collisions without re-enabling disabled course geometry");
+    const int grounds[]={Gr_Kind_Castle,Gr_Kind_Kongo,Gr_Kind_Corneria,Gr_Kind_PStadium,Gr_Kind_Battle};
+    const unsigned disabledCounts[]={12,2,6,6,0};
+    for(unsigned ground=0;ground<5;++ground) {
+        Reset(2);s_stage.lineCount=16;
+        memset(mockGroups,0,sizeof(mockGroups));
+        for(unsigned i=0;i<16;++i) {
+            mockGroups[i].floor_start=(int)i;mockGroups[i].floor_count=1;
+            mockLines[i].hi_flags=M360_LINE_FLOOR;s_stage.lines[i].kind=M360_LINE_FLOOR;
+        }
+        ApplyInitialCollision(grounds[ground]);
+        unsigned disabled=0;
+        for(unsigned i=0;i<16;++i) {
+            disabled+=!s_stage.lines[i].kind;
+            SetCollisionGroupVisible(i,1);
+            assert((s_stage.lines[i].kind!=0)==(s_collLineEnabled[i]!=0));
+        }
+        assert(disabled==disabledCounts[ground]);
+    }
+    puts("PASS: original startup excludes 26 inactive collision groups across Castle, Kongo, Corneria and Stadium");
     Reset(4);
     assert(M360_MatchKnockbackRatio()==1.0f);
     assert(M360_MatchHandicap(0)==9);

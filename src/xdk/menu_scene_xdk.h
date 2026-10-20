@@ -25,6 +25,7 @@ void M360_MenuTrace(const char* stage, unsigned value);
 void* M360_MenuSymbol(const char* name);
 void M360_MenuPlayBgm(int bgm);
 int M360_MenuBgmChoice(void);
+void M360_MenuSetGameMode(unsigned mode);
 
 #ifdef __cplusplus
 }

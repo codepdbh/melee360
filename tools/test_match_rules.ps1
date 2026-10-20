@@ -13,6 +13,8 @@ New-Item -ItemType Directory -Force $out | Out-Null
 & (Join-Path $PSScriptRoot 'generate_classic_matchups.ps1') -OutputPath (Join-Path $out 'melee_classic_matchups.h')
 & python (Join-Path $PSScriptRoot 'generate_adventure_matchups.py') (Join-Path $out 'melee_adventure_matchups.h') --experimental-race
 if ($LASTEXITCODE -ne 0) { throw 'Adventure generation failed.' }
+& python (Join-Path $PSScriptRoot 'generate_stage_collision_init.py') (Join-Path $out 'stage_collision_initial.h')
+if ($LASTEXITCODE -ne 0) { throw 'Stage collision startup generation failed.' }
 $source = (Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')).Replace("`r`n", "`n")
 function Get-MatchFunction([string] $Signature) {
     $start = $source.IndexOf($Signature)
@@ -43,7 +45,7 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static int Is
     'static int CampaignStageIndex(', 'static int CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
     'void M360_MatchEnter(', 'void M360_MatchLeave(',
     'static int SelectInput(', 'static unsigned P1Slot(', ('static int SelectFrame(void)' + "`n{"),
-    'static int OutsideBlastZone(', 'static void SetCollisionGroupVisible(', 'static void SetCollisionGroupEnabled(', 'static void DisableCollisionGroup(',
+    'static int OutsideBlastZone(', 'static void SetCollisionGroupVisible(', 'static void SetCollisionGroupEnabled(', 'static void DisableCollisionGroup(', 'static void ApplyInitialCollision(',
     'static void MazeRoomBounds(', 'unsigned M360_MatchMazeVisited(', 'int M360_MatchMazePoint(', 'static void MazeFrame(', 'static int CollisionGroupHasFloor(', 'static void AdventureFrame(', 'void M360_MatchSetMode(', 'int M360_MatchFrame(')) {
     $extracted += (Get-MatchFunction $signature) + "`r`n"
 }

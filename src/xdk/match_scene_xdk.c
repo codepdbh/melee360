@@ -33,6 +33,7 @@
 #include <melee/mn/types.h>
 #include "melee_classic_matchups.h"
 #include "melee_adventure_matchups.h"
+#include "stage_collision_initial.h"
 
 typedef union AnimFn {
     void (*fn)(void);
@@ -762,6 +763,20 @@ static void DisableCollisionGroup(unsigned group)
     SetCollisionGroupEnabled(group, 0);
 }
 
+static void ApplyInitialCollision(int grkind)
+{
+    unsigned i, count = 0;
+    /* Original stage OnInit disables unused transformations, turrets and
+     * other inactive geometry. Loading all DAT lines as solid creates
+     * invisible platforms and walls, even before hazards are simulated. */
+    for (i = 0; i < M360_STAGE_INITIAL_DISABLED_COUNT; ++i)
+        if (g_m360StageInitialDisabled[i].kind == grkind) {
+            DisableCollisionGroup(g_m360StageInitialDisabled[i].group);
+            ++count;
+        }
+    M360_MatchTrace("match.stage.initial_disabled", count);
+}
+
 static float CamLeft(void) { return s_stage.camLeft + s_stage.camX; }
 static float CamRight(void) { return s_stage.camRight + s_stage.camX; }
 static float CamTop(void) { return s_stage.camTop + s_stage.camY; }
@@ -1204,6 +1219,7 @@ static int BuildStage(unsigned index)
             HSD_JObjSetFlagsAll(root, JOBJ_HIDDEN);
     }
     UpdateMapColl();
+    ApplyInitialCollision(desc->grkind);
     LoadBounds();
     if (desc->grkind == Gr_Kind_KinokoRoute || desc->grkind == Gr_Kind_ZebesRoute ||
         desc->grkind == Gr_Kind_ShrineRoute || desc->grkind == Gr_Kind_BigBlueRoute) {

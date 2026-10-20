@@ -44,8 +44,9 @@ foreach($case in $cases) {
     $attempts=0
     $spawns=@()
     try {
+        $disabled=switch($case.Stage) { 9 {12}; 10 {2}; 13 {6}; 14 {6}; default {0} }
         & (Join-Path $root 'tools/smoke_xenia_menu.ps1') -BuildDir $run -ScriptPath $script `
-            -Expect @('match.camera.output_width: 1280','match.enter.fighters: 2','audio.match.background: 1') `
+            -Expect @('match.camera.output_width: 1280','match.enter.fighters: 2','audio.match.background: 1',"match.stage.initial_disabled: $disabled") `
             -TargetFrame $Frames -MinHits 0 -Seconds 100
         $trace=Get-Content -Raw (Join-Path $run 'runtime-trace.txt')
         $attempts=[regex]::Matches($trace,'(?m)^item.random.attempt: 1\r?$').Count
