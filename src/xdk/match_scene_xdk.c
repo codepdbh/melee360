@@ -27,6 +27,7 @@
 #include "campaign_xdk.h"
 #include "stage_music_xdk.h"
 #include "menu_scene_xdk.h"
+#include "presentation_xdk.h"
 #include <melee/gm/gm_1601.h>
 #include <melee/gm/gmmain_lib.h>
 #include <melee/mn/types.h>
@@ -51,6 +52,8 @@ void HSD_GObj_80390ED0(HSD_GObj* gobj, u32 mask);
 void HSD_GObj_80390FC0(void);
 void lb_8000B1CC(HSD_JObj* jobj, Vec3* offset, Vec3* out);
 void it_8026D018(void);
+void db_EnableItemSpawns(void);
+void M360_HsdRenderWideWorld(int enabled);
 s32 HSD_Randi(s32 max);
 void HSD_GObj_RunProcs(void);
 void M360_StageSetKind(int grkind);
@@ -475,7 +478,28 @@ typedef struct M360CollBind {
 } M360CollBind;
 static M360CollBind s_collBinds[kMaxCollBinds];
 static unsigned s_collBindCount;
+static unsigned char s_collLineEnabled[M360_MAX_STAGE_LINES];
 static float s_vtxX[kMaxCollVerts], s_vtxY[kMaxCollVerts];
+
+/* Authored enable/disable and model visibility are independent. A hidden
+ * animated platform must not leave solid lines at its last visible pose. */
+static void SetCollisionGroupVisible(unsigned group, int visible)
+{
+    const MapJoint* joint;
+    int starts[5], counts[5], kind, line;
+    if (group >= (unsigned) s_coll->joint_count) return;
+    joint = &s_coll->joints[group];
+    starts[0] = joint->floor_start; counts[0] = joint->floor_count;
+    starts[1] = joint->ceiling_start; counts[1] = joint->ceiling_count;
+    starts[2] = joint->right_wall_start; counts[2] = joint->right_wall_count;
+    starts[3] = joint->left_wall_start; counts[3] = joint->left_wall_count;
+    starts[4] = joint->dynamic_start; counts[4] = joint->dynamic_count;
+    for (kind = 0; kind < 5; ++kind)
+        for (line = starts[kind]; line >= 0 && line < starts[kind] + counts[kind] &&
+             (unsigned) line < s_stage.lineCount; ++line)
+            s_stage.lines[line].kind = visible && s_collLineEnabled[line] ?
+                s_coll->lines[line].hi_flags : 0;
+}
 
 /* Depth-first joint walk of mpLib_800552B0: index 0 is the first child and
  * instance joints are not descended into. */
@@ -564,7 +588,9 @@ static void UpdateMapColl(void)
         HSD_JObj* j = s_collBinds[b].jobj;
         MtxPtr m;
         int v;
-        if (HSD_JObjGetFlags(j) & JOBJ_HIDDEN)
+        const int visible = !(HSD_JObjGetFlags(j) & JOBJ_HIDDEN);
+        SetCollisionGroupVisible((unsigned) s_collBinds[b].group, visible);
+        if (!visible)
             continue;
         SetupMatrixChain(j);
         m = HSD_JObjGetMtxPtr(j);
@@ -637,6 +663,7 @@ static void LoadCollision(void)
     DiscVec2* verts = s_coll->verts;
     int i;
     s_stage.lineCount = 0;
+    memset(s_collLineEnabled, 1, sizeof(s_collLineEnabled));
     for (i = 0; i < s_coll->line_count && s_stage.lineCount < M360_MAX_STAGE_LINES; ++i) {
         M360StageLine* out = &s_stage.lines[s_stage.lineCount++];
         out->x0 = verts[lines[i].v0_idx].x * s_scale;
@@ -715,7 +742,19 @@ static void SetCollisionGroupEnabled(unsigned group, int enabled)
     for (kind = 0; kind < 5; ++kind)
         for (line = starts[kind]; line >= 0 && line < starts[kind] + counts[kind] &&
              (unsigned) line < s_stage.lineCount; ++line)
+        {
+            s_collLineEnabled[line] = (unsigned char) (enabled != 0);
             s_stage.lines[line].kind = enabled ? s_coll->lines[line].hi_flags : 0;
+        }
+    /* Respect a hidden joint immediately, including changes made by course
+     * logic after this frame's matrix update. */
+    {
+        unsigned b;
+        for (b = 0; b < s_collBindCount; ++b)
+            if ((unsigned) s_collBinds[b].group == group)
+                SetCollisionGroupVisible(group,
+                    !(HSD_JObjGetFlags(s_collBinds[b].jobj) & JOBJ_HIDDEN));
+    }
 }
 
 static void DisableCollisionGroup(unsigned group)
@@ -936,6 +975,7 @@ static void CamUpdate(int snap)
 static void CameraRender(HSD_GObj* gobj, int pass)
 {
     (void) pass;
+    M360_HsdRenderWideWorld(1);
     if (HSD_CObjSetCurrent(gobj->hsd_obj)) {
         HSD_SetEraseColor(0, 0, 0, 255);
         HSD_CObjEraseScreen(gobj->hsd_obj, 1, 0, 1);
@@ -943,6 +983,7 @@ static void CameraRender(HSD_GObj* gobj, int pass)
         HSD_GObj_80390ED0(gobj, 7);
         HSD_CObjEndCurrent();
     }
+    M360_HsdRenderWideWorld(0);
 }
 
 static void CreateCamera(void)
@@ -961,7 +1002,11 @@ static void CreateCamera(void)
     s_camDesc.nnear = kCamNear;
     s_camDesc.ffar = kCamFar;
     s_camDesc.fov = kCamFov;
-    s_camDesc.aspect = kCamAspect;
+    /* Keep the original vertical framing and camera tracking; expose more
+     * world horizontally on the 720p output, without stretching geometry. */
+    s_camDesc.aspect = kCamAspect * M360_WORLD_ASPECT_SCALE;
+    M360_MatchTrace("match.camera.output_width", 1280);
+    M360_MatchTrace("match.camera.aspect_million", (unsigned)(s_camDesc.aspect * 1000000.0f));
     s_cobj = HSD_CObjLoadDesc((HSD_CObjDesc*) &s_camDesc);
     s_cameraGObj = GObj_Create(19, 20, 0);
     HSD_GObjObject_80390A70(s_cameraGObj, HSD_GObj_CameraKind, s_cobj);
@@ -1097,17 +1142,11 @@ float Ground_801C2AE8(StKind stkind)
     return s_itemScale;
 }
 
-/* Stage_80224FDC: a random item spawn point (ground points 0x7F-0x93). */
-bool Stage_80224FDC(Vec3* out)
+/* Ground_801C2D24 and Stage_80224FDC are compiled from the original source.
+ * Expose the relocated map-point joints at their original lookup boundary. */
+HSD_JObj* M360_StagePointJoint(int slot)
 {
-    int tries;
-    for (tries = 0; tries < 21; ++tries)
-        if (PointPosition(0x7F + HSD_Randi(21), out))
-            return true;
-    for (tries = 0x7F; tries < 0x94; ++tries)
-        if (PointPosition(tries, out))
-            return true;
-    return false;
+    return slot >= 0 && slot < 256 ? s_points[slot] : NULL;
 }
 
 s32 gm_8016AE80(void)
@@ -1117,7 +1156,13 @@ s32 gm_8016AE80(void)
 
 f32 gm_8016AE94(void)
 {
-    return s_originalVsRules && !s_auto.enabled ? s_selectedCss.vs.start.rules.x30 : 1.0f;
+    unsigned i, count = 0;
+    /* gmvs.c:get_unk_float scales item weights with the number of players.
+     * StartMeleeRules.x30 is Damage Ratio and must not affect item drops. */
+    if (IsCampaign()) return 1.0f;
+    for (i = 0; i < s_slotCount; ++i)
+        if (!s_closed[i]) ++count;
+    return count == 4 ? 1.2f : count == 3 ? 1.1f : 1.0f;
 }
 
 u64 gm_8016AEA4(void)
@@ -1128,7 +1173,7 @@ u64 gm_8016AEA4(void)
 
 s32 gm_8016AEB8(void)
 {
-    return 0;
+    return s_originalVsRules && !s_auto.enabled ? s_selectedCss.vs.start.rules.x28 : 0;
 }
 
 bool gm_8016B238(void)
@@ -1759,6 +1804,8 @@ static void StartFight(void)
     s_suddenDeath = 0;
     s_draw = 0;
     /* gmvs.c: start the random item spawner once the fighters exist. */
+    /* gmmain.c normally enables this debug gate during global startup. */
+    db_EnableItemSpawns();
     it_8026D018();
     {
         HSD_GObj* debug = GObj_Create(HSD_GOBJ_CLASS_STAGE, 5, 0);

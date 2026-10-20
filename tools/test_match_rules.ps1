@@ -37,13 +37,13 @@ foreach ($signature in @(('static int IsCampaign(void)' + "`n{"), 'static int Is
     'float M360_MatchKnockbackRatio(', 'int M360_MatchHandicap(', 'float M360_MatchCombatRatio(',
     'unsigned M360_MatchCpuLevel(',
     'unsigned M360_MatchCpuKind(',
-    'static StageParam* MatchStageParam(', 'static void LoadItemTable(', 'int M360_MatchBgmId(', 'static void SelectMatchMusic(', 'int M360_MatchGroundKind(',
+    'static StageParam* MatchStageParam(', 'static void LoadItemTable(', 'f32 gm_8016AE94(', 'u64 gm_8016AEA4(', 's32 gm_8016AEB8(', 'int M360_MatchBgmId(', 'static void SelectMatchMusic(', 'int M360_MatchGroundKind(',
     'GrKind Stage_8022519C(', 'StKind Stage_80225194(',
     'static unsigned StartingStocks(', 'static int LoseStock(', 'static int StockResult(', 'static int MatchScore(',
     'static int CampaignStageIndex(', 'static int CampaignOpponent(', 'static void ResolveCostumes(', ('static void StartFight(void)' + "`n{"),
     'void M360_MatchEnter(', 'void M360_MatchLeave(',
     'static int SelectInput(', 'static unsigned P1Slot(', ('static int SelectFrame(void)' + "`n{"),
-    'static int OutsideBlastZone(', 'static void SetCollisionGroupEnabled(', 'static void DisableCollisionGroup(',
+    'static int OutsideBlastZone(', 'static void SetCollisionGroupVisible(', 'static void SetCollisionGroupEnabled(', 'static void DisableCollisionGroup(',
     'static void MazeRoomBounds(', 'unsigned M360_MatchMazeVisited(', 'int M360_MatchMazePoint(', 'static void MazeFrame(', 'static int CollisionGroupHasFloor(', 'static void AdventureFrame(', 'void M360_MatchSetMode(', 'int M360_MatchFrame(')) {
     $extracted += (Get-MatchFunction $signature) + "`r`n"
 }
@@ -52,6 +52,14 @@ $extracted = (Get-MatchFunction 'unsigned M360_FighterCostumeCount(') + "`r`n" +
     (Get-MatchFunction 'int M360_FighterIndexForKind(') + "`r`n" + $extracted
 $source = (Get-Content -Raw (Join-Path $root 'src/xdk/fighter_unported_xdk.c')).Replace("`r`n", "`n")
 $extracted += (Get-MatchFunction 'f32 gm_8016B248(') + "`r`n" + (Get-MatchFunction 'int Player_GetHandicap(') + "`r`n"
+$source = (Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/db/dbitem.c')).Replace("`r`n", "`n")
+foreach ($signature in @('void db_DisableItemSpawns(', 'void db_EnableItemSpawns(', 's32 db_AreItemSpawnsEnabled(')) {
+    $extracted = (Get-MatchFunction $signature) + "`r`n" + $extracted
+}
+$source = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/ground.c')
+$extracted += (Get-MatchFunction 'bool Ground_801C2D24(').Replace('stage_info.x280[arg0]', 'M360_StagePointJoint(arg0)').Replace('u32 _;', '/* unused retail stack padding */') + "`r`n"
+$source = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/stage.c')
+$extracted += (Get-MatchFunction 'bool Stage_80224FDC(') + "`r`n"
 Set-Content -LiteralPath (Join-Path $out 'match_rules_original.h') -Encoding ASCII $extracted
 & python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
 if($LASTEXITCODE -ne 0) { throw 'Campaign source extraction failed.' }

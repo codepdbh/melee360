@@ -486,7 +486,6 @@ s8 Player_800325C8(CharacterKind a0, bool b) { (void) a0; (void) b; Report("figh
 bool Player_GetMoreFlagsBit4(s32 slot) { (void) slot; Report("fighter.unported.Player_GetMoreFlagsBit4"); return (bool) 0; }
 void db_80225D64(Item_GObj* item, Fighter_GObj* owner) { (void) item; (void) owner; Report("fighter.unported.db_80225D64"); }
 void db_80225DD8(Item_GObj* item, Fighter_GObj* owner) { (void) item; (void) owner; Report("fighter.unported.db_80225DD8"); }
-s32 db_AreItemSpawnsEnabled(void) {  Report("fighter.unported.db_AreItemSpawnsEnabled"); return (s32) 0; }
 s32 db_GetCurrentlySelectedPokemon(void) {  Report("fighter.unported.db_GetCurrentlySelectedPokemon"); return (s32) 0; }
 u32 db_ShowCoinPickupRange(void) {  Report("fighter.unported.db_ShowCoinPickupRange"); return (u32) 0; }
 u32 db_ShowEnemyStompRange(void) {  Report("fighter.unported.db_ShowEnemyStompRange"); return (u32) 0; }

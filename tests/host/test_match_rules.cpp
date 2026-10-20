@@ -7,6 +7,7 @@
 #include "stage_identity_reference.h"
 #include "../../src/xdk/match_xdk.h"
 #include "../../src/xdk/stage_music_xdk.h"
+#include "../../src/xdk/presentation_xdk.h"
 
 enum { kMaxFighters = 4, kStartingStocks = 3, kCampaignRounds = 7,
        kGameModeClassic = 3, kGameModeAdventure = 4,
@@ -54,7 +55,14 @@ static void LoadItemTable(void);
 int s_itemCounts[35];
 float s_itemScale;
 unsigned mockRand;
-int HSD_Randi(int count) { assert(count > 0); return (int) (mockRand % (unsigned) count); }
+unsigned mockRandRequests;
+int mockRandBounds[64];
+int HSD_Randi(int count) {
+    assert(count > 0);
+    if(mockRandRequests<64) mockRandBounds[mockRandRequests]=count;
+    ++mockRandRequests;
+    return (int) (mockRand % (unsigned) count);
+}
 struct HSD_GObj {};
 struct Fighter { float x, y; unsigned damage, reads, deaths, rebirths; } fighters[4];
 unsigned s_gameMode, s_campaignRound, s_campaignStocks, s_stocks;
@@ -124,7 +132,10 @@ typedef unsigned char u8;
 typedef signed char s8;
 typedef unsigned short u16;
 typedef int s32;
+typedef int enum_t;
 typedef float f32;
+typedef uint64_t u64;
+struct { int ItemSpawnsEnabled; } db_ItemAndPokemonMenu;
 #define ASSERT_SIZE(type,size)
 #define HSD_ASSERTREPORT(line,expr,...) assert(expr)
 enum { ChKind_None=33,CKind_GKoops=29,CKind_Mars=9,CKind_CLink=21,CKind_Playable_Count=26 };
@@ -149,7 +160,7 @@ u8 gm_GetNumCostumesForCKind(u8 kind) { return (u8)M360_FighterCostumeCount((uns
 s32 fn_8017DE54(u8,u8*);
 s32 fn_8017D9C0(const u8*,const u8*);
 extern u8 lbl_803D79F0[];
-struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind,timer_enabled,time_limit,friendly_fire;int item_freq,sd_penalty;float x30; };
+struct MockStartRules { unsigned match_kind,is_teams,disable_pausing,stkind,timer_enabled,time_limit,friendly_fire;int item_freq,sd_penalty;float x30;u64 x20;int x28; };
 struct MockVs { struct { MockStartRules rules;PlayerInitData players[6]; } start; };
 struct CSSData { MockVs vs; } s_selectedCss;
 struct GameRules { unsigned time_limit,stock_count; } mockGameRules;
@@ -180,7 +191,15 @@ int s_rematchPending;
 unsigned s_modelCount, s_collBindCount, s_timeOption, g_m360Crumb;
 const unsigned kTimeOptions[] = { 0, 1 };
 void* s_models[8];
-struct HSD_JObj { unsigned flags; };
+struct HSD_JObj { unsigned flags; Vec3 position; };
+HSD_JObj* itemPoints[256];
+HSD_JObj* M360_StagePointJoint(int slot) { return slot>=0 && slot<256 ? itemPoints[slot] : NULL; }
+void lb_8000B1CC(HSD_JObj* joint,Vec3*,Vec3* out) { *out=joint->position; }
+Vec3* lbVector_Add(Vec3* a,Vec3* b) { a->x+=b->x;a->y+=b->y;a->z+=b->z;return a; }
+void Stage_UnkSetVec3TCam_Offset(Vec3* out) { *out=Vec3{0,35,0}; }
+struct M360CollBind { int group; HSD_JObj* jobj; } s_collBinds[128];
+unsigned char s_collLineEnabled[M360_MAX_STAGE_LINES];
+unsigned HSD_JObjGetFlags(HSD_JObj* joint) { return joint->flags; }
 enum { JOBJ_HIDDEN = 0x10 };
 unsigned s_mazeGoal, s_mazeVisited, s_mazeFinishFrames;
 int s_mazeRoom = -1;
@@ -324,6 +343,8 @@ void M360_FighterGetState(void* f, float* x, float* y, float* facing,
 #include "campaign_native.h"
 
 static void Reset(unsigned count) {
+    memset(s_collLineEnabled,1,sizeof(s_collLineEnabled));
+    s_collBindCount=0;
     memset(s_closed,0,sizeof(s_closed));
     s_originalVsRules=0;
     gm_SetupAllPlayerDefaults(s_campaignPlayers);
@@ -373,6 +394,67 @@ static void Reset(unsigned count) {
 
 int main() {
     setvbuf(stdout, NULL, _IONBF, 0);
+    assert(M360_PresentationX(0,1)==0 && M360_PresentationX(640,1)==1280);
+    assert(M360_PresentationWidth(640,1)==1280);
+    assert(M360_PresentationX(0,0)==160 && M360_PresentationX(640,0)==1120);
+    assert(M360_PresentationWidth(640,0)==960);
+    const float originalAspect=1.2173333f;
+    assert(fabsf(960.0f/originalAspect-1280.0f/(originalAspect*M360_WORLD_ASPECT_SCALE))<0.0001f);
+    assert(M360_PresentationX(160,1)+M360_PresentationWidth(320,1)==M360_PresentationX(480,1));
+    puts("PASS: widescreen exposes more world with unchanged character proportions and original UI framing");
+    Reset(4);
+    db_DisableItemSpawns();
+    assert(!db_AreItemSpawnsEnabled());
+    StartFight();
+    assert(db_AreItemSpawnsEnabled());
+    s_originalVsRules=1;
+    assert(gm_8016AE94()==1.2f);
+    s_closed[3]=1;assert(gm_8016AE94()==1.1f);
+    s_closed[2]=1;assert(gm_8016AE94()==1.0f);
+    s_selectedCss.vs.start.rules.x30=2.0f;
+    assert(gm_8016AE94()==1.0f);
+    s_selectedCss.vs.start.rules.x20=(u64)1<<34;
+    s_selectedCss.vs.start.rules.x28=7;
+    assert(gm_8016AEA4()==((u64)1<<34) && gm_8016AEB8()==7);
+    s_gameMode=3;assert(gm_8016AE94()==1.0f);
+    puts("PASS: original item gate enabled at startup; player-count weight independent of Damage Ratio");
+    HSD_JObj itemPoint={0,{42,80,0}};
+    Vec3 spawn;
+    mockRand=0;mockRandRequests=0;
+    itemPoints[0x94]=&itemPoint;
+    assert(Stage_80224FDC(&spawn) && spawn.x==42 && spawn.y==130);
+    assert(mockRandRequests==1 && mockRandBounds[0]==21);
+    itemPoints[0x94]=NULL;itemPoints[0]=&itemPoint;mockRandRequests=0;
+    assert(Stage_80224FDC(&spawn) && spawn.y==80 && mockRandRequests==1);
+    itemPoints[0]=NULL;mockRandRequests=0;
+    assert(!Stage_80224FDC(&spawn) && mockRandRequests==22);
+    for(int i=0;i<21;++i) assert(mockRandBounds[i]==21-i);
+    assert(mockRandBounds[21]==4);
+    itemPoints[4]=&itemPoint;itemPoints[5]=&itemPoint;
+    assert(Ground_801C2D24(8,&spawn) && spawn.x==42 && spawn.y==80);
+    itemPoints[4]=itemPoints[5]=NULL;
+    puts("PASS: original random item points, decreasing RNG bounds, camera/player fallback and midpoint lookup");
+    Reset(2);
+    s_stage.lineCount=5;
+    memset(mockGroups,0,sizeof(mockGroups));
+    mockGroups[0].floor_start=0;mockGroups[0].floor_count=1;
+    mockGroups[0].ceiling_start=1;mockGroups[0].ceiling_count=1;
+    mockGroups[0].right_wall_start=2;mockGroups[0].right_wall_count=1;
+    mockGroups[0].left_wall_start=3;mockGroups[0].left_wall_count=1;
+    mockGroups[0].dynamic_start=4;mockGroups[0].dynamic_count=1;
+    HSD_JObj platform={JOBJ_HIDDEN,{0,0,0}};
+    s_collBinds[0].group=0;s_collBinds[0].jobj=&platform;s_collBindCount=1;
+    for(unsigned i=0;i<5;++i) mockLines[i].hi_flags=1u<<i;
+    SetCollisionGroupEnabled(0,1);
+    for(unsigned i=0;i<5;++i) assert(!s_stage.lines[i].kind);
+    platform.flags=0;SetCollisionGroupVisible(0,1);
+    for(unsigned i=0;i<5;++i) assert(s_stage.lines[i].kind==(1u<<i));
+    SetCollisionGroupEnabled(0,0);
+    SetCollisionGroupVisible(0,0);SetCollisionGroupVisible(0,1);
+    for(unsigned i=0;i<5;++i) assert(!s_stage.lines[i].kind);
+    SetCollisionGroupEnabled(0,1);
+    for(unsigned i=0;i<5;++i) assert(s_stage.lines[i].kind==(1u<<i));
+    puts("PASS: hidden platforms lose floor/wall/ceiling collisions without re-enabling disabled course geometry");
     Reset(4);
     assert(M360_MatchKnockbackRatio()==1.0f);
     assert(M360_MatchHandicap(0)==9);

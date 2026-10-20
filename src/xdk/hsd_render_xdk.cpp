@@ -22,6 +22,7 @@ extern "C" {
 #pragma warning(pop)
 
 #include "hsd_render_xdk.h"
+#include "presentation_xdk.h"
 #include "hsd_texture_xdk.h"
 #include "hsd_particle_xdk.h"
 #include "hsd_ps.h"
@@ -114,6 +115,7 @@ unsigned s_textureAge;
 GxState s_gx;
 GXColor s_eraseColor;
 bool s_allowErase = true;
+bool s_wideWorld;
 M360HsdRenderStats s_stats;
 HsdVertex s_vertices[kMaxVertices];
 
@@ -133,9 +135,9 @@ unsigned Read32(const unsigned char* p)
 
 void MapRect(float x, float y, float w, float h, D3DVIEWPORT9* vp)
 {
-    vp->X = static_cast<DWORD>(160.0f + x * 1.5f + 0.5f);
+    vp->X = static_cast<DWORD>(M360_PresentationX(x, s_wideWorld) + 0.5f);
     vp->Y = static_cast<DWORD>(y * 1.5f + 0.5f);
-    vp->Width = static_cast<DWORD>(w * 1.5f + 0.5f);
+    vp->Width = static_cast<DWORD>(M360_PresentationWidth(w, s_wideWorld) + 0.5f);
     vp->Height = static_cast<DWORD>(h * 1.5f + 0.5f);
     vp->MinZ = 0.0f;
     vp->MaxZ = 1.0f;
@@ -149,9 +151,9 @@ void ApplyViewport()
     if (vp.Width && vp.Height)
         s_device->SetViewport(&vp);
     RECT r;
-    r.left = static_cast<LONG>(160 + s_gx.scissor[0] * 3 / 2);
+    r.left = static_cast<LONG>(M360_PresentationX(static_cast<float>(s_gx.scissor[0]), s_wideWorld));
     r.top = static_cast<LONG>(s_gx.scissor[1] * 3 / 2);
-    r.right = static_cast<LONG>(160 + (s_gx.scissor[0] + s_gx.scissor[2]) * 3 / 2);
+    r.right = static_cast<LONG>(M360_PresentationX(static_cast<float>(s_gx.scissor[0] + s_gx.scissor[2]), s_wideWorld));
     r.bottom = static_cast<LONG>((s_gx.scissor[1] + s_gx.scissor[3]) * 3 / 2);
     if (r.right > r.left && r.bottom > r.top) {
         s_device->SetScissorRect(&r);
@@ -1610,6 +1612,7 @@ void M360_HsdRenderShutdown(void)
 
 void M360_HsdRenderBeginFrame(void)
 {
+    s_wideWorld = false;
     const unsigned failures = s_stats.decodeFailures;
     memset(&s_stats, 0, sizeof(s_stats));
     s_stats.decodeFailures = failures;
@@ -1651,6 +1654,13 @@ void M360_HsdRenderEndFrame(void)
 void M360_HsdRenderAllowErase(bool allow)
 {
     s_allowErase = allow;
+}
+
+extern "C" void M360_HsdRenderWideWorld(int enabled)
+{
+    s_wideWorld = enabled != 0;
+    if (s_device)
+        ApplyViewport();
 }
 
 void M360_HsdRenderGetStats(M360HsdRenderStats* stats)

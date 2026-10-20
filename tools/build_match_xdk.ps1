@@ -432,7 +432,6 @@ $units = @(
     @{ Path = (Join-Path $src 'melee/it/ithitbox.c') },
     @{ Path = (Join-Path $src 'melee/it/itmaplib.c') },
     @{ Path = (Join-Path $src 'melee/it/itmaterial.c') },
-    @{ Path = (Join-Path $src 'melee/it/itspawn.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftlib.c') },
     @{ Path = (Join-Path $src 'melee/ft/ftcamera.c') },
     @{ Path = (Join-Path $src 'melee/it/kinds/itmariofireball.c') },
@@ -774,6 +773,27 @@ if ($CallTrace) {
     $itemDiagnostics['(temp_r30 = \(new_var = &item_data->xBC_itemStateContainer\[msid\]\);)'] = 'g_m360Dbg[1] = 7; $1 g_m360Dbg[3] = (unsigned) temp_r30;'
 }
 $units += New-Adapted 'melee/it/item.c' $itemDiagnostics 'item'
+$units += New-Slice 'melee/db/dbitem.c' 'void fn_SetupItemAndPokemonMenu(' @('void db_DisableItemSpawns(', 'void db_EnableItemSpawns(', 's32 db_AreItemSpawnsEnabled(') 'item_spawn_gate'
+$pointSource = Get-Content -Raw (Join-Path $src 'melee/gr/ground.c')
+$pointLookup = (Get-CFunction $pointSource 'bool Ground_801C2D24(').Replace('stage_info.x280[arg0]', 'M360_StagePointJoint(arg0)')
+$pointSource = Get-Content -Raw (Join-Path $src 'melee/gr/stage.c')
+$pointPicker = Get-CFunction $pointSource 'bool Stage_80224FDC('
+$pointPath = Join-Path $out 'stage_item_points.c'
+Set-Content -Encoding ASCII $pointPath (@'
+#include <melee/gr/stage.h>
+#include <melee/gr/ground.h>
+#include <melee/lb/lb_00B0.h>
+#include <melee/lb/lbvector.h>
+#include <sysdolphin/baselib/random.h>
+extern HSD_JObj* M360_StagePointJoint(int slot);
+'@ + "`r`n" + $pointLookup + "`r`n" + $pointPicker)
+$units += @{ Path=$pointPath; Dir=(Join-Path $src 'melee/gr') }
+# Observe the original random spawner without forcing a kind, timer or point.
+$units += New-Adapted 'melee/it/itspawn.c' @{
+    '(#include "itspawn.h")' = '$1' + "`r`nextern void M360_MatchTrace(const char*, unsigned);"
+    '(if \(spawn_gobj != NULL\) \{)' = '$1 M360_MatchTrace("item.random.spawn.kind", (unsigned) spawn.kind);'
+    '(alloc->x0--[;])' = 'if (alloc->x0 == 1) M360_MatchTrace("item.random.attempt", 1); $1'
+} 'item_random_spawn'
 $units += New-Slice 'melee/lb/lb_00B0.c' 'bool lb_8000B074(' @('bool lb_8000B074(', 'void lb_8000C07C(', 'void lb_8000C0E8(', 'void memzero(', 'void lb_8000C1C0(', 'void lb_8000C228(', 'void lb_8000C290(', 'void lb_8000C2F8(', 'static inline HSD_RObj* robj_next(', 'void lb_8000C390(', 'bool lb_8000B09C(', 'bool lb_8000B134(', 'void lb_8000B804(', 'static void lb_8000B9D8(HSD_JObj* jobj', 'void lb_8000BA0C(', 'static HSD_JObj* lbFindJObjWithAObj(HSD_JObj* jobj)', 'float lbGetJObjCurrFrame(', 'float lbGetJObjEndFrame(', 'static s32 lbGetFreeColorRegImpl(s32 i0, HSD_TevDesc* tevdesc', 's32 lbGetFreeColorRegister(', 's32 lb_8000CC8C(', 's32 lb_8000CCA4(', 's32 lb_8000CD90(', 's32 lb_8000CDA8(', 'void lb_8000CE30(', 'void lb_8000CE40(') 'lb_00B0_constraint_slice'
 
 $objects = @()
