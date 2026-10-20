@@ -45,7 +45,7 @@ foreach($case in $cases) {
     $spawns=@()
     try {
         $disabled=switch($case.Stage) { 9 {12}; 10 {2}; 13 {6}; 14 {6}; default {0} }
-        $expected=@('match.camera.output_width: 1280','match.enter.fighters: 2','audio.match.background: 1',"match.stage.initial_disabled: $disabled")
+        $expected=@('match.camera.output_width: 1280','match.enter.fighters: 2','audio.match.background: 1',"auto.stage: $($case.Stage)","match.stage.initial_disabled: $disabled")
         if($case.Stage -eq 13) { $expected+=@('match.stage.points.ready: 1','match.stage.point_count: 20') }
         & (Join-Path $root 'tools/smoke_xenia_menu.ps1') -BuildDir $run -ScriptPath $script `
             -Expect $expected `

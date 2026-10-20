@@ -10,8 +10,9 @@ es conservar el comportamiento y los recursos originales del juego.
 
 ## Estado de esta versión
 
-**`v0.1.0-alpha.2` es un candidato experimental con ZIP local; su publicación
-en GitHub está pendiente.** La última release publicada sigue siendo alpha.1.
+La última prerelease publicada es **[v0.1.0-alpha.2](https://github.com/codepdbh/melee360/releases/tag/v0.1.0-alpha.2)**.
+Es experimental. **`main` y el ejecutable local de `dist` incluyen cambios
+posteriores que todavía no forman parte de ese ZIP.**
 Hay pruebas automatizadas de ejecución
 en Xenia Canary; todavía no se ha validado esta versión en una Xbox 360 física.
 El proyecto no incluye la ISO ni recursos extraídos del disco.
@@ -34,7 +35,7 @@ el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_POR
 ### Correcciones recientes en main — 20 de octubre
 
 El ejecutable actual de `dist/default.xex` incorpora estos cambios, posteriores
-al ZIP local de alpha.2 y a la alpha.1 publicada:
+al ZIP publicado de alpha.2:
 
 - Combate en **16:9 a 1280×720**, ampliando la vista horizontal y conservando
   las proporciones y el encuadre vertical. HUD, menús y vídeos mantienen su
@@ -49,8 +50,10 @@ al ZIP local de alpha.2 y a la alpha.1 publicada:
   existentes de 26 grupos inactivos de Castle, Kongo, Corneria y Stadium ahora
   se extraen del código original, reemplazando las copias manuales.
 
-Estos arreglos no completan Classic, Adventure ni todos los menús y peligros
-de escenario. [Compilación, pruebas y límites actuales](docs/VALIDATION_20261020.md).
+Las 40 comprobaciones acotadas en Xenia pasan; en los 17 escenarios VS se
+registraron 87 apariciones aleatorias de objetos. Esto no demuestra paridad
+visual ni resuelve todas las colisiones. Classic, Adventure y algunos menús
+y peligros siguen incompletos. [Compilación, pruebas y límites actuales](docs/VALIDATION_20261020.md).
 
 ### Cambios de alpha.2
 
@@ -69,7 +72,7 @@ escenarios y la elección alternativa en campañas siguen pendientes.
 [Selección de música y límites](docs/STAGE_MUSIC_SELECTION.md).
 [Revisión del fork y correcciones incorporadas](docs/UPSTREAM_AUDIT_20261016.md).
 
-El ZIP local `v0.1.0-alpha.2` incluye estos menús y controles. Classic y Adventure
+La prerelease `v0.1.0-alpha.2` incluye estos menús y controles. Classic y Adventure
 siguen incompletos; no se ha probado en consola física.
 
 Classic ahora enlaza siete combates de su secuencia original, con aliados,
@@ -104,9 +107,9 @@ no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
 
 ### Descarga y copia
 
-1. Abre [Releases](https://github.com/codepdbh/melee360/releases) y descarga
-   el asset de la versión publicada. El nuevo ZIP local se llama
-   **`MELEE360-v0.1.0-alpha.2-xbox360.zip`** y su publicación está pendiente.
+1. Descarga **[MELEE360-v0.1.0-alpha.2-xbox360.zip](https://github.com/codepdbh/melee360/releases/download/v0.1.0-alpha.2/MELEE360-v0.1.0-alpha.2-xbox360.zip)**
+   desde la prerelease publicada. Para usar las correcciones posteriores de
+   `main`, compila el proyecto y usa el nuevo `dist/default.xex` con sus assets.
    Para alpha.1 sigue su [guía de instalación y controles](https://github.com/codepdbh/melee360/blob/v0.1.0-alpha.1/docs/INSTALAR_XBOX360.md).
    **Source code** es el
    código fuente y no contiene el ejecutable listo para usar.

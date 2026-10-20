@@ -2,6 +2,10 @@
 
 ## Random items, widescreen matches and inactive stage collision — 2026-10-20
 
+GitHub currently publishes alpha.2 (October 19), with XEX `B9D32810…`.
+The October 20 changes below are newer than that release. Earlier dated
+candidate notes retain their then-pending publication state.
+
 The October 20 changes restore the original item spawn debug gate and random ground
 point lookup/picker. The former stub always returned zero, preventing the
 original random spawner from ticking. Item weights now follow the original
@@ -25,6 +29,22 @@ now includes that original model, created by `grCorneria_801DD674` in Melee.
 The archive check covers all 21 stages; three Brinstar item markers still
 belong to its unported moving lava skeleton. These changes do not port complete stage state machines or the
 remaining original collision solver. See [current evidence](VALIDATION_20261020.md).
+
+The paired final diagnostics pass 40 bounded native checks: all 17 VS stages
+create real random items (87 total); Off creates none; menu routes, selected
+campaign encounters, two Adventure goals, the selectable roster,
+transformations, life reset and normal opening also pass. The normal XEX is
+`8A45B674…`, built from `a6ffa11` with all diagnostic flags off.
+
+The user reports misplaced collisions across all stages while playing the
+published alpha.2. The general collision gap remains open. In particular,
+`AirWalls` still uses a fixed center height of 8 units and origin crossings,
+`LandBetweenColl` tests the origin rather than the animated ECB bottom, and
+`GroundStep` uses a fixed four-unit floor search. Original collision-data
+initialization does not replace these per-frame approximations. Porting the
+original ECB sampling, contact solver and its map queries remains necessary;
+the Corneria point fix and the bounded checks do not establish that this
+report is resolved.
 
 ## Adventure course notices and menu-route pilot — 2026-10-19
 
