@@ -224,7 +224,9 @@ static const M360StageDesc s_stages[] = {
     { "KONGO JUNGLE", "GrKg.dat", { 0, 10, 5, 3, 6, 4, -1 }, -1, kKongoJoints, 4, Gr_Kind_Kongo },
     { "BRINSTAR", "GrZe.dat", { 0, 1, 6, 4, 8, -1 }, -1, kZebesJoints, 3, Gr_Kind_Zebes },
     { "GREEN GREENS", "GrGr.dat", { 0, 2, 6, 5, 4, -1 }, -1, NULL, 0, Gr_Kind_Greens },
-    { "CORNERIA", "GrCn.dat", { 7, 3, 8, 9, 4, 11, -1 }, -1, kCorneriaJoints, 2, Gr_Kind_Corneria },
+    /* grCorneria_801DD674 also creates map 0: the authored point skeleton
+     * for item/player spawns, camera limits and blast zones. */
+    { "CORNERIA", "GrCn.dat", { 7, 0, 3, 8, 9, 4, 11, -1 }, -1, kCorneriaJoints, 2, Gr_Kind_Corneria },
     { "POKEMON STADIUM", "GrPs.dat", { 0, 1, 2, -1 }, -1, NULL, 0, Gr_Kind_PStadium },
     { "ONETT", "GrOt.dat", { 0, 2, 5, 4, 3, -1 }, -1, NULL, 0, Gr_Kind_Onett },
     { "MUTE CITY", "GrMc.dat", { 0, 30, 36, 37, -1 }, -1, NULL, 0, Gr_Kind_MuteCity },
@@ -766,9 +768,8 @@ static void DisableCollisionGroup(unsigned group)
 static void ApplyInitialCollision(int grkind)
 {
     unsigned i, count = 0;
-    /* Original stage OnInit disables unused transformations, turrets and
-     * other inactive geometry. Loading all DAT lines as solid creates
-     * invisible platforms and walls, even before hazards are simulated. */
+    /* Replace the hand-copied startup lists with calls extracted from each
+     * reviewed original OnInit. Keep inactive geometry disabled. */
     for (i = 0; i < M360_STAGE_INITIAL_DISABLED_COUNT; ++i)
         if (g_m360StageInitialDisabled[i].kind == grkind) {
             DisableCollisionGroup(g_m360StageInitialDisabled[i].group);
@@ -1200,7 +1201,7 @@ bool gm_8016B238(void)
 static int BuildStage(unsigned index)
 {
     const M360StageDesc* desc;
-    unsigned i;
+    unsigned i, pointCount = 0;
     if (index >= kStageCount || !LoadStageArchive(index)) {
         if (index == 0 || !LoadStageArchive(0))
             return 0;
@@ -1218,6 +1219,10 @@ static int BuildStage(unsigned index)
         if (root && desc->gobjs[i] == desc->hidden)
             HSD_JObjSetFlagsAll(root, JOBJ_HIDDEN);
     }
+    for (i = 0; i < 256; ++i)
+        if (s_points[i]) ++pointCount;
+    M360_MatchTrace("match.stage.point_count", pointCount);
+    M360_MatchTrace("match.stage.points.ready", s_points[0] && s_points[0x94]);
     UpdateMapColl();
     ApplyInitialCollision(desc->grkind);
     LoadBounds();
@@ -1258,19 +1263,6 @@ static int BuildStage(unsigned index)
         s_routeCamera[2] = s_stage.camBottom; s_routeCamera[3] = s_stage.camTop;
         if (PointPosition(0xBD, &marker)) M360_MatchTrace("match.adventure.checkpoint_x", (unsigned) (int) marker.x);
         if (PointPosition(0x99, &marker)) M360_MatchTrace("match.adventure.goal_x", (unsigned) (int) marker.x);
-    }
-    /* Inactive collision groups from each original OnInit; retain indices. */
-    if (desc->grkind == Gr_Kind_Castle) {
-        DisableCollisionGroup(0); DisableCollisionGroup(1); DisableCollisionGroup(2);
-        for (i = 6; i <= 14; ++i) DisableCollisionGroup(i);
-    } else if (desc->grkind == Gr_Kind_Kongo) {
-        DisableCollisionGroup(0); DisableCollisionGroup(1);
-    } else if (desc->grkind == Gr_Kind_Corneria) {
-        for (i = 0; i <= 2; ++i) DisableCollisionGroup(i);
-        for (i = 5; i <= 7; ++i) DisableCollisionGroup(i);
-    } else if (desc->grkind == Gr_Kind_PStadium) {
-        DisableCollisionGroup(0); DisableCollisionGroup(1); DisableCollisionGroup(2);
-        DisableCollisionGroup(3); DisableCollisionGroup(5); DisableCollisionGroup(7);
     }
     LoadItemTable();
     M360_FighterBuildIslands();

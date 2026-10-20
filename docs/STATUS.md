@@ -1,5 +1,31 @@
 # Development status
 
+## Random items, widescreen matches and inactive stage collision — 2026-10-20
+
+The October 20 changes restore the original item spawn debug gate and random ground
+point lookup/picker. The former stub always returned zero, preventing the
+original random spawner from ticking. Item weights now follow the original
+player-count multiplier rather than the VS Damage Ratio; the original item
+mask and special-item setting remain separate.
+
+World rendering uses the full 1280×720 output. Its camera aspect multiplies
+the authored aspect by 4/3, retaining the original pixel correction and
+vertical framing. HUD/menu/movie composition remains original. Geometry and
+gameplay positions are unchanged by the presentation mapping.
+
+Hidden animated collision groups are no longer solid at their last visible
+pose. Explicitly disabled groups stay disabled when their model reappears.
+Startup disable calls extracted from four original stage initializers replace
+existing manual lists for 26 groups (181 referenced line segments): Castle,
+Kongo, Corneria and Stadium. This consolidation is not a newly fixed set of
+181 segments. A native random-item regression then exposed Corneria's missing
+map-0 skeleton: no item/player/camera/blast markers were being loaded, so it
+used generic player positions and no random items could appear. The catalog
+now includes that original model, created by `grCorneria_801DD674` in Melee.
+The archive check covers all 21 stages; three Brinstar item markers still
+belong to its unported moving lava skeleton. These changes do not port complete stage state machines or the
+remaining original collision solver. See [current evidence](VALIDATION_20261020.md).
+
 ## Adventure course notices and menu-route pilot — 2026-10-19
 
 When Adventure reaches an original course whose system is not ported yet,
@@ -7,9 +33,10 @@ the campaign skips it and shows the course name during the opening seconds
 of the next encounter (`M360_MatchCampaignNotice`) instead of stalling.
 Input scripts accept `routepilot after`, which plays scripted menu steps
 before the course pilot, and tolerate CRLF lines; a menu-entered Adventure
-fixture drives 1P → Adventure from the real menus. Host match, flow (five
-Classic rounds, twenty-one Adventure phases) and collision lifecycle tests
-pass. The normal XEX builds and boots in Xenia to the original menus and
+fixture drives 1P → Adventure from the real menus. Host match, flow and
+collision lifecycle tests pass. The flow test used mocked five/twenty-one
+counts; on October 20 those mocks were corrected to seven Classic combats
+and twenty normal Adventure phases. The normal XEX boots to original menus and
 character select. A full Adventure playthrough to the ending, physical
 Xbox 360 play and the remaining course systems are not verified.
 

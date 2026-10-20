@@ -31,6 +31,27 @@ Adventure todavía necesita la carrera y escalada originales, peligros del
 laberinto y transiciones. No presentamos los combates provisionales como
 el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
+### Correcciones recientes en main — 20 de octubre
+
+El ejecutable actual de `dist/default.xex` incorpora estos cambios, posteriores
+al ZIP local de alpha.2 y a la alpha.1 publicada:
+
+- Combate en **16:9 a 1280×720**, ampliando la vista horizontal y conservando
+  las proporciones y el encuadre vertical. HUD, menús y vídeos mantienen su
+  composición original; no se estiran sus recursos de 4:3.
+- Apariciones de objetos habilitadas: se eliminó una función provisional que
+  las desactivaba siempre. Se compilan las funciones originales de selección
+  de puntos, incluidos sus puntos de respaldo. Damage Ratio ya no modifica
+  los pesos de aparición; Item Switch sigue controlando frecuencia y selección.
+- Corneria vuelve a cargar el modelo original de puntos: posiciones de los
+  jugadores, apariciones de objetos, límites de cámara y zonas de eliminación.
+- Colisiones de piezas ocultas desactivadas mientras están ocultas. Las listas
+  existentes de 26 grupos inactivos de Castle, Kongo, Corneria y Stadium ahora
+  se extraen del código original, reemplazando las copias manuales.
+
+Estos arreglos no completan Classic, Adventure ni todos los menús y peligros
+de escenario. [Compilación, pruebas y límites actuales](docs/VALIDATION_20261020.md).
+
 ### Cambios de alpha.2
 
 La compilación actual incorpora la **selección de personajes, Rules y Stage

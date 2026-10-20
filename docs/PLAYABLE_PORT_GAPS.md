@@ -5,6 +5,28 @@ loop. Scripted Xenia input verifies movement, attacks, hits, damage, stock loss,
 respawn, Mario's cape, CPU actions, music and SFX submissions. Interactive
 controller play on a physical Xbox 360 remains unverified.
 
+## Fixes after alpha.2 — 2026-10-20
+
+Current source restores real random item appearances, original point selection
+and fallback, and the original player-count item weight multiplier. Previous
+claims about tests "with items" only meant that a frequency was configured:
+the old debug gate stub returned zero and prevented random drops. The new
+native regression requires successful random item creation on each VS stage
+and verifies that frequency Off creates none.
+
+Combat now fills 16:9 with an extended horizontal camera view and unchanged
+character proportions. Original HUD/menu/movie composition stays centered.
+Hidden stage models lose their collision until visible. Existing lists of 26
+inactive groups in Castle, Kongo, Corneria and Stadium are now extracted from
+original startup code. Corneria also loads its missing map-0 skeleton for
+authored player/item spawns and camera/blast limits; the native item regression
+exposed this separate issue after the global item gate was repaired.
+Three Brinstar item markers still require its original moving lava system.
+Full stage hazards, transformations, fighter ECB/contact solving, all menus
+and complete Classic/Adventure remain unfinished. Existing encounter-entry
+tests do not prove an original complete campaign.
+See [the current build record and bounded checks](VALIDATION_20261020.md).
+
 ## Alpha.2 candidate — 2026-10-19
 
 Source `c527ad4` connects the original Rules Damage Ratio and per-player
