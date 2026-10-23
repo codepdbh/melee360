@@ -788,6 +788,17 @@ Set-Content -Encoding ASCII $pointPath (@'
 extern HSD_JObj* M360_StagePointJoint(int slot);
 '@ + "`r`n" + $pointLookup + "`r`n" + $pointPicker)
 $units += @{ Path=$pointPath; Dir=(Join-Path $src 'melee/gr') }
+& python (Join-Path $PSScriptRoot 'generate_collision_projection.py') (Join-Path $out 'collision_projection.h')
+if ($LASTEXITCODE -ne 0) { throw 'Original collision projection generation failed.' }
+$projectionPath = Join-Path $out 'collision_projection.c'
+Set-Content -Encoding ASCII $projectionPath @'
+#include <melee/mp/mplib.h>
+#include <melee/lb/types.h>
+#include <dolphin/mtx.h>
+#include "match_xdk.h"
+#include "collision_projection.h"
+'@
+$units += @{ Path=$projectionPath; Dir=$out }
 # Observe the original random spawner without forcing a kind, timer or point.
 $units += New-Adapted 'melee/it/itspawn.c' @{
     '(#include "itspawn.h")' = '$1' + "`r`nextern void M360_MatchTrace(const char*, unsigned);"

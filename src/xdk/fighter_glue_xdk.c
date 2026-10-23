@@ -1627,15 +1627,27 @@ static int GroundStep(HSD_GObj* gobj, int stopAtEdge)
     const float step = 4.0f;
     float y;
     int line;
+    int current = fp->coll_data.floor.index;
+    int validFloor = mpLib_80054ED8(current) && (st->lines[current].kind & M360_LINE_FLOOR);
     fp->coll_data.env_flags &= ~(Collide_LeftEdge | Collide_RightEdge);
-    if (FloorAt(fp->cur_pos.x, fp->cur_pos.y + step, fp->cur_pos.y - step, 1, &y, &line)) {
-        fp->cur_pos.y = y;
-        SetFloor(fp, line);
-        fp->coll_data.env_flags |= Collide_FloorHug;
-        return 1;
+    if (validFloor) {
+        /* Original projection follows authored adjacent floor segments and
+         * rejects positions beyond an open end (apart from retail tolerance). */
+        line = mpLib_8004DD90_Floor(current, &fp->cur_pos, &y, NULL, NULL);
+        if (line >= 0) {
+            fp->cur_pos.y += y;
+            SetFloor(fp, line);
+            fp->coll_data.env_flags |= Collide_FloorHug;
+            return 1;
+        }
+    } else if (current == -1 && FloorAt(fp->cur_pos.x, fp->cur_pos.y + step,
+                                      fp->cur_pos.y - step, 1, &y, &line)) {
+        /* Initial attachment only; a disabled or exhausted floor must not
+         * silently jump to an unrelated nearby platform. */
+        fp->cur_pos.y = y; SetFloor(fp, line);
+        fp->coll_data.env_flags |= Collide_FloorHug; return 1;
     }
-    if (stopAtEdge && fp->coll_data.floor.index >= 0 &&
-        (unsigned) fp->coll_data.floor.index < st->lineCount) {
+    if (stopAtEdge && validFloor) {
         const M360StageLine* l = &st->lines[fp->coll_data.floor.index];
         const float lo = l->x0 < l->x1 ? l->x0 : l->x1;
         const float hi = l->x0 < l->x1 ? l->x1 : l->x0;
@@ -3036,33 +3048,6 @@ bool mpCheckAllRemap(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* norm
         normal_out->z = 0.0f;
     }
     return true;
-}
-
-int mpLib_8004DD90_Floor(int line_id, Vec3* vec, float* y_out, u32* flags_out, Vec3* normal_out)
-{
-    const M360StageLine* l;
-    float x, t;
-    if (!mpLib_80054ED8(line_id))
-        return -1;
-    l = &M360_MatchStageData()->lines[line_id];
-    x = vec->x;
-    if (x < (l->x0 < l->x1 ? l->x0 : l->x1))
-        x = l->x0 < l->x1 ? l->x0 : l->x1;
-    if (x > (l->x0 < l->x1 ? l->x1 : l->x0))
-        x = l->x0 < l->x1 ? l->x1 : l->x0;
-    t = l->x1 != l->x0 ? (x - l->x0) / (l->x1 - l->x0) : 0.0f;
-    if (y_out)
-        *y_out = l->y0 + (l->y1 - l->y0) * t - vec->y;
-    if (flags_out)
-        *flags_out = l->flags;
-    if (normal_out) {
-        float nx = -(l->y1 - l->y0), ny = l->x1 - l->x0;
-        const float len = sqrtf(nx * nx + ny * ny);
-        normal_out->x = len > 0.0f ? nx / len : 0.0f;
-        normal_out->y = len > 0.0f ? ny / len : 1.0f;
-        normal_out->z = 0.0f;
-    }
-    return line_id;
 }
 
 /* mpLib adjacency queries: retain the original authored alternate/default
