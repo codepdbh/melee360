@@ -3009,6 +3009,10 @@ bool mpCheckAllRemap(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* norm
         const float ex = l->x1 - l->x0, ey = l->y1 - l->y0;
         const float den = dx * ey - dy * ex;
         float t, u;
+        /* Hidden/disabled groups retain coordinates for later reactivation.
+         * They must not participate in the all-surface query either. */
+        if (!l->kind)
+            continue;
         if (den > -1e-6f && den < 1e-6f)
             continue;
         t = ((l->x0 - x0) * ey - (l->y0 - y0) * ex) / den;

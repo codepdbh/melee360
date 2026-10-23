@@ -4,6 +4,7 @@
 #include "match_xdk.h"
 
 struct Vec3 { float x, y, z; };
+typedef unsigned u32;
 struct CollData {
     struct Surface { int index; } floor, ceiling, left_facing_wall, right_facing_wall;
     struct { Vec3 top; } ecb;
@@ -59,4 +60,22 @@ int main()
         }
     }
     puts("PASS: original moving-surface remap, all four collision queries, disabled lines and static surfaces");
+    // A disabled nearer surface must not mask the active surface behind it.
+    testStage.lineCount = 2;
+    testStage.lines[0] = { -10, 5, 10, 5, 0 };
+    testStage.lines[1] = { -10, 0, 10, 0, M360_LINE_FLOOR };
+    Vec3 hit = {}, normal = {};
+    int line = -1;
+    u32 flags = 0;
+    assert(mpCheckAllRemap(&hit, &line, &flags, &normal, -1, -1, 0, 10, 0, -10));
+    assert(line == 1); Near(hit.y, 0); Near(normal.y, 1);
+    testStage.lines[0].kind = M360_LINE_FLOOR;
+    assert(mpCheckAll(&hit, &line, NULL, NULL, -1, -1, 0, 10, 0, -10));
+    assert(line == 0); Near(hit.y, 5);
+    testStage.lines[0].kind = testStage.lines[1].kind = 0;
+    hit = { 17, 18, 19 }; line = 99; flags = 123; normal = { 7, 8, 9 };
+    assert(!mpCheckAll(&hit, &line, &flags, &normal, -1, -1, 0, 10, 0, -10));
+    assert(line == 99 && flags == 123); Near(hit.y, 18); Near(normal.y, 8);
+    assert(!mpCheckAllRemap(NULL, NULL, NULL, NULL, -1, -1, 0, 10, 0, -10));
+    puts("PASS: all-surface queries ignore inactive geometry, preserve nearest active hit and allow reactivation");
 }

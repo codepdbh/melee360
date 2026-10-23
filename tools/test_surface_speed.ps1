@@ -24,7 +24,8 @@ function Get-Function([string]$source, [string]$signature) {
 $source = Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')
 $extracted = ''
 foreach ($signature in @('bool mpLib_80054ED8(', 'static void mpRemap2d(', 'bool mpGetSpeed(',
-    'bool mpCollGetSpeedFloor(', 'bool mpCollGetSpeedCeiling(', 'bool mpCollGetSpeedLeftWall(', 'bool mpCollGetSpeedRightWall(')) {
+    'bool mpCollGetSpeedFloor(', 'bool mpCollGetSpeedCeiling(', 'bool mpCollGetSpeedLeftWall(', 'bool mpCollGetSpeedRightWall(',
+    'bool mpCheckAllRemap(', 'bool mpCheckAll(')) {
     $extracted += (Get-Function $source $signature) + "`r`n"
 }
 Set-Content (Join-Path $out 'surface_speed_original.h') -Encoding ASCII $extracted
