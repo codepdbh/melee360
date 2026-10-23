@@ -1,5 +1,44 @@
 # Development status
 
+## Original edge stops and teeter — 2026-10-23
+
+`mpColl_8004A45C_Floor` and `mpColl_8004A678_Floor` are now compiled unchanged
+from original `mpcoll.c`. Grounded stop-at-edge and teeter adapters call them
+with current position, facing and stick state. This replaces manual endpoint
+clamps with original ECB-bottom offsets, wall guards, edge-direction flags,
+floor metadata and strict stick thresholds. The full ECB/contact pipeline
+remains incomplete.
+
+Host projection tests cover the original functions and their actual native
+callers: left/right edge flags, nonzero ECB bottom, wall query rejection,
+wall-contact flags and the exact +/-0.75 teeter boundaries. All existing
+surface, collision-lifecycle and match-rule checks pass.
+
+`tools/test_teeter_xenia.ps1` replays PAD input on Final Destination and
+requires the original Ottotto and OttottoWait motion IDs from the pinned
+enum. The verified run passes 1200 frames, five hits, both states, zero
+decode/history errors and no watchdog. An earlier attempt remains archived
+under `teeter`; its only missing marker expected one fighter, while native
+VS correctly started two. The corrected fixture explicitly requests two;
+the passing evidence is `teeter-verified`. Both runs reached the teeter states.
+
+Earlier October 23 notes mislabeled native stage 0 as Fountain; those labels
+are corrected below to Battlefield (Fountain is native stage 4). Binary
+identities, frame counts and results are unchanged.
+
+The clean normal build is from `2c09492`, XEX SHA-256
+`EAC11827AE84A8ECFD87F21111E7D396332361BEBE80F6D159A8325FAB645A11`.
+All diagnostic flags are off. Fourteen valid native checks pass: normal
+opening (1800 loop/900 movie frames), the corrected teeter case (1200),
+seven four-CPU roster batches (600 each), two transformation cases and life
+reset (1800 each), Classic giant and Adventure wireframes (1200 each).
+All gameplay cases have zero decode/history errors; no valid case hits the
+watchdog. Evidence roots: `build-x360/oct23-edges-opening` and
+`build-x360/menu-port/oct23-edges-final/validation-summary.json`.
+The summary lists the validated binary/map pairs and separately preserves
+the earlier failed one-fighter expectation. These bounded checks do not
+establish complete collision parity or full campaign completion.
+
 ## Original single-player mode predicate — 2026-10-23
 
 `gm_IsCurrently1PMode_inline` is now extracted unchanged from `gmvs.c`.
@@ -13,7 +52,7 @@ Current normal build: clean `802e117`, XEX SHA-256
 `23109938E25D3E98CE70B2BF5F714C795384EA6446A7FD0CE55C74C31FE4308A`,
 map SHA-256 `EA2D4AE8BBF03FF654C9BC4EB892D837CDF4A8A44E6F6E2EF5B2E89C740D5397`.
 All diagnostic flags are off. Seven bounded native checks pass: normal
-opening at 1800 loop/901 movie frames, Fountain with five real random items,
+opening at 1800 loop/901 movie frames, Battlefield with five real random items,
 Off with none, Classic giant/metal and Adventure wireframes/Giga at 1200
 frames each. All gameplay checks have zero decode/history errors; no case
 hits the watchdog. Evidence: `build-x360/oct23-1p-opening` and
@@ -86,7 +125,7 @@ Normal build record: clean `e8ff385` (runtime change `0759811`), XEX SHA-256
 `19C1D1EE2FE75E7E963EFBA52EF1F131729A4F674C927C6AD843F2CC7F5F5507`;
 all diagnostic flags off. The normal opening passes 1800 loop frames and
 900 movie frames with zero movie/history errors, no watchdog and no script.
-Five paired diagnostic encounters pass 1200 frames each: Fountain and
+Five paired diagnostic encounters pass 1200 frames each: Battlefield and
 Corneria create five random items each, Off creates none, Classic giant
 records 51 hits and Adventure wireframes nine. All five have zero
 decode/history errors and no watchdog. Evidence roots:
@@ -111,7 +150,7 @@ Its opening passes 1800 loop frames and 900 movie frames with zero movie or
 audio-history errors, no watchdog and no scripted input. Evidence:
 `build-x360/oct23-joint-opening`.
 
-Five paired 1200-frame encounter checks also pass: Fountain and Corneria
+Five paired 1200-frame encounter checks also pass: Battlefield and Corneria
 with five random items each, frequency Off with none, Classic giant (51 hits)
 and Adventure wireframes (9 hits). All have zero decode/history errors and
 no watchdog. Evidence: `build-x360/menu-port/oct23-joint-filters`, diagnostic
@@ -138,7 +177,7 @@ Its Xenia opening passes 1800 loop frames, 900 presented movie frames, zero
 movie/history errors, no watchdog and no scripted input. The October 20
 40-case report describes its older binary, not a rerun of this build.
 
-Paired diagnostics also pass four 1200-frame Xenia checks: Fountain, Castle
+Paired diagnostics also pass four 1200-frame Xenia checks: Battlefield, Castle
 and Corneria each create five real random items; frequency Off creates none.
 All four report zero decode/history errors and no watchdog. Evidence is in
 `build-x360/menu-port/oct23-collision/items`; diagnostic XEX SHA-256 is

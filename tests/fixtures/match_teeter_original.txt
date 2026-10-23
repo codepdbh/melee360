@@ -1,0 +1,7 @@
+# Boot-to-match: Mario P1 versus CPU, Final Destination. Raw 40/80 is below 0.75.
+# Walk toward each open edge without a hard tilt; original teeter must run.
+180 0 0 0 0 -
+360 40 0 0 0 -
+60 0 0 0 0 -
+360 -40 0 0 0 -
+240 0 0 0 0 -

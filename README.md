@@ -34,6 +34,11 @@ el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_POR
 
 ### Correcciones recientes en main — 23 de octubre
 
+La parada en los bordes y el equilibrio (Ottotto) usan ahora las funciones
+originales, con sus comprobaciones de pared, desplazamiento de la caja de
+colisión y límites de la palanca. Una prueba con entradas de mando en Xenia
+verifica la entrada a Ottotto y OttottoWait.
+
 Se restauró la consulta original de modo de un jugador: Classic y Adventure
 ya no se declaran VS al procesar las reglas de entrada del C-stick.
 
