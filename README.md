@@ -34,6 +34,10 @@ el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_POR
 
 ### Correcciones recientes en main — 23 de octubre
 
+Las consultas de suelo, techo, paredes y colisiones en cualquier dirección
+ahora respetan los filtros originales para excluir un grupo del escenario
+o consultar solo ese grupo. Antes esos argumentos se ignoraban.
+
 La consulta de colisiones en cualquier dirección ahora ignora las líneas
 desactivadas, evitando que objetos o el gancho de Link detecten esas piezas
 invisibles. La prueba de regresión cubre desactivación y reactivación.

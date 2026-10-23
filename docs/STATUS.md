@@ -1,5 +1,32 @@
 # Development status
 
+## Original joint filters in stage queries — 2026-10-23
+
+The native floor, ceiling, left/right wall and all-direction raycasts used to
+discard `joint_id_skip` and `joint_id_only`. They now test the original
+MapJoint indices and its floor/ceiling/wall/dynamic ranges. Shared lines remain
+eligible if another permitted group references them. This follows the joint
+selection in upstream `mplib.c`; it is not a complete port of its raycaster.
+
+Host tests extract the actual query functions and group helper and cover
+skip/only, conflicting filters, absent groups, dynamic ranges and shared
+ownership. Match rules and original collision lifecycle tests also pass.
+The normal XEX is built clean from `8fbcc29`, SHA-256
+`AE4ADB0E7EF167782A531E87266314D27E7D62CD1ABD5E24A145E4B8CAEA89DC`.
+Its opening passes 1800 loop frames and 900 movie frames with zero movie or
+audio-history errors, no watchdog and no scripted input. Evidence:
+`build-x360/oct23-joint-opening`.
+
+Five paired 1200-frame encounter checks also pass: Fountain and Corneria
+with five random items each, frequency Off with none, Classic giant (51 hits)
+and Adventure wireframes (9 hits). All have zero decode/history errors and
+no watchdog. Evidence: `build-x360/menu-port/oct23-joint-filters`, diagnostic
+build records paired to the normal XEX above. Together with the normal
+opening these are six bounded native checks, not complete campaign runs.
+
+The origin-based fighter contact solver and `mpLib_8005199C_Floor` still need
+work. These filtered segment queries do not establish full collision parity.
+
 ## Inactive surfaces in all-direction queries — 2026-10-23
 
 `mpCheckAllRemap` retained intersections against native lines with `kind == 0`.
