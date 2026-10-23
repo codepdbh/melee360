@@ -1,0 +1,24 @@
+{
+  "$schema": "https://recomp.fyi/schema/v1.json",
+  "game": "Super Smash Bros. Melee",
+  "system": "GameCube",
+  "type": "port",
+  "project": "MELEE360",
+  "status": "released",
+  "targets": [
+    "Xbox 360"
+  ],
+  "approach": "Native Xbox 360 source port of reconstructed Melee code, with PowerPC, Xenos/Direct3D 9 and XInput integration.",
+  "maintainers": [
+    {
+      "name": "codepdbh",
+      "link": "https://github.com/codepdbh"
+    }
+  ],
+  "notes": "Experimental public XEX builds tested in Xenia Canary. Original menus, VS combat and partial Classic/Adventure are implemented; fidelity, collisions, campaign completeness and physical Xbox 360 validation remain pending. Requires the user's own game data.",
+  "original": {
+    "region": "USA",
+    "revision": "1.02",
+    "serial": "GALE01"
+  }
+}
