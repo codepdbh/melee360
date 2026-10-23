@@ -1,5 +1,24 @@
 # Development status
 
+## Floor-below query order and filters — 2026-10-23
+
+`mpLib_8005199C_Floor` no longer uses the generic highest-floor search. Its
+native map adapter visits authored groups, each group's floor range followed
+by its dynamic range, and returns the first eligible floor, with skip/only
+filters and current transformed endpoints. This matches upstream's initial
+joint-list order and its endpoint/slope predicate. Callers include item
+placement and capture release; this change does not alter the generic
+ground/air fighter contact routines.
+
+The host test executes the actual upstream function against the same mock
+map as the native adapter: 47,840 queries agree across slopes, overlapping
+floors, disabled lines, dynamic ranges and filters. Input coordinates stay
+unchanged. Surface, match-rule and collision-lifecycle tests pass.
+
+Runtime joint-list reordering, the complete original bounding/line-state
+system and per-frame fighter contact solver remain incomplete. The host
+comparison does not prove those missing systems or visual contact alignment.
+
 ## Original joint filters in stage queries — 2026-10-23
 
 The native floor, ceiling, left/right wall and all-direction raycasts used to

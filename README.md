@@ -34,6 +34,10 @@ el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_POR
 
 ### Correcciones recientes en main — 23 de octubre
 
+La consulta usada para colocar objetos y soltar capturas recupera el orden
+original de selección de suelo y sus filtros de grupo. Una comparación con
+la función original coincide en 47.840 consultas sobre mapas de prueba.
+
 Las consultas de suelo, techo, paredes y colisiones en cualquier dirección
 ahora respetan los filtros originales para excluir un grupo del escenario
 o consultar solo ese grupo. Antes esos argumentos se ignoraban.
