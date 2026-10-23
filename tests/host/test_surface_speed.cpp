@@ -20,6 +20,7 @@ struct CollData {
     struct { Vec3 top; } ecb;
 };
 static M360MatchStage testStage;
+#define s_stage testStage
 const M360MatchStage* M360_MatchStageData() { return &testStage; }
 #pragma warning(push)
 #pragma warning(disable: 4244)
@@ -28,6 +29,22 @@ const M360MatchStage* M360_MatchStageData() { return &testStage; }
 #pragma warning(pop)
 
 static void Near(float a, float b) { assert(std::fabs(a - b) < 0.0001f); }
+
+// Run the unmodified upstream function against the same small map view.
+struct RefLine { int v0_idx,v1_idx; } refLines[2];
+struct CollLine { RefLine* x0; unsigned flags; } groundCollLine[2];
+struct RefVertex { Vec3 pos; } groundCollVtx[4];
+struct CollJoint { unsigned flags; CollJoint* next; MapJoint* inner; } groundCollJoint[3];
+static CollJoint* jointListStart=groundCollJoint;
+enum { CollJoint_TooFar=1, CollLine_Floor=1, LINE_FLAG_ENABLED=2, LINE_FLAG_EMPTY=4 };
+bool mpCheckedBounding() { return false; }
+void mpBoundingCheck2(float,float,float,float) {}
+void mpUncheckBounding() {}
+#define PAD_STACK(n)
+#pragma warning(push)
+#pragma warning(disable:4244) // Original pointer differences are 32-bit on target.
+#include "floor_below_reference.h"
+#pragma warning(pop)
 
 int main()
 {
@@ -109,4 +126,49 @@ int main()
     assert(M360_MatchLineMatchesJoint(0,0,-1));
     assert(!M360_MatchLineMatchesJoint(0,-1,1));
     puts("PASS: original joint skip/only semantics across all query kinds and dynamic/shared ranges");
+    groups[2] = {};
+    groups[0].floor_start=0; groups[0].floor_count=1;
+    groups[1].floor_start=1; groups[1].floor_count=1;
+    groups[1].dynamic_count=0;
+    testStage.lines[0] = {-10,0,10,0,M360_LINE_FLOOR};
+    testStage.lines[1] = {-10,5,10,5,M360_LINE_FLOOR};
+    Vec3 probe={0,10,73};
+    assert(mpLib_8005199C_Floor(&probe,-1,-1)==0); // First, not highest.
+    assert(mpLib_8005199C_Floor(&probe,0,-1)==1);
+    assert(mpLib_8005199C_Floor(&probe,-1,1)==1);
+    assert(mpLib_8005199C_Floor(&probe,1,1)==-1);
+    assert(probe.x==0 && probe.y==10 && probe.z==73);
+    testStage.lines[0].kind=0;
+    assert(mpLib_8005199C_Floor(&probe,-1,-1)==1);
+    groups[1].floor_count=0;groups[1].dynamic_start=1;groups[1].dynamic_count=1;
+    assert(mpLib_8005199C_Floor(&probe,-1,-1)==1);
+    testStage.lines[1].y0=0; testStage.lines[1].y1=10;
+    probe.y=4;assert(mpLib_8005199C_Floor(&probe,-1,-1)==-1);
+    probe.y=5;assert(mpLib_8005199C_Floor(&probe,-1,-1)==1);
+    probe.x=11;assert(mpLib_8005199C_Floor(&probe,-1,-1)==-1);
+    probe.x=0;testStage.lines[1].kind=M360_LINE_CEILING;
+    assert(mpLib_8005199C_Floor(&probe,-1,-1)==-1);
+    puts("PASS: floor-below query uses authored order, filters, dynamic floors, slopes and immutable input");
+    unsigned comparisons=0;
+    for(int variant=0;variant<8;++variant) {
+        testStage.lines[0]={-10,0,10,static_cast<float>(variant),M360_LINE_FLOOR};
+        testStage.lines[1]={-10,7,10,3,M360_LINE_FLOOR};
+        if(variant&1) testStage.lines[0].kind=0;
+        for(int i=0;i<3;++i) {
+            groundCollJoint[i].flags=0;groundCollJoint[i].inner=&groups[i];
+            groundCollJoint[i].next=i<2?&groundCollJoint[i+1]:NULL;
+        }
+        for(int i=0;i<2;++i) {
+            const auto& l=testStage.lines[i];refLines[i]={i*2,i*2+1};
+            groundCollLine[i]={&refLines[i],l.kind?CollLine_Floor|LINE_FLAG_ENABLED:0u};
+            groundCollVtx[i*2].pos={l.x0,l.y0,0};groundCollVtx[i*2+1].pos={l.x1,l.y1,0};
+        }
+        for(int x=-11;x<=11;++x) for(int y=-1;y<=11;++y)
+            for(int skip=-1;skip<3;++skip) for(int only=-1;only<4;++only) {
+                Vec3 p={static_cast<float>(x),static_cast<float>(y),0};
+                assert(mpLib_8005199C_Floor(&p,skip,only)==OriginalFloorBelow(&p,skip,only));
+                ++comparisons;
+            }
+    }
+    printf("PASS: %u floor queries match the original function on the same map view\n",comparisons);
 }

@@ -2951,10 +2951,7 @@ bool mpLib_80054ED8(int line_id)
 
 int mpLib_8005199C_Floor(Vec3* vec, int joint_id_skip, int joint_id_only)
 {
-    float y;
-    int line;
-    (void) joint_id_skip; (void) joint_id_only;
-    return FloorAt(vec->x, vec->y, -30000.0f, 1, &y, &line) ? line : -1;
+    return M360_MatchFloorLineBelow(vec->x, vec->y, joint_id_skip, joint_id_only);
 }
 
 static int LineEndsMeet(const M360StageLine* a, const M360StageLine* b)

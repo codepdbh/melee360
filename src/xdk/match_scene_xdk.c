@@ -2061,6 +2061,37 @@ int M360_MatchLineMatchesJoint(int line, int skip, int only)
     return 0;
 }
 
+/* mpLib_8005199C_Floor returns the first qualifying floor in joint/range
+ * order, not the highest one. Read current transformed native vertices. */
+int M360_MatchFloorLineBelow(float x, float y, int skip, int only)
+{
+    unsigned group;
+    if (!s_coll) return -1;
+    for (group = 0; group < (unsigned) s_coll->joint_count; ++group) {
+        const MapJoint* joint = &s_coll->joints[group];
+        int starts[2], counts[2], range;
+        if ((int) group == skip || (only != -1 && (int) group != only)) continue;
+        starts[0] = joint->floor_start; counts[0] = joint->floor_count;
+        starts[1] = joint->dynamic_start; counts[1] = joint->dynamic_count;
+        for (range = 0; range < 2; ++range) {
+            int i;
+            for (i = 0; i < counts[range]; ++i) {
+                int index = starts[range] + i;
+                const M360StageLine* line;
+                float dx;
+                if (index < 0 || (unsigned) index >= s_stage.lineCount) continue;
+                line = &s_stage.lines[index];
+                if (!(line->kind & M360_LINE_FLOOR) || x < line->x0 || x > line->x1) continue;
+                if (y >= line->y0 && y >= line->y1) return index;
+                dx = line->x1 - line->x0;
+                if (fabsf(dx) > 0.0001f &&
+                    y >= (line->y1 - line->y0) / dx * (x - line->x0) + line->y0) return index;
+            }
+        }
+    }
+    return -1;
+}
+
 static int CollisionGroupHasFloor(unsigned group, int line)
 {
     const MapJoint* joint;

@@ -24,16 +24,20 @@ function Get-Function([string]$source, [string]$signature) {
 $source = Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')
 $scene = Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')
 $extracted = (Get-Function $scene 'int M360_MatchLineMatchesJoint(') + "`r`n"
+$extracted += (Get-Function $scene 'int M360_MatchFloorLineBelow(') + "`r`n"
 foreach ($signature in @('bool mpLib_80054ED8(', 'static void mpRemap2d(', 'bool mpGetSpeed(',
     'bool mpCollGetSpeedFloor(', 'bool mpCollGetSpeedCeiling(', 'bool mpCollGetSpeedLeftWall(', 'bool mpCollGetSpeedRightWall(',
     'bool mpCheckAllRemap(', 'bool mpCheckAll(', 'static bool RaycastKind(',
-    'bool mpCheckFloor(', 'bool mpCheckCeiling(', 'bool mpCheckLeftWall(', 'bool mpCheckRightWall(')) {
+    'bool mpCheckFloor(', 'bool mpCheckCeiling(', 'bool mpCheckLeftWall(', 'bool mpCheckRightWall(',
+    'int mpLib_8005199C_Floor(')) {
     $extracted += (Get-Function $source $signature) + "`r`n"
 }
 Set-Content (Join-Path $out 'surface_speed_original.h') -Encoding ASCII $extracted
 $upstream = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/mp/mplib.c')
 $reference = '#define ABS(x) ((x) < 0 ? -(x) : (x))' + "`r`n" + (Get-Function $upstream 'static void mpRemap2d(').Replace('mpRemap2d(', 'OriginalRemap(')
 Set-Content (Join-Path $out 'surface_remap_reference.h') -Encoding ASCII $reference
+$floorReference = (Get-Function $upstream 'int mpLib_8005199C_Floor(').Replace('mpLib_8005199C_Floor(', 'OriginalFloorBelow(')
+Set-Content (Join-Path $out 'floor_below_reference.h') -Encoding ASCII $floorReference
 $batch = @"
 @echo off
 call "$vcvars" >nul 2>&1
