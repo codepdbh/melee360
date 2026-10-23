@@ -23,18 +23,39 @@ void PSVECNormalize(const Vec3* in, Vec3* out) {
 #include "projection_reference.h"
 #include "collision_projection.h"
 #pragma warning(pop)
-struct Fighter {
+struct CollData {
     Vec3 cur_pos;
-    struct { struct { int index; } floor; unsigned env_flags; } coll_data;
+    struct { int index; u32 flags; Vec3 normal; } floor;
+    unsigned env_flags;
+    struct { Vec3 left,right,bottom; } ecb;
+    int facing_dir,joint_id_skip,joint_id_only;
+    float lstick_x;
+};
+struct Fighter {
+    Vec3 cur_pos; CollData coll_data;
+    float facing_dir;
+    struct { Vec3 lstick[1]; } input;
     float gr_vel; Vec3 self_vel;
 };
 struct HSD_GObj { Fighter* fp; };
 #define GET_FIGHTER(gobj) ((gobj)->fp)
-enum { Collide_LeftEdge=1,Collide_RightEdge=2,Collide_FloorHug=4 };
+enum { Collide_LeftEdge=1,Collide_RightEdge=2,Collide_FloorHug=4,
+       Collide_LeftWallMask=8,Collide_RightWallMask=16,Collide_Edge=32 };
+int mpLineGetKind(int i) { return static_cast<int>(stage.lines[i].kind); }
+void mpFloorGetLeft(int i,Vec3* out) { const auto& l=stage.lines[i];*out={l.x0,l.y0,0}; }
+void mpFloorGetRight(int i,Vec3* out) { const auto& l=stage.lines[i];*out={l.x1,l.y1,0}; }
+static bool leftBlocked,rightBlocked;
+bool mpCheckLeftWall(float,float,float,float,Vec3*,int*,u32*,Vec3*,int,int) { return leftBlocked; }
+bool mpCheckRightWall(float,float,float,float,Vec3*,int*,u32*,Vec3*,int,int) { return rightBlocked; }
+#pragma warning(push)
+#pragma warning(disable:4701) // Original conditional output assignments.
+#include "edge_original.h"
+#pragma warning(pop)
 static unsigned fallbackCalls;
 int FloorAt(float,float,float,int,float*,int*) { ++fallbackCalls;return 0; }
 void SetFloor(Fighter* fp,int index) { fp->coll_data.floor.index=index; }
 #include "ground_step_native.h"
+#include "ground_edge_native.h"
 typedef int (*Projection)(int,Vec3*,float*,u32*,Vec3*);
 static void Near(float a,float b) { assert(std::isfinite(a) && std::isfinite(b) && std::fabs(a-b)<0.00001f); }
 int main() {
@@ -89,4 +110,30 @@ int main() {
     assert(!GroundStep(&gobj,1));assert(fallbackCalls==0);
     fp.coll_data.floor.index=-1;assert(!GroundStep(&gobj,0));assert(fallbackCalls==1);
     puts("PASS: grounded traversal follows steep/adjacent floors and rejects disabled/open ends without unrelated snaps");
+    stage.lines[0]={0,0,10,0,M360_LINE_FLOOR};stage.lines[1].kind=stage.lines[2].kind=0;
+    fp={};fp.coll_data.floor.index=0;fp.cur_pos={-1,0,0};
+    fp.coll_data.ecb.left={-4,4,0};fp.coll_data.ecb.right={4,4,0};
+    fp.coll_data.ecb.bottom={1,2,0};
+    assert(GroundStep(&gobj,1));Near(fp.cur_pos.x,-1);Near(fp.cur_pos.y,-2);
+    assert(fp.coll_data.env_flags&Collide_RightEdge);
+    assert(!(fp.coll_data.env_flags&Collide_LeftEdge));
+    fp.cur_pos={11,0,0};assert(GroundStep(&gobj,1));Near(fp.cur_pos.x,9);
+    assert(fp.coll_data.env_flags&Collide_LeftEdge);
+    rightBlocked=true;fp.cur_pos={11,0,0};assert(!GroundStep(&gobj,1));Near(fp.cur_pos.x,11);
+    rightBlocked=false;leftBlocked=true;fp.cur_pos={-1,0,0};assert(!GroundStep(&gobj,1));
+    leftBlocked=false;
+    fp.coll_data.ecb.bottom={0,0,0};fp.cur_pos={-1,0,0};fp.facing_dir=-1;
+    fp.input.lstick[0].x=-0.749f;assert(!GroundStepEdge(&gobj));
+    assert(fp.coll_data.env_flags&Collide_Edge);Near(fp.cur_pos.x,0);
+    fp.cur_pos={-1,0,0};fp.input.lstick[0].x=-0.75f;assert(!GroundStepEdge(&gobj));
+    assert(!(fp.coll_data.env_flags&Collide_Edge));Near(fp.cur_pos.x,-1);
+    fp.cur_pos={11,0,0};fp.facing_dir=1;fp.input.lstick[0].x=0.749f;
+    assert(!GroundStepEdge(&gobj));assert(fp.coll_data.env_flags&Collide_Edge);
+    fp.cur_pos={11,0,0};fp.input.lstick[0].x=0.75f;assert(!GroundStepEdge(&gobj));
+    assert(!(fp.coll_data.env_flags&Collide_Edge));
+    fp.input.lstick[0].x=0;fp.coll_data.env_flags=Collide_RightWallMask;
+    assert(!GroundStepEdge(&gobj));assert(!(fp.coll_data.env_flags&Collide_Edge));
+    fp.coll_data.env_flags=0;rightBlocked=true;assert(!GroundStepEdge(&gobj));
+    assert(!(fp.coll_data.env_flags&Collide_Edge));
+    puts("PASS: original edge direction, ECB offsets, wall blocking and strict teeter stick thresholds");
 }

@@ -16,6 +16,9 @@ source=functions(Path('upstream/melee-pc/src/melee/mp/mplib.c').read_text(encodi
 Path(sys.argv[1]).write_text('\n\n'.join(source[n][1].replace(n+'(', 'Original_'+n+'(',1) for n in NAMES),encoding='ascii')
 native=functions(Path('src/xdk/fighter_glue_xdk.c').read_text(encoding='utf-8'))
 Path(sys.argv[1]).with_name('ground_step_native.h').write_text(native['GroundStep'][1],encoding='ascii')
+Path(sys.argv[1]).with_name('ground_edge_native.h').write_text(native['GroundStepEdge'][1],encoding='ascii')
+coll=functions(Path('upstream/melee-pc/src/melee/mp/mpcoll.c').read_text(encoding='utf-8'))
+Path(sys.argv[1]).with_name('edge_original.h').write_text('\n\n'.join(coll[n][1] for n in ('mpColl_8004A45C_Floor','mpColl_8004A678_Floor')),encoding='ascii')
 '@
 Push-Location $root
 try { $generator | python - (Join-Path $out 'projection_reference.h') } finally { Pop-Location }

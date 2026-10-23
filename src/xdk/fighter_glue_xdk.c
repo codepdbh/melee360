@@ -1648,20 +1648,13 @@ static int GroundStep(HSD_GObj* gobj, int stopAtEdge)
         fp->coll_data.env_flags |= Collide_FloorHug; return 1;
     }
     if (stopAtEdge && validFloor) {
-        const M360StageLine* l = &st->lines[fp->coll_data.floor.index];
-        const float lo = l->x0 < l->x1 ? l->x0 : l->x1;
-        const float hi = l->x0 < l->x1 ? l->x1 : l->x0;
-        if (fp->cur_pos.x < lo) {
-            fp->cur_pos.x = lo;
-            fp->coll_data.env_flags |= Collide_LeftEdge;
-        } else {
-            fp->cur_pos.x = hi;
-            fp->coll_data.env_flags |= Collide_RightEdge;
+        fp->coll_data.cur_pos = fp->cur_pos;
+        if (mpColl_8004A45C_Floor(&fp->coll_data, current)) {
+            fp->cur_pos = fp->coll_data.cur_pos;
+            fp->gr_vel = 0.0f;
+            fp->self_vel.x = 0.0f;
+            return 1;
         }
-        fp->cur_pos.y = l->y0 + (l->y1 - l->y0) * ((fp->cur_pos.x - l->x0) / (l->x1 - l->x0));
-        fp->gr_vel = 0.0f;
-        fp->self_vel.x = 0.0f;
-        return 1;
     }
     return 0;
 }
@@ -1673,27 +1666,17 @@ static int GroundStepEdge(HSD_GObj* gobj)
 {
     Fighter* fp = GET_FIGHTER(gobj);
     const int line = fp->coll_data.floor.index;
-    const float stick = fp->input.lstick[0].x;
-    Vec3 left, right;
     fp->coll_data.env_flags &= ~Collide_Edge;
     if (GroundStep(gobj, 0))
         return 1;
-    if (!mpLib_80054ED8(line))
-        return 0;
-    mpFloorGetLeft(line, &left);
-    mpFloorGetRight(line, &right);
-    if (fp->cur_pos.x <= left.x && fp->facing_dir < 0.0f && stick > -0.75f) {
-        fp->cur_pos.x = left.x;
-        fp->cur_pos.y = left.y;
-    } else if (fp->cur_pos.x >= right.x && fp->facing_dir > 0.0f && stick < 0.75f) {
-        fp->cur_pos.x = right.x;
-        fp->cur_pos.y = right.y;
-    } else {
-        return 0;
+    fp->coll_data.cur_pos = fp->cur_pos;
+    fp->coll_data.facing_dir = (int) fp->facing_dir;
+    fp->coll_data.lstick_x = fp->input.lstick[0].x;
+    if (mpColl_8004A678_Floor(&fp->coll_data, line)) {
+        fp->cur_pos = fp->coll_data.cur_pos;
+        fp->gr_vel = 0.0f;
+        fp->self_vel.x = 0.0f;
     }
-    fp->coll_data.env_flags |= Collide_Edge;
-    fp->gr_vel = 0.0f;
-    fp->self_vel.x = 0.0f;
     return 0;
 }
 
