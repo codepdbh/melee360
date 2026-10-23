@@ -10,9 +10,10 @@ es conservar el comportamiento y los recursos originales del juego.
 
 ## Estado de esta versión
 
-Esta compilación corresponde a **[v0.1.0-alpha.3](https://github.com/codepdbh/melee360/releases/tag/v0.1.0-alpha.3)**.
+La última prerelease publicada es **[v0.1.0-alpha.3](https://github.com/codepdbh/melee360/releases/tag/v0.1.0-alpha.3)**.
 Es experimental e incluye las correcciones de objetos, presentación panorámica,
 suelo y bordes posteriores a alpha.2. [Cambios y límites de alpha.3](docs/RELEASE_ALPHA3.md).
+[Paquete publicado y validación de alpha.3](docs/ALPHA3_VALIDATION.md).
 Hay pruebas automatizadas de ejecución
 en Xenia Canary; todavía no se ha validado esta versión en una Xbox 360 física.
 El proyecto no incluye la ISO ni recursos extraídos del disco.
@@ -138,8 +139,8 @@ no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
 ### Descarga y copia
 
 1. Descarga **[MELEE360-v0.1.0-alpha.3-xbox360.zip](https://github.com/codepdbh/melee360/releases/download/v0.1.0-alpha.3/MELEE360-v0.1.0-alpha.3-xbox360.zip)**
-   desde la prerelease publicada. Para usar las correcciones posteriores de
-   `main`, compila el proyecto y usa el nuevo `dist/default.xex` con sus assets.
+   desde la prerelease publicada. Si compilas desde `main`, usa el nuevo
+   `dist/default.xex` con sus assets.
    Para alpha.1 sigue su [guía de instalación y controles](https://github.com/codepdbh/melee360/blob/v0.1.0-alpha.1/docs/INSTALAR_XBOX360.md).
    **Source code** es el
    código fuente y no contiene el ejecutable listo para usar.

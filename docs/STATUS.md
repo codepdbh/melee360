@@ -1,5 +1,15 @@
 # Development status
 
+## Published alpha.3 — 2026-10-23
+
+GitHub publishes `v0.1.0-alpha.3`, targeting clean build commit `1f60296`.
+The six-file ZIP is 3,330,462 bytes and includes the current runtime changes;
+it contains no ISO or diagnostic input. Ten fresh bounded native checks
+pass for this release and its paired diagnostics. The uploaded ZIP was
+downloaded from GitHub and verified against its local SHA-256. See
+[the published build record](ALPHA3_VALIDATION.md) for identities, coverage
+and limits. Earlier dated entries below describe their own older binaries.
+
 ## Original edge stops and teeter — 2026-10-23
 
 `mpColl_8004A45C_Floor` and `mpColl_8004A678_Floor` are now compiled unchanged

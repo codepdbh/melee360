@@ -2,7 +2,7 @@
 
 Prerelease experimental del port XEX para Xbox 360. Classic y Adventure
 siguen incompletos; la consola fisica y las campanas completas no estan
-verificadas. No se declara un 70% de finalizacion.
+verificadas.
 
 ## Instalar
 
@@ -39,5 +39,7 @@ parciales, con recorridos y sistemas pendientes. Faltan pantallas, resultados
 y transiciones originales. Las pruebas acotadas de Xenia no equivalen a
 partidas completas sin caidas ni a validacion en hardware Xbox 360.
 
-Los hashes, commit y comprobaciones del paquete publicado se registraran
-en `ALPHA3_VALIDATION.md` al completar la publicacion.
+Publicada el 23 de octubre de 2026:
+[release y descarga](https://github.com/codepdbh/melee360/releases/tag/v0.1.0-alpha.3).
+Los hashes, commit y diez comprobaciones del paquete publicado estan en
+[ALPHA3_VALIDATION.md](ALPHA3_VALIDATION.md).
