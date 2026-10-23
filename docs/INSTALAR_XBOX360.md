@@ -1,6 +1,6 @@
 # Instalar y jugar MELEE360 en Xbox 360
 
-Version experimental `v0.1.0-alpha.2`. Probada mediante trazas de Xenia;
+Version experimental `v0.1.0-alpha.3`. Probada mediante trazas de Xenia;
 la ejecucion en Xbox 360 fisica todavia no esta verificada.
 Classic y Adventure siguen incompletos.
 
@@ -17,7 +17,7 @@ Classic y Adventure siguen incompletos.
 ## Copiar y abrir
 
 1. En https://github.com/codepdbh/melee360/releases descarga el asset
-   `MELEE360-v0.1.0-alpha.2-xbox360.zip`. Los botones **Source code**
+   `MELEE360-v0.1.0-alpha.3-xbox360.zip`. Los botones **Source code**
    descargan el codigo, no el juego ejecutable.
 2. Extrae el ZIP. Copia tu ISO a la carpeta `MELEE360` y llamala
    exactamente `melee.iso`; activa las extensiones en Windows para evitar
@@ -57,7 +57,7 @@ de la ISO al USB. No necesitas copiar SDK, mapas, logs ni carpetas de compilacio
 | Ataque | A |
 | Especial | B |
 | Saltar | X / Y o stick arriba |
-| C-stick | Stick derecho |
+| C-stick (VS) | Stick derecho |
 | Escudo | LB / LT / RT |
 | Agarre | RB |
 | Pausa / continuar | Start |
@@ -83,6 +83,12 @@ Adventure tiene veinte fases implementadas parcialmente, con recorridos de
 Mushroom Kingdom, laberinto y escape de Brinstar. Faltan la carrera original,
 escalada, peligros y transiciones; la campana completa actual no esta validada.
 No es una version final ni tiene paridad completa con GameCube.
+
+Alpha.3 incluye combate panoramico 16:9, apariciones aleatorias de objetos,
+puntos originales de Corneria y correcciones de colision de suelo y bordes.
+HUD, menus y videos conservan su composicion original. Classic y Adventure
+vuelven a usar la consulta original de modo de un jugador, incluido su
+tratamiento del C-stick. No se han completado todas las colisiones.
 
 ## Si no arranca
 
