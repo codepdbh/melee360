@@ -9,6 +9,18 @@ restoring it preserves that distinction from VS. It does not implement any
 new campaign, bonus course or boss. The current scene-mode bridge is exercised
 by a host test covering all 256 byte values and Classic/Adventure/VS changes.
 
+Current normal build: clean `802e117`, XEX SHA-256
+`23109938E25D3E98CE70B2BF5F714C795384EA6446A7FD0CE55C74C31FE4308A`,
+map SHA-256 `EA2D4AE8BBF03FF654C9BC4EB892D837CDF4A8A44E6F6E2EF5B2E89C740D5397`.
+All diagnostic flags are off. Seven bounded native checks pass: normal
+opening at 1800 loop/901 movie frames, Fountain with five real random items,
+Off with none, Classic giant/metal and Adventure wireframes/Giga at 1200
+frames each. All gameplay checks have zero decode/history errors; no case
+hits the watchdog. Evidence: `build-x360/oct23-1p-opening` and
+`build-x360/menu-port/oct23-1p-final/validation-summary.json`.
+The 33-case projection checkpoint below is a separate earlier executable;
+it must not be described as 33 checks of this later 1P build.
+
 ## Original projections and connected ground traversal — 2026-10-23
 
 The four surface projection functions are now extracted directly from pinned
@@ -36,6 +48,20 @@ The requested 70% remains a target, not a measured completion claim. Full ECB
 sampling/contact solving, stage state machines, Classic bosses/bonus stages,
 Adventure courses/enemies/hazards, remaining menus and physical-console
 validation are still substantial outstanding work.
+
+Projection checkpoint: clean normal build `20f5b13`, XEX SHA-256
+`19C0CC66613DF3927033F6CACB21034FCA50C36B3D649BC8AE6835BD8B4CFF25`.
+All 33 bounded native checks pass: normal opening (1800 loop/900 movie
+frames), 17 VS stages plus Off at 1200 frames, seven four-CPU roster batches
+at 600 frames, Zelda/Sheik transformations and a life reset at 1800 frames,
+and four 1200-frame campaign encounters (Classic giant/metal, Adventure
+wireframes/Giga). VS stages create 87 random items; Off creates none.
+All gameplay checks report zero decode/history errors; no case hits the
+watchdog. Evidence and the archived normal image are under
+`build-x360/menu-port/oct23-projections-final`; the normal opening evidence is
+under `build-x360/oct23-projections-opening`. `validation-summary.json`
+checks case counts, binary/map pairs and normal build identity. This is
+the projection checkpoint before the subsequent 1P predicate restoration.
 
 ## Floor-below query order and filters — 2026-10-23
 
