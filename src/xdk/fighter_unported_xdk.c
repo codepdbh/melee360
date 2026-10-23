@@ -340,7 +340,6 @@ void lbRefSetUnuse(void) {  Report("fighter.unported.lbRefSetUnuse");  }
 int lbAudioAx_80024184(int a0, int a1, int a2, int a3) { (void) a0; (void) a1; (void) a2; (void) a3; Report("fighter.unported.lbAudioAx_80024184"); return (int) 0; }
 bool ifMagnify_802FC998(s32 a0) { (void) a0; Report("fighter.unported.ifMagnify_802FC998"); return (bool) 0; }
 s32 ifMagnify_802FB6E8(s32 a0) { (void) a0; Report("fighter.unported.ifMagnify_802FB6E8"); return (s32) 0; }
-bool gm_IsCurrently1PMode_inline(void) {  Report("fighter.unported.gm_IsCurrently1PMode_inline"); return (bool) 0; }
 bool gm_GetDbPauseFlag(int a0) { (void) a0; Report("fighter.unported.gm_GetDbPauseFlag"); return (bool) 0; }
 u32 gm_801A4BB8(void) {  Report("fighter.unported.gm_801A4BB8"); return (u32) 0; }
 bool gm_8016B168(void) { return M360_MatchIsTeams() != 0; }

@@ -147,6 +147,7 @@ struct Unk1PData { struct { u8 cpu_level; } x0;u8 (*x54)(u8,u8,u8); };
 struct MockMainData { u8 c_kind; } mockMainData;
 MockMainData* gmMainLib_8015CDC8() { return &mockMainData; }
 unsigned mockSceneMode;
+unsigned char gm_GetCurrentGameMode(void) { return static_cast<unsigned char>(mockSceneMode); }
 void M360_MenuSetGameMode(unsigned mode) { mockSceneMode=mode; }
 bool gm_IsCKindUnlocked(unsigned kind) { return kind<26; }
 bool gm_80164430(unsigned stage) {
@@ -337,6 +338,7 @@ void M360_FighterGetState(void* f, float* x, float* y, float* facing,
 
 // Extracted from the actual native match source by the runner.
 #include "match_rules_original.h"
+#include "original_1p_mode.h"
 #pragma warning(push)
 #pragma warning(disable: 4100 4244 4505 4018)
 #include "campaign_original.h"
@@ -394,6 +396,17 @@ static void Reset(unsigned count) {
 }
 
 int main() {
+    for(unsigned mode=0;mode<256;++mode) {
+        mockSceneMode=mode;
+        bool expected=mode==GM_CLASSIC || mode==GM_ADVENTURE || mode==GM_ALLSTAR ||
+            mode==GM_TARGET_TEST || mode==GM_TRAINING || mode==GM_HOME_RUN_CONTEST ||
+            (mode>=GM_10MAN_VS && mode<=GM_CRUEL_VS) || mode==GM_EVENT;
+        assert(gm_IsCurrently1PMode_inline()==expected);
+    }
+    M360_MatchSetMode(kGameModeClassic,0);assert(gm_IsCurrently1PMode_inline());
+    M360_MatchSetMode(kGameModeAdventure,0);assert(gm_IsCurrently1PMode_inline());
+    M360_MatchSetMode(2,0);assert(!gm_IsCurrently1PMode_inline());
+    puts("PASS: original 1P predicate for all 256 mode values and campaign/VS transitions");
     setvbuf(stdout, NULL, _IONBF, 0);
     assert(M360_PresentationX(0,1)==0 && M360_PresentationX(640,1)==1280);
     assert(M360_PresentationWidth(640,1)==1280);

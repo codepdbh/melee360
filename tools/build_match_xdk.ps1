@@ -799,6 +799,11 @@ Set-Content -Encoding ASCII $projectionPath @'
 #include "collision_projection.h"
 '@
 $units += @{ Path=$projectionPath; Dir=$out }
+$modePath = Join-Path $out 'original_1p_mode.c'
+$modeSource = Get-Content -Raw (Join-Path $src 'melee/gm/gmvs.c')
+Set-Content -Encoding ASCII $modePath ('#include <melee/gm/gmvs.h>' + "`r`n" +
+    '#include <melee/gm/gm_1A3F.h>' + "`r`n" + (Get-CFunction $modeSource 'bool gm_IsCurrently1PMode_inline('))
+$units += @{ Path=$modePath; Dir=(Join-Path $src 'melee/gm') }
 # Observe the original random spawner without forcing a kind, timer or point.
 $units += New-Adapted 'melee/it/itspawn.c' @{
     '(#include "itspawn.h")' = '$1' + "`r`nextern void M360_MatchTrace(const char*, unsigned);"

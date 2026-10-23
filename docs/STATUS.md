@@ -1,5 +1,42 @@
 # Development status
 
+## Original single-player mode predicate — 2026-10-23
+
+`gm_IsCurrently1PMode_inline` is now extracted unchanged from `gmvs.c`.
+The stub always returned false, including in Classic and Adventure. Original
+fighter input uses this predicate to suppress C-stick commands in 1P modes;
+restoring it preserves that distinction from VS. It does not implement any
+new campaign, bonus course or boss. The current scene-mode bridge is exercised
+by a host test covering all 256 byte values and Classic/Adventure/VS changes.
+
+## Original projections and connected ground traversal — 2026-10-23
+
+The four surface projection functions are now extracted directly from pinned
+`mplib.c` by `generate_collision_projection.py`. Only collision map access is
+adapted to native transformed endpoints, kinds and flags; invalid native line
+IDs return failure. The original traversal, tolerances, displacement biases
+and normalized surface normals remain in the generated code.
+
+The floor projection replaces a clamp that reported success indefinitely
+outside a segment. Grounded movement now follows that projection across
+authored adjacent floors instead of searching arbitrary floors within four
+vertical units. Initial attachment retains the existing fallback; disabled
+or exhausted floors cannot invoke it to snap to an unrelated platform.
+Existing stop-at-edge and teeter adapters remain partial.
+
+Host checks compare 88,416 projections with the four unmodified original
+functions on shared map fixtures, including chains, slopes, endpoints, null
+outputs and failed queries. Additional checks cover steep connected ground,
+leaving an open edge and disabled floors. Surface filters, original collision
+lifecycle and match-rule suites pass. The floor function is connected to
+native grounded movement; the ceiling/wall projections prepare the remaining
+original solver integration rather than replacing all airborne contacts.
+
+The requested 70% remains a target, not a measured completion claim. Full ECB
+sampling/contact solving, stage state machines, Classic bosses/bonus stages,
+Adventure courses/enemies/hazards, remaining menus and physical-console
+validation are still substantial outstanding work.
+
 ## Floor-below query order and filters — 2026-10-23
 
 `mpLib_8005199C_Floor` no longer uses the generic highest-floor search. Its

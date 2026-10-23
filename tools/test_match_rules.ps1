@@ -63,6 +63,10 @@ $extracted += (Get-MatchFunction 'bool Ground_801C2D24(').Replace('stage_info.x2
 $source = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gr/stage.c')
 $extracted += (Get-MatchFunction 'bool Stage_80224FDC(') + "`r`n"
 Set-Content -LiteralPath (Join-Path $out 'match_rules_original.h') -Encoding ASCII $extracted
+$modeEnum = [regex]::Match((Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gm/forward.h')), '(?s)typedef enum GameModeKind \{.*?\} GameModeKind;')
+if (-not $modeEnum.Success) { throw 'Original game mode enum missing.' }
+$source = Get-Content -Raw (Join-Path $root 'upstream/melee-pc/src/melee/gm/gmvs.c')
+Set-Content -Encoding ASCII (Join-Path $out 'original_1p_mode.h') ($modeEnum.Value + "`r`n" + (Get-MatchFunction 'bool gm_IsCurrently1PMode_inline('))
 & python (Join-Path $PSScriptRoot 'generate_campaign_sources.py') (Join-Path $out 'campaign_original.h')
 if($LASTEXITCODE -ne 0) { throw 'Campaign source extraction failed.' }
 $originalPath=Join-Path $out 'campaign_original.h'

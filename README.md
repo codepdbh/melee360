@@ -34,6 +34,15 @@ el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_POR
 
 ### Correcciones recientes en main — 23 de octubre
 
+Se restauró la consulta original de modo de un jugador: Classic y Adventure
+ya no se declaran VS al procesar las reglas de entrada del C-stick.
+
+El desplazamiento por suelo usa ahora la proyección original para seguir
+pendientes y segmentos unidos. Ya no busca otra plataforma a cuatro unidades
+cuando termina un segmento. Las cuatro proyecciones originales de superficies
+se generan desde `mplib.c`, con 88.416 comparaciones aprobadas; la integración
+completa de contactos aéreos sigue pendiente.
+
 La consulta usada para colocar objetos y soltar capturas recupera el orden
 original de selección de suelo y sus filtros de grupo. Una comparación con
 la función original coincide en 47.840 consultas sobre mapas de prueba.
