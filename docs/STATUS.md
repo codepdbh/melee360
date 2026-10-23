@@ -1,5 +1,29 @@
 # Development status
 
+## Inactive surfaces in all-direction queries — 2026-10-23
+
+`mpCheckAllRemap` retained intersections against native lines with `kind == 0`.
+Those coordinates remain available for reactivation, but must not participate
+in collision queries while disabled. The adapter now skips them, including
+through `mpCheckAll`. This affects item ground queries and Link's hookshot;
+it does not replace the incomplete fighter ECB/contact solver below.
+
+The host surface test extracts the actual adapter and covers a disabled nearer
+line with an active line behind it, reactivation, all lines disabled, null
+outputs and untouched outputs on a miss. Surface-speed, collision lifecycle
+and match-rule suites pass. The clean normal build from `89a56d7` has XEX
+SHA-256 `7453CC37EFED4EE88B26870B4E5B94CDF48443FC5F8F7C98CFC743CEB0983C9F`.
+Its Xenia opening passes 1800 loop frames, 900 presented movie frames, zero
+movie/history errors, no watchdog and no scripted input. The October 20
+40-case report describes its older binary, not a rerun of this build.
+
+Paired diagnostics also pass four 1200-frame Xenia checks: Fountain, Castle
+and Corneria each create five real random items; frequency Off creates none.
+All four report zero decode/history errors and no watchdog. Evidence is in
+`build-x360/menu-port/oct23-collision/items`; diagnostic XEX SHA-256 is
+`A59485FA465BE2D156289501E28D0D3A267FD4B95F13CC51898BC47407E0833A`.
+These checks do not prove visual contact alignment or crash-free full games.
+
 ## Random items, widescreen matches and inactive stage collision — 2026-10-20
 
 GitHub currently publishes alpha.2 (October 19), with XEX `B9D32810…`.

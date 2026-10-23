@@ -32,7 +32,15 @@ Adventure todavía necesita la carrera y escalada originales, peligros del
 laberinto y transiciones. No presentamos los combates provisionales como
 el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
-### Correcciones recientes en main — 20 de octubre
+### Correcciones recientes en main — 23 de octubre
+
+La consulta de colisiones en cualquier dirección ahora ignora las líneas
+desactivadas, evitando que objetos o el gancho de Link detecten esas piezas
+invisibles. La prueba de regresión cubre desactivación y reactivación.
+Este cambio no completa el cálculo original de colisiones de los personajes.
+[Estado y pruebas de esta compilación](docs/STATUS.md).
+
+### Correcciones del 20 de octubre
 
 El ejecutable actual de `dist/default.xex` incorpora estos cambios, posteriores
 al ZIP publicado de alpha.2:
