@@ -19,6 +19,18 @@ Runtime joint-list reordering, the complete original bounding/line-state
 system and per-frame fighter contact solver remain incomplete. The host
 comparison does not prove those missing systems or visual contact alignment.
 
+Normal build record: clean `e8ff385` (runtime change `0759811`), XEX SHA-256
+`19C1D1EE2FE75E7E963EFBA52EF1F131729A4F674C927C6AD843F2CC7F5F5507`;
+all diagnostic flags off. The normal opening passes 1800 loop frames and
+900 movie frames with zero movie/history errors, no watchdog and no script.
+Five paired diagnostic encounters pass 1200 frames each: Fountain and
+Corneria create five random items each, Off creates none, Classic giant
+records 51 hits and Adventure wireframes nine. All five have zero
+decode/history errors and no watchdog. Evidence roots:
+`build-x360/oct23-floor-order-opening` and
+`build-x360/menu-port/oct23-floor-order`. These six bounded native checks
+do not verify complete campaigns, visual contact alignment or Xbox hardware.
+
 ## Original joint filters in stage queries — 2026-10-23
 
 The native floor, ceiling, left/right wall and all-direction raycasts used to
