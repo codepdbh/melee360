@@ -2042,6 +2042,25 @@ static void HideMapJoint(int mapId, int jointIndex)
     }
 }
 
+/* mplib queries filter groundCollJoint indices, not model/bone indices.
+ * A dynamic line can be referenced alongside a group's typed ranges. */
+int M360_MatchLineMatchesJoint(int line, int skip, int only)
+{
+    unsigned group;
+    if (skip == -1 && only == -1) return 1;
+    if (!s_coll || line < 0) return 0;
+    for (group = 0; group < (unsigned) s_coll->joint_count; ++group) {
+        const MapJoint* joint = &s_coll->joints[group];
+        if ((int) group == skip || (only != -1 && (int) group != only)) continue;
+        if ((line >= joint->floor_start && line < joint->floor_start + joint->floor_count) ||
+            (line >= joint->ceiling_start && line < joint->ceiling_start + joint->ceiling_count) ||
+            (line >= joint->right_wall_start && line < joint->right_wall_start + joint->right_wall_count) ||
+            (line >= joint->left_wall_start && line < joint->left_wall_start + joint->left_wall_count) ||
+            (line >= joint->dynamic_start && line < joint->dynamic_start + joint->dynamic_count)) return 1;
+    }
+    return 0;
+}
+
 static int CollisionGroupHasFloor(unsigned group, int line)
 {
     const MapJoint* joint;

@@ -2409,6 +2409,7 @@ void mpIsland_8005ACE8(mp_UnkStruct0* island, Vec3* left, Vec3* right)
 /* Segment test against lines of one kind (mpCheckFloor & co). */
 static bool RaycastKind(unsigned kindMask, float ax, float ay, float bx, float by, Vec3* pos_out,
                         int* line_id_out, u32* flags_out, Vec3* normal_out, int line_skip,
+                        int joint_id_skip, int joint_id_only,
                         bool (*filter)(Fighter_GObj*, int), Fighter_GObj* gobj)
 {
     const M360MatchStage* st = M360_MatchStageData();
@@ -2421,7 +2422,8 @@ static bool RaycastKind(unsigned kindMask, float ax, float ay, float bx, float b
         const float ex = l->x1 - l->x0, ey = l->y1 - l->y0;
         const float den = dx * ey - dy * ex;
         float t, u;
-        if (!(l->kind & kindMask) || (int) i == line_skip)
+        if (!(l->kind & kindMask) || (int) i == line_skip ||
+            !M360_MatchLineMatchesJoint((int) i, joint_id_skip, joint_id_only))
             continue;
         if (den > -1e-6f && den < 1e-6f)
             continue;
@@ -2456,9 +2458,8 @@ bool mpCheckFloor(float ax, float ay, float bx, float by, float y_offset, Vec3* 
                   Fighter_GObj* gobj)
 {
     bool hit;
-    (void) joint_id_skip; (void) joint_id_only;
     hit = RaycastKind(M360_LINE_FLOOR, ax, ay + y_offset, bx, by + y_offset, vec_out, line_id_out,
-                      flags_out, normal_out, line_id_skip, filter, gobj);
+                      flags_out, normal_out, line_id_skip, joint_id_skip, joint_id_only, filter, gobj);
     if (hit && vec_out)
         vec_out->y -= y_offset;
     return hit;
@@ -2467,25 +2468,22 @@ bool mpCheckFloor(float ax, float ay, float bx, float by, float y_offset, Vec3* 
 bool mpCheckCeiling(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
                     u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
 {
-    (void) joint_id_skip; (void) joint_id_only;
     return RaycastKind(M360_LINE_CEILING, ax, ay, bx, by, vec_out, line_id_out, flags_out,
-                       normal_out, -1, NULL, NULL);
+                       normal_out, -1, joint_id_skip, joint_id_only, NULL, NULL);
 }
 
 bool mpCheckLeftWall(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
                      u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
 {
-    (void) joint_id_skip; (void) joint_id_only;
     return RaycastKind(M360_LINE_LEFT_WALL, ax, ay, bx, by, vec_out, line_id_out, flags_out,
-                       normal_out, -1, NULL, NULL);
+                       normal_out, -1, joint_id_skip, joint_id_only, NULL, NULL);
 }
 
 bool mpCheckRightWall(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
                       u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
 {
-    (void) joint_id_skip; (void) joint_id_only;
     return RaycastKind(M360_LINE_RIGHT_WALL, ax, ay, bx, by, vec_out, line_id_out, flags_out,
-                       normal_out, -1, NULL, NULL);
+                       normal_out, -1, joint_id_skip, joint_id_only, NULL, NULL);
 }
 
 bool mpCheckAll(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* normal_out,
@@ -3003,7 +3001,6 @@ bool mpCheckAllRemap(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* norm
     float bestT = 2.0f;
     int best = -1;
     unsigned i;
-    (void) joint_id_skip; (void) joint_id_only;
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
         const float ex = l->x1 - l->x0, ey = l->y1 - l->y0;
@@ -3011,7 +3008,7 @@ bool mpCheckAllRemap(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* norm
         float t, u;
         /* Hidden/disabled groups retain coordinates for later reactivation.
          * They must not participate in the all-surface query either. */
-        if (!l->kind)
+        if (!l->kind || !M360_MatchLineMatchesJoint((int) i, joint_id_skip, joint_id_only))
             continue;
         if (den > -1e-6f && den < 1e-6f)
             continue;

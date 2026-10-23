@@ -46,6 +46,7 @@ int M360_MatchBgmId(void);
 int M360_MatchGroundKind(void);
 struct MapLine;
 const struct MapLine* M360_MatchMapLine(int line_id);
+int M360_MatchLineMatchesJoint(int line_id, int joint_skip, int joint_only);
 unsigned M360_MatchCampaignRounds(unsigned mode);
 unsigned M360_MatchNextCampaignRound(void);
 /* Name of an unported original course skipped before this encounter,

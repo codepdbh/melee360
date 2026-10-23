@@ -5,6 +5,16 @@
 
 struct Vec3 { float x, y, z; };
 typedef unsigned u32;
+struct Fighter_GObj {};
+struct MapJoint {
+    int floor_start, floor_count, ceiling_start, ceiling_count;
+    int right_wall_start, right_wall_count, left_wall_start, left_wall_count;
+    int dynamic_start, dynamic_count;
+};
+static MapJoint groups[3];
+struct TestColl { int joint_count; MapJoint* joints; } collision = {3, groups};
+static TestColl* s_coll = &collision;
+void mpLineGetNormal(int, Vec3* normal) { *normal = {0, 1, 0}; }
 struct CollData {
     struct Surface { int index; } floor, ceiling, left_facing_wall, right_facing_wall;
     struct { Vec3 top; } ecb;
@@ -78,4 +88,25 @@ int main()
     assert(line == 99 && flags == 123); Near(hit.y, 18); Near(normal.y, 8);
     assert(!mpCheckAllRemap(NULL, NULL, NULL, NULL, -1, -1, 0, 10, 0, -10));
     puts("PASS: all-surface queries ignore inactive geometry, preserve nearest active hit and allow reactivation");
+    groups[0].floor_start=0; groups[0].floor_count=1;
+    groups[1].dynamic_start=1; groups[1].dynamic_count=1;
+    testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_FLOOR;
+    assert(mpCheckAll(&hit,&line,NULL,NULL,0,-1,0,10,0,-10) && line==1);
+    assert(mpCheckAll(&hit,&line,NULL,NULL,-1,1,0,10,0,-10) && line==1);
+    assert(!mpCheckAll(&hit,&line,NULL,NULL,1,1,0,10,0,-10));
+    assert(!mpCheckAll(&hit,&line,NULL,NULL,-1,99,0,10,0,-10));
+    assert(mpCheckFloor(0,10,0,-10,0,&hit,&line,NULL,NULL,-1,0,-1,NULL,NULL) && line==1);
+    assert(mpCheckFloor(0,10,0,-10,0,&hit,&line,NULL,NULL,-1,-1,0,NULL,NULL) && line==0);
+    testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_CEILING;
+    assert(mpCheckCeiling(0,-10,0,10,&hit,&line,NULL,NULL,-1,0) && line==0);
+    assert(!mpCheckCeiling(0,-10,0,10,&hit,&line,NULL,NULL,0,0));
+    testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_LEFT_WALL;
+    assert(mpCheckLeftWall(0,10,0,-10,&hit,&line,NULL,NULL,-1,1) && line==1);
+    testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_RIGHT_WALL;
+    assert(mpCheckRightWall(0,10,0,-10,&hit,&line,NULL,NULL,0,-1) && line==1);
+    // Shared ranges retain a line if any non-excluded group owns it.
+    groups[2].left_wall_start=0; groups[2].left_wall_count=1;
+    assert(M360_MatchLineMatchesJoint(0,0,-1));
+    assert(!M360_MatchLineMatchesJoint(0,-1,1));
+    puts("PASS: original joint skip/only semantics across all query kinds and dynamic/shared ranges");
 }

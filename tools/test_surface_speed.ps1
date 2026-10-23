@@ -22,10 +22,12 @@ function Get-Function([string]$source, [string]$signature) {
     return $source.Substring($start, $cursor - $start)
 }
 $source = Get-Content -Raw (Join-Path $root 'src/xdk/fighter_glue_xdk.c')
-$extracted = ''
+$scene = Get-Content -Raw (Join-Path $root 'src/xdk/match_scene_xdk.c')
+$extracted = (Get-Function $scene 'int M360_MatchLineMatchesJoint(') + "`r`n"
 foreach ($signature in @('bool mpLib_80054ED8(', 'static void mpRemap2d(', 'bool mpGetSpeed(',
     'bool mpCollGetSpeedFloor(', 'bool mpCollGetSpeedCeiling(', 'bool mpCollGetSpeedLeftWall(', 'bool mpCollGetSpeedRightWall(',
-    'bool mpCheckAllRemap(', 'bool mpCheckAll(')) {
+    'bool mpCheckAllRemap(', 'bool mpCheckAll(', 'static bool RaycastKind(',
+    'bool mpCheckFloor(', 'bool mpCheckCeiling(', 'bool mpCheckLeftWall(', 'bool mpCheckRightWall(')) {
     $extracted += (Get-Function $source $signature) + "`r`n"
 }
 Set-Content (Join-Path $out 'surface_speed_original.h') -Encoding ASCII $extracted
