@@ -2785,3 +2785,13 @@ const MapLine* M360_MatchMapLine(int line_id)
         return NULL;
     return &s_coll->lines[line_id];
 }
+
+unsigned M360_MatchMapJointCount(void)
+{
+    return s_coll && s_builtStage != ~0u ? (unsigned) s_coll->joint_count : 0;
+}
+
+const MapJoint* M360_MatchMapJoint(unsigned group)
+{
+    return group < M360_MatchMapJointCount() ? &s_coll->joints[group] : NULL;
+}

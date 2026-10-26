@@ -1,10 +1,12 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cfloat>
 #include "match_xdk.h"
 
 struct Vec3 { float x, y, z; };
 typedef unsigned u32;
+typedef unsigned char u8;
 struct Fighter_GObj {};
 struct MapJoint {
     int floor_start, floor_count, ceiling_start, ceiling_count;
@@ -14,6 +16,14 @@ struct MapJoint {
 static MapJoint groups[3];
 struct TestColl { int joint_count; MapJoint* joints; } collision = {3, groups};
 static TestColl* s_coll = &collision;
+unsigned M360_MatchMapJointCount() { return static_cast<unsigned>(s_coll->joint_count); }
+const MapJoint* M360_MatchMapJoint(unsigned i) { return &groups[i]; }
+int mpLineGetPrev(int) { return -1; }
+int mpLineGetNext(int) { return -1; }
+void PSVECNormalize(const Vec3* in,Vec3* out) {
+    float length=std::sqrt(in->x*in->x+in->y*in->y+in->z*in->z);
+    *out={in->x/length,in->y/length,in->z/length};
+}
 void mpLineGetNormal(int, Vec3* normal) { *normal = {0, 1, 0}; }
 struct CollData {
     struct Surface { int index; } floor, ceiling, left_facing_wall, right_facing_wall;
@@ -26,6 +36,13 @@ const M360MatchStage* M360_MatchStageData() { return &testStage; }
 #pragma warning(disable: 4244)
 #include "surface_speed_original.h"
 #include "surface_remap_reference.h"
+#define SQ(x) ((x)*(x))
+enum { LINE_FLAG_EMPTY=1u<<7 };
+#pragma warning(push)
+#pragma warning(disable:4101 4701)
+#include "collision_projection.h"
+#include "collision_floor_query.h"
+#pragma warning(pop)
 #pragma warning(pop)
 
 static void Near(float a, float b) { assert(std::fabs(a - b) < 0.0001f); }
@@ -36,7 +53,7 @@ struct CollLine { RefLine* x0; unsigned flags; } groundCollLine[2];
 struct RefVertex { Vec3 pos; } groundCollVtx[4];
 struct CollJoint { unsigned flags; CollJoint* next; MapJoint* inner; } groundCollJoint[3];
 static CollJoint* jointListStart=groundCollJoint;
-enum { CollJoint_TooFar=1, CollLine_Floor=1, LINE_FLAG_ENABLED=2, LINE_FLAG_EMPTY=4 };
+enum { CollJoint_TooFar=1, CollLine_Floor=1, LINE_FLAG_ENABLED=1u<<16 };
 bool mpCheckedBounding() { return false; }
 void mpBoundingCheck2(float,float,float,float) {}
 void mpUncheckBounding() {}

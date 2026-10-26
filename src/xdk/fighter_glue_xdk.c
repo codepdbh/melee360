@@ -24,6 +24,7 @@
 #include <melee/ft/kinds/ftCommon/ftCo_Fall.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Landing.h>
 #include <melee/mp/mpcoll.h>
+#include <melee/mp/mplib.h>
 #include <melee/ft/kinds/ftCommon/ftCo_0A01.h>
 #include <melee/ft/kinds/ftCommon/ftCo_Damage.h>
 #include <melee/pl/player.h>
@@ -1739,15 +1740,14 @@ void ft_80084104(Fighter_GObj* gobj)
         ftCo_Fall_Enter(gobj);
 }
 
-/* Finds the highest floor line crossed while moving from `from` to `to`,
- * honoring the platform-drop skip line and an optional per-line filter. */
+/* Original swept floor query and projection, over current native positions.
+ * ECB sampling/substeps and moving-line remap remain separate pending work. */
 static int LandBetweenColl(CollData* cd, HSD_GObj* owner, const Vec3* from, Vec3* to,
                            bool (*land)(Fighter_GObj*, int))
 {
     const M360MatchStage* st = M360_MatchStageData();
-    unsigned i;
-    int best = -1;
-    float bestY = -3.4e38f;
+    Vec3 contact;
+    int floor;
     if (cd->floor_skip >= 0 && (unsigned) cd->floor_skip < st->lineCount) {
         const M360StageLine* l = &st->lines[cd->floor_skip];
         const float lo = l->x0 < l->x1 ? l->x0 : l->x1;
@@ -1755,32 +1755,14 @@ static int LandBetweenColl(CollData* cd, HSD_GObj* owner, const Vec3* from, Vec3
         if (to->x < lo || to->x > hi || to->y < (l->y0 < l->y1 ? l->y0 : l->y1) - 12.0f)
             cd->floor_skip = -1;
     }
-    if (to->y > from->y)
+    if (!mpCheckFloor(from->x, from->y, to->x, to->y, 0.0f, &contact, &floor,
+                      NULL, NULL, cd->floor_skip, cd->joint_id_skip,
+                      cd->joint_id_only, land, owner))
         return 0;
-    for (i = 0; i < st->lineCount; ++i) {
-        const M360StageLine* l = &st->lines[i];
-        float lo, hi, t, ly;
-        if (!(l->kind & M360_LINE_FLOOR))
-            continue;
-        if ((int) i == cd->floor_skip)
-            continue;
-        lo = l->x0 < l->x1 ? l->x0 : l->x1;
-        hi = l->x0 < l->x1 ? l->x1 : l->x0;
-        if (to->x < lo || to->x > hi || hi - lo < 1e-4f)
-            continue;
-        t = (to->x - l->x0) / (l->x1 - l->x0);
-        ly = l->y0 + (l->y1 - l->y0) * t;
-        if (from->y >= ly - 0.01f && to->y <= ly && ly > bestY) {
-            if (land && (!owner || !land(owner, (int) i)))
-                continue;
-            bestY = ly;
-            best = (int) i;
-        }
-    }
-    if (best < 0)
-        return 0;
-    to->y = bestY;
-    SetFloorColl(cd, best);
+    SetFloorColl(cd, floor);
+    cd->cur_pos = *to;
+    mpColl_80044838_Floor(cd, false);
+    *to = cd->cur_pos;
     return 1;
 }
 
@@ -2445,19 +2427,6 @@ static bool RaycastKind(unsigned kindMask, float ax, float ay, float bx, float b
     if (normal_out)
         mpLineGetNormal(best, normal_out);
     return true;
-}
-
-bool mpCheckFloor(float ax, float ay, float bx, float by, float y_offset, Vec3* vec_out,
-                  int* line_id_out, u32* flags_out, Vec3* normal_out, int line_id_skip,
-                  int joint_id_skip, int joint_id_only, bool (*filter)(Fighter_GObj*, int),
-                  Fighter_GObj* gobj)
-{
-    bool hit;
-    hit = RaycastKind(M360_LINE_FLOOR, ax, ay + y_offset, bx, by + y_offset, vec_out, line_id_out,
-                      flags_out, normal_out, line_id_skip, joint_id_skip, joint_id_only, filter, gobj);
-    if (hit && vec_out)
-        vec_out->y -= y_offset;
-    return hit;
 }
 
 bool mpCheckCeiling(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,

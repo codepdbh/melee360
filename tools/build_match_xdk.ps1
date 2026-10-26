@@ -747,7 +747,7 @@ if ($CallTrace) {
 $units += New-Adapted 'melee/ft/ft_0899.c' $poseDiagnostics 'fighter_ground_pose'
 $units += New-Adapted 'melee/lb/lb_020A.c' $ikDiagnostics 'fighter_foot_ik'
 $units += New-Slice 'melee/ft/ftCo_800C7CA0.c' 'bool ftCo_800C7CA0(' @('bool ftCo_800C7CA0(', 'void fn_800C7DC4(', 'void ftCo_DownReflect_Anim(', 'void ftCo_DownReflect_IASA(', 'void ftCo_DownReflect_Phys(', 'void ftCo_DownReflect_Coll(') 'fighter_down_reflect'
-$units += New-Slice 'melee/mp/mpcoll.c' 'void mpColl_80041C78(' @('void mpColl_80041EE4(', 'void mpColl_SetECBSource_JObj(', 'void mpColl_SetECBSource_Fixed(', 'void mpColl_SetLedgeSnap(', 'void mpCopyCollData(', 'bool mpColl_8004A45C_Floor(', 'bool mpColl_8004A678_Floor(') 'collision_lifecycle'
+$units += New-Slice 'melee/mp/mpcoll.c' 'void mpColl_80041C78(' @('void mpColl_80041EE4(', 'void mpColl_SetECBSource_JObj(', 'void mpColl_SetECBSource_Fixed(', 'void mpColl_SetLedgeSnap(', 'void mpCopyCollData(', 'bool mpColl_8004A45C_Floor(', 'bool mpColl_8004A678_Floor(', 'bool mpColl_80044838_Floor(') 'collision_lifecycle'
 $units += New-Slice 'melee/ft/ftanim.c' 'void ftAnim_GetNextAnimJointInTree(' @('static void scale_inline(', 'void ftAnim_8006E054(') 'fighter_root_motion'
 $units += New-Slice 'melee/ft/ftparts.c' 'static inline FighterPartsTable* get_parts_tbl(' @('static inline FighterPartsTable* get_parts_tbl(', 'Fighter_Part ftParts_GetBoneIndex(', 'FighterBone* ftParts_GetBone(') 'fighter_bone_lookup'
 # XDK sinf/cosf macros expand to sin/cos; rename locals that shadow them.
@@ -790,13 +790,18 @@ extern HSD_JObj* M360_StagePointJoint(int slot);
 $units += @{ Path=$pointPath; Dir=(Join-Path $src 'melee/gr') }
 & python (Join-Path $PSScriptRoot 'generate_collision_projection.py') (Join-Path $out 'collision_projection.h')
 if ($LASTEXITCODE -ne 0) { throw 'Original collision projection generation failed.' }
+& python (Join-Path $PSScriptRoot 'generate_floor_query.py') (Join-Path $out 'collision_floor_query.h')
+if ($LASTEXITCODE -ne 0) { throw 'Original floor query generation failed.' }
 $projectionPath = Join-Path $out 'collision_projection.c'
 Set-Content -Encoding ASCII $projectionPath @'
 #include <melee/mp/mplib.h>
+#include <melee/mp/types.h>
 #include <melee/lb/types.h>
 #include <dolphin/mtx.h>
+#include <float.h>
 #include "match_xdk.h"
 #include "collision_projection.h"
+#include "collision_floor_query.h"
 '@
 $units += @{ Path=$projectionPath; Dir=$out }
 $modePath = Join-Path $out 'original_1p_mode.c'

@@ -13,8 +13,15 @@ def generate(output):
     source = (root / 'upstream/melee-pc/src/melee/mp/mplib.c').read_text(encoding='utf-8')
     parsed = functions(source)
     bodies = []
-    for name in NAMES:
+    for name in NAMES + ('mpLib_8004ED5C',):
         text = parsed[name][1]
+        if name == 'mpLib_8004ED5C':
+            text = text.replace('CollLine* line = mpLineGetCollLine(line_id);',
+                                'const M360StageLine* line = &M360_MatchStageData()->lines[line_id];')
+            for i in (0, 1):
+                text = text.replace(f'int i{i};', '').replace(f'i{i} = line->x0->v{i}_idx;', '')
+                for axis in ('x', 'y'):
+                    text = text.replace(f'groundCollVtx[i{i}].pos.{axis}', f'line->{axis}{i}')
         text = re.sub(r'LINEID_CHECK\(\d+, line_id\);',
                       'if (!mpLib_80054ED8(line_id)) return -1;', text)
         text = re.sub(r'CollLine\* (\w+) = &groundCollLine\[line_id\];',
@@ -31,6 +38,8 @@ def generate(output):
         if any(word in text for word in ('groundColl', 'LINEID_CHECK', 'CollLine*')):
             raise ValueError(f'Unadapted map access in {name}')
         bodies.append(text)
+    for name in ('mpLineIntersection', 'mpLineIntersectionH'):
+        bodies.append(parsed[name][1])
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text('/* Generated from pinned mplib.c; only map access is adapted. */\n' +
                       '\n\n'.join(bodies) + '\n', encoding='ascii')

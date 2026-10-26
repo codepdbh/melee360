@@ -18,8 +18,10 @@ void PSVECNormalize(const Vec3* in, Vec3* out) {
     *out={in->x/length,in->y/length,in->z/length};
 }
 #define LINEID_CHECK(n,i) assert(mpLib_80054ED8(i))
+#define SQ(x) ((x)*(x))
+#define ABS(x) ((x)<0?-(x):(x))
 #pragma warning(push)
-#pragma warning(disable:4244)
+#pragma warning(disable:4244 4701)
 #include "projection_reference.h"
 #include "collision_projection.h"
 #pragma warning(pop)
