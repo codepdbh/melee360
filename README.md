@@ -41,13 +41,21 @@ que antes se perdían. La comparación con el código original pasa 2.280.960
 consultas. Sigue pendiente el cálculo completo de contactos con la caja de
 colisión animada y plataformas móviles.
 
-Pasaron 34 pruebas acotadas en Xenia, incluyendo objetos en los 17 escenarios
+Ese primer build pasó 34 pruebas acotadas en Xenia, incluyendo objetos en los 17 escenarios
 de VS, personajes, transformaciones y cuatro encuentros de Classic/Adventure.
 Estas pruebas no verifican todavía una campaña completa ni una Xbox física.
 
 El XEX local de este avance es posterior al publicado en alpha.3.
 [Cambios, pruebas y límites](docs/VALIDATION_20261026.md) ·
 [Revisión del fork de origen](docs/UPSTREAM_AUDIT_20261026.md).
+
+Las consultas de techo y paredes también usan ya sus funciones originales,
+con 5.854.464 comparaciones aprobadas. Esto conserva la dirección de contacto
+y las tolerancias originales en sus llamadas; el solver aéreo completo de
+los personajes sigue pendiente.
+Este segundo build pasó 20 pruebas nuevas en Xenia, incluyendo personajes,
+transformaciones, objetos y encuentros de Classic/Adventure.
+[Detalle de esta integración](docs/VALIDATION_20261026_SURFACES.md).
 
 ### Correcciones anteriores — 23 de octubre
 

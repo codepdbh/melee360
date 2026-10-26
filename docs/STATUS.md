@@ -1,5 +1,29 @@
 # Development status
 
+## Original directional ceiling/wall queries — 2026-10-26
+
+The three original `mpCheckCeiling`/`mpCheckLeftWall`/`mpCheckRightWall`
+functions replace the shared symmetric raycaster. Directional tests,
+intersection tolerances, nearest selection and output metadata now come
+from pinned original source, with native map access and bounded ranges.
+All 5,854,464 host comparisons pass, including reverse-side crossings,
+slopes, groups and optional outputs. Existing floor, projection, surface,
+rules and lifecycle suites also pass.
+
+This replaces the query APIs, not the entire fighter contact pipeline.
+Native `AirWalls` and `AirCeilings` loops still need original ECB/contact
+integration. See [the separate build report](VALIDATION_20261026_SURFACES.md)
+for scope and evidence; earlier binaries below have their own test records.
+
+Clean build `b4e3c27` passes 20 fresh bounded Xenia checks: normal opening,
+teeter, items on Battlefield/Temple/Corneria and Off, seven roster batches,
+two transformations, life reset and four Classic/Adventure encounters.
+There are 17 random creations and none with Off. Gameplay decode/history
+errors are zero, and no case hits the watchdog. The normal XEX SHA-256 is
+`30E7D7AD08EE07469FA8E6C0951736F9C81D66314EED5838B1709C66211C78CB`.
+`build-x360/oct26-surfaces/validation-summary.json` verifies all identities
+and results. The published alpha.3 package is still its earlier binary.
+
 ## Original swept floor query and landing — 2026-10-26
 
 `mpCheckFloor` now comes from the original `mplib.c`, retaining directional
