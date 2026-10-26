@@ -42,6 +42,7 @@ enum { LINE_FLAG_EMPTY=1u<<7 };
 #pragma warning(disable:4101 4701)
 #include "collision_projection.h"
 #include "collision_floor_query.h"
+#include "collision_surface_queries.h"
 #pragma warning(pop)
 #pragma warning(pop)
 
@@ -132,12 +133,16 @@ int main()
     assert(mpCheckFloor(0,10,0,-10,0,&hit,&line,NULL,NULL,-1,0,-1,NULL,NULL) && line==1);
     assert(mpCheckFloor(0,10,0,-10,0,&hit,&line,NULL,NULL,-1,-1,0,NULL,NULL) && line==0);
     testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_CEILING;
+    testStage.lines[0]={10,5,-10,5,M360_LINE_CEILING};
+    groups[0].ceiling_start=0; groups[0].ceiling_count=1;
     assert(mpCheckCeiling(0,-10,0,10,&hit,&line,NULL,NULL,-1,0) && line==0);
     assert(!mpCheckCeiling(0,-10,0,10,&hit,&line,NULL,NULL,0,0));
     testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_LEFT_WALL;
-    assert(mpCheckLeftWall(0,10,0,-10,&hit,&line,NULL,NULL,-1,1) && line==1);
+    testStage.lines[1]={0,-10,0,10,M360_LINE_LEFT_WALL};
+    assert(mpCheckLeftWall(-10,0,10,0,&hit,&line,NULL,NULL,-1,1) && line==1);
     testStage.lines[0].kind = testStage.lines[1].kind = M360_LINE_RIGHT_WALL;
-    assert(mpCheckRightWall(0,10,0,-10,&hit,&line,NULL,NULL,0,-1) && line==1);
+    testStage.lines[1]={0,10,0,-10,M360_LINE_RIGHT_WALL};
+    assert(mpCheckRightWall(10,0,-10,0,&hit,&line,NULL,NULL,0,-1) && line==1);
     // Shared ranges retain a line if any non-excluded group owns it.
     groups[2].left_wall_start=0; groups[2].left_wall_count=1;
     assert(M360_MatchLineMatchesJoint(0,0,-1));

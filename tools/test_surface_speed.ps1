@@ -27,8 +27,7 @@ $extracted = (Get-Function $scene 'int M360_MatchLineMatchesJoint(') + "`r`n"
 $extracted += (Get-Function $scene 'int M360_MatchFloorLineBelow(') + "`r`n"
 foreach ($signature in @('bool mpLib_80054ED8(', 'static void mpRemap2d(', 'bool mpGetSpeed(',
     'bool mpCollGetSpeedFloor(', 'bool mpCollGetSpeedCeiling(', 'bool mpCollGetSpeedLeftWall(', 'bool mpCollGetSpeedRightWall(',
-    'bool mpCheckAllRemap(', 'bool mpCheckAll(', 'static bool RaycastKind(',
-    'bool mpCheckCeiling(', 'bool mpCheckLeftWall(', 'bool mpCheckRightWall(',
+    'bool mpCheckAllRemap(', 'bool mpCheckAll(',
     'int mpLib_8005199C_Floor(')) {
     $extracted += (Get-Function $source $signature) + "`r`n"
 }
@@ -42,6 +41,8 @@ Set-Content (Join-Path $out 'floor_below_reference.h') -Encoding ASCII $floorRef
 if($LASTEXITCODE -ne 0) { throw 'Projection generation failed.' }
 & python (Join-Path $PSScriptRoot 'generate_floor_query.py') (Join-Path $out 'collision_floor_query.h')
 if($LASTEXITCODE -ne 0) { throw 'Floor query generation failed.' }
+& python (Join-Path $PSScriptRoot 'generate_surface_queries.py') (Join-Path $out 'collision_surface_queries.h')
+if($LASTEXITCODE -ne 0) { throw 'Surface query generation failed.' }
 $batch = @"
 @echo off
 call "$vcvars" >nul 2>&1

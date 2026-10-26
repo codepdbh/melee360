@@ -2383,73 +2383,7 @@ void mpIsland_8005ACE8(mp_UnkStruct0* island, Vec3* left, Vec3* right)
         *right = island->x14;
 }
 
-/* Segment test against lines of one kind (mpCheckFloor & co). */
-static bool RaycastKind(unsigned kindMask, float ax, float ay, float bx, float by, Vec3* pos_out,
-                        int* line_id_out, u32* flags_out, Vec3* normal_out, int line_skip,
-                        int joint_id_skip, int joint_id_only,
-                        bool (*filter)(Fighter_GObj*, int), Fighter_GObj* gobj)
-{
-    const M360MatchStage* st = M360_MatchStageData();
-    const float dx = bx - ax, dy = by - ay;
-    float bestT = 2.0f;
-    int best = -1;
-    unsigned i;
-    for (i = 0; i < st->lineCount; ++i) {
-        const M360StageLine* l = &st->lines[i];
-        const float ex = l->x1 - l->x0, ey = l->y1 - l->y0;
-        const float den = dx * ey - dy * ex;
-        float t, u;
-        if (!(l->kind & kindMask) || (int) i == line_skip ||
-            !M360_MatchLineMatchesJoint((int) i, joint_id_skip, joint_id_only))
-            continue;
-        if (den > -1e-6f && den < 1e-6f)
-            continue;
-        t = ((l->x0 - ax) * ey - (l->y0 - ay) * ex) / den;
-        u = ((l->x0 - ax) * dy - (l->y0 - ay) * dx) / den;
-        if (t < 0.0f || t > 1.0f || u < 0.0f || u > 1.0f || t >= bestT)
-            continue;
-        if (filter && gobj && !filter(gobj, (int) i))
-            continue;
-        bestT = t;
-        best = (int) i;
-    }
-    if (best < 0)
-        return false;
-    if (pos_out) {
-        pos_out->x = ax + dx * bestT;
-        pos_out->y = ay + dy * bestT;
-        pos_out->z = 0.0f;
-    }
-    if (line_id_out)
-        *line_id_out = best;
-    if (flags_out)
-        *flags_out = st->lines[best].flags;
-    if (normal_out)
-        mpLineGetNormal(best, normal_out);
-    return true;
-}
-
-bool mpCheckCeiling(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
-                    u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
-{
-    return RaycastKind(M360_LINE_CEILING, ax, ay, bx, by, vec_out, line_id_out, flags_out,
-                       normal_out, -1, joint_id_skip, joint_id_only, NULL, NULL);
-}
-
-bool mpCheckLeftWall(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
-                     u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
-{
-    return RaycastKind(M360_LINE_LEFT_WALL, ax, ay, bx, by, vec_out, line_id_out, flags_out,
-                       normal_out, -1, joint_id_skip, joint_id_only, NULL, NULL);
-}
-
-bool mpCheckRightWall(float ax, float ay, float bx, float by, Vec3* vec_out, int* line_id_out,
-                      u32* flags_out, Vec3* normal_out, int joint_id_skip, int joint_id_only)
-{
-    return RaycastKind(M360_LINE_RIGHT_WALL, ax, ay, bx, by, vec_out, line_id_out, flags_out,
-                       normal_out, -1, joint_id_skip, joint_id_only, NULL, NULL);
-}
-
+/* Directional floor/ceiling/wall queries are generated from original mplib.c. */
 bool mpCheckAll(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* normal_out,
                 int joint_id_skip, int joint_id_only, float x0, float y0, float x1, float y1)
 {

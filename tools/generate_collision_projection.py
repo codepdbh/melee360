@@ -38,7 +38,7 @@ def generate(output):
         if any(word in text for word in ('groundColl', 'LINEID_CHECK', 'CollLine*')):
             raise ValueError(f'Unadapted map access in {name}')
         bodies.append(text)
-    for name in ('mpLineIntersection', 'mpLineIntersectionH'):
+    for name in ('mpLineIntersection', 'mpLineIntersectionH', 'mpLineIntersectionV'):
         bodies.append(parsed[name][1])
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text('/* Generated from pinned mplib.c; only map access is adapted. */\n' +

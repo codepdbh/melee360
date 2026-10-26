@@ -792,6 +792,8 @@ $units += @{ Path=$pointPath; Dir=(Join-Path $src 'melee/gr') }
 if ($LASTEXITCODE -ne 0) { throw 'Original collision projection generation failed.' }
 & python (Join-Path $PSScriptRoot 'generate_floor_query.py') (Join-Path $out 'collision_floor_query.h')
 if ($LASTEXITCODE -ne 0) { throw 'Original floor query generation failed.' }
+& python (Join-Path $PSScriptRoot 'generate_surface_queries.py') (Join-Path $out 'collision_surface_queries.h')
+if ($LASTEXITCODE -ne 0) { throw 'Original ceiling/wall query generation failed.' }
 $projectionPath = Join-Path $out 'collision_projection.c'
 Set-Content -Encoding ASCII $projectionPath @'
 #include <melee/mp/mplib.h>
@@ -802,6 +804,7 @@ Set-Content -Encoding ASCII $projectionPath @'
 #include "match_xdk.h"
 #include "collision_projection.h"
 #include "collision_floor_query.h"
+#include "collision_surface_queries.h"
 '@
 $units += @{ Path=$projectionPath; Dir=$out }
 $modePath = Join-Path $out 'original_1p_mode.c'
