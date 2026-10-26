@@ -1,5 +1,34 @@
 # Development status
 
+## Original swept floor query and landing — 2026-10-26
+
+`mpCheckFloor` now comes from the original `mplib.c`, retaining directional
+crossing, nearest-contact selection, callbacks, filters, offsets and surface
+metadata. Native map access replaces the linked collision cache. Landing
+uses that swept query and original `mpColl_80044838_Floor` projection instead
+of an endpoint-only height comparison. Two regressions cover false landings
+from below a descending slope and missed genuine diagonal crossings.
+
+Host tests pass 2,280,960 floor-query comparisons, 88,416 projections and
+47,840 floor-below queries against the actual original functions. Native
+ground/edge adapters, surface filtering, match rules and collision lifecycle
+also pass. Full animated ECB sampling, moving-line remapping and the remaining
+airborne contact pipeline still need integration.
+
+The clean normal build is from `77df962`; identities and validation coverage
+are recorded in [the October 26 report](VALIDATION_20261026.md). The published
+alpha.3 package remains at its earlier build. A fresh
+[upstream review](UPSTREAM_AUDIT_20261026.md) records 21 newer commits since
+the October 19 review; the compiled base remains pinned and unchanged.
+
+All 34 fresh bounded native checks pass: normal opening, teeter, random
+items on all 17 supported VS stages, items Off, seven roster batches, two
+transformations, life reset and four Classic/Adventure encounters. There
+are 88 random creations across the stages and none with Off. All gameplay
+checks have zero decode/history errors and no watchdog. The opening has
+zero movie/history errors and no scripted input. Exact binary/map pairing
+is verified in `build-x360/oct26-floor-query/validation-summary.json`.
+
 ## Published alpha.3 — 2026-10-23
 
 GitHub publishes `v0.1.0-alpha.3`, targeting clean build commit `1f60296`.

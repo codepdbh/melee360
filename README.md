@@ -33,7 +33,23 @@ Adventure todavía necesita la carrera y escalada originales, peligros del
 laberinto y transiciones. No presentamos los combates provisionales como
 el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
-### Correcciones recientes en main — 23 de octubre
+### Desarrollo posterior a alpha.3 — 26 de octubre
+
+El aterrizaje usa ahora la consulta original de cruce de suelo y su proyección
+final. Corrige contactos falsos desde debajo de pendientes y cruces diagonales
+que antes se perdían. La comparación con el código original pasa 2.280.960
+consultas. Sigue pendiente el cálculo completo de contactos con la caja de
+colisión animada y plataformas móviles.
+
+Pasaron 34 pruebas acotadas en Xenia, incluyendo objetos en los 17 escenarios
+de VS, personajes, transformaciones y cuatro encuentros de Classic/Adventure.
+Estas pruebas no verifican todavía una campaña completa ni una Xbox física.
+
+El XEX local de este avance es posterior al publicado en alpha.3.
+[Cambios, pruebas y límites](docs/VALIDATION_20261026.md) ·
+[Revisión del fork de origen](docs/UPSTREAM_AUDIT_20261026.md).
+
+### Correcciones anteriores — 23 de octubre
 
 La parada en los bordes y el equilibrio (Ottotto) usan ahora las funciones
 originales, con sus comprobaciones de pared, desplazamiento de la caja de
