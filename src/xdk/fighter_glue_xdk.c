@@ -1809,30 +1809,30 @@ static void AirWalls(Fighter* fp)
     }
 }
 
-/* ft_80081B38 supplies these six authored ECB bones to mpColl_LoadECB_JObj.
- * Camera framing bounds are unrelated to the fighter's collision height. */
+/* Sample the original animated ECB without changing the live collision state:
+ * the remaining native solver still owns its previous/current ECB buffers. */
 static float FighterCollisionTop(Fighter* fp)
 {
-    const ftData_x44_t* source = fp->ft_data ? DP(ftData_x44_t, fp->ft_data->x44) : NULL;
-    M360Fighter* owner = fp->gobj ? Owner(fp->gobj) : NULL;
-    float top = 0.0f;
-    Vec3 origin, point;
-    s16 indices[6];
+    CollData sample = fp->coll_data;
+    Vec3 origin;
+    Vec2 savedBottom;
     unsigned i;
-    if (!source || !owner || !fp->parts || !fp->parts[0].joint)
+    if (sample.ecb_source.kind != ECBSource_JObj || !sample.ecb_source.x108_joint)
         return 12.0f * fp->x34_scale.y;
-    indices[0] = source->unk0; indices[1] = source->unk2;
-    indices[2] = source->unk4; indices[3] = source->unk6;
-    indices[4] = source->unk8; indices[5] = source->unkA;
-    lb_8000B1CC(fp->parts[0].joint, NULL, &origin);
-    for (i = 0; i < 6; ++i) {
-        int index = indices[i];
-        if (index < 0 || (unsigned) index >= owner->partCount || !fp->parts[index].joint)
-            continue;
-        lb_8000B1CC(fp->parts[index].joint, NULL, &point);
-        if (point.y - origin.y > top) top = point.y - origin.y;
-    }
-    return top > 0.0f ? top + 2.0f : 12.0f * fp->x34_scale.y;
+    for (i = 0; i < 6; ++i)
+        if (!sample.ecb_source.x10C_joint[i])
+            return 12.0f * fp->x34_scale.y;
+    /* The root transform is committed after collision in this port. Use its
+     * position as the joint-space origin, so movement this frame is not
+     * accidentally subtracted from the sampled bone heights. */
+    lb_8000B1CC(sample.ecb_source.x108_joint, NULL, &origin);
+    sample.cur_pos = origin;
+    savedBottom = sample.desired_ecb.bottom;
+    mpColl_LoadECB_JObj(&sample, 6);
+    if (sample.x130_flags & CollData_X130_Locked)
+        sample.desired_ecb.bottom = savedBottom;
+    mpColl_80042384(&sample);
+    return sample.desired_ecb.top.y;
 }
 
 static void AirCeilings(Fighter* fp)
