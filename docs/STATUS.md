@@ -1,5 +1,18 @@
 # Development status
 
+## Fighter ceiling ECB and air-surface filters — 2026-11-05
+
+Ceiling height now samples the six original animated collision bones using
+`mpColl_LoadECB_JObj` and `mpColl_80042384`, in temporary data. The native air
+wall/ceiling loops now honor joint skip/only filters and reject empty lines.
+Host checks cover animated height, native ceiling contact, filters and live
+state preservation. Full original ECB substeps and air response remain open.
+
+Source `059b8cd` passed 19 bounded Xenia checks. The later build from
+`e43d908`, which also includes the filters, passed seven separately paired
+checks. See [the November 5 report](VALIDATION_20261105.md) for exact hashes,
+coverage and the pre-existing workspace deletion recorded by both builds.
+
 ## Original directional ceiling/wall queries — 2026-10-26
 
 The three original `mpCheckCeiling`/`mpCheckLeftWall`/`mpCheckRightWall`

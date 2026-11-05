@@ -33,7 +33,16 @@ Adventure todavía necesita la carrera y escalada originales, peligros del
 laberinto y transiciones. No presentamos los combates provisionales como
 el modo original completo. Consulta el [informe de pendientes](docs/PLAYABLE_PORT_GAPS.md).
 
-### Desarrollo posterior a alpha.3 — 26 de octubre
+### Desarrollo posterior a alpha.3 — 5 de noviembre
+
+Los contactos con techo calculan la altura a partir de los seis huesos de
+colisión originales y su animación. Las comprobaciones aéreas de paredes y
+techos respetan ahora los grupos excluidos y las líneas vacías. Las pruebas
+acotadas en Xenia pasaron para ambas compilaciones; la respuesta aérea
+completa y las campañas originales siguen en desarrollo.
+[Cambios y pruebas del 5 de noviembre](docs/VALIDATION_20261105.md).
+
+### Correcciones anteriores — 26 de octubre
 
 El aterrizaje usa ahora la consulta original de cruce de suelo y su proyección
 final. Corrige contactos falsos desde debajo de pendientes y cruces diagonales
