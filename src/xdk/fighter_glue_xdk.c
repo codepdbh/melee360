@@ -1791,7 +1791,10 @@ static void AirWalls(Fighter* fp)
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
         float lo, hi, t, lx;
-        if (!(l->kind & (M360_LINE_LEFT_WALL | M360_LINE_RIGHT_WALL)))
+        if (!(l->kind & (M360_LINE_LEFT_WALL | M360_LINE_RIGHT_WALL)) ||
+            (l->kind & LINE_FLAG_EMPTY) ||
+            !M360_MatchLineMatchesJoint((int) i, fp->coll_data.joint_id_skip,
+                                       fp->coll_data.joint_id_only))
             continue;
         lo = l->y0 < l->y1 ? l->y0 : l->y1;
         hi = l->y0 < l->y1 ? l->y1 : l->y0;
@@ -1845,7 +1848,9 @@ static void AirCeilings(Fighter* fp)
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
         float lo, hi, t, lx, ly;
-        if (!(l->kind & M360_LINE_CEILING))
+        if (!(l->kind & M360_LINE_CEILING) || (l->kind & LINE_FLAG_EMPTY) ||
+            !M360_MatchLineMatchesJoint((int) i, fp->coll_data.joint_id_skip,
+                                       fp->coll_data.joint_id_only))
             continue;
         lo = l->x0 < l->x1 ? l->x0 : l->x1;
         hi = l->x0 < l->x1 ? l->x1 : l->x0;

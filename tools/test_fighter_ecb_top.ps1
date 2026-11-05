@@ -13,7 +13,7 @@ src=functions(Path('upstream/melee-pc/src/melee/mp/mpcoll.c').read_text(encoding
 names=('clamp_above','clamp_below','mpColl_80042384','update_min_max','mpColl_LoadECB_JObj')
 out=Path(sys.argv[1]);out.write_text('\n'.join(src[n][1] for n in names),encoding='ascii')
 native=functions(Path('src/xdk/fighter_glue_xdk.c').read_text(encoding='utf-8'))
-out.with_name('fighter_ecb_native.h').write_text(native['FighterCollisionTop'][1],encoding='ascii')
+out.with_name('fighter_ecb_native.h').write_text(native['FighterCollisionTop'][1]+'\n'+native['AirCeilings'][1]+'\n'+native['AirWalls'][1],encoding='ascii')
 '@
 Push-Location $root
 try { $generator | python - (Join-Path $out 'fighter_ecb_original.h') } finally { Pop-Location }
@@ -26,7 +26,7 @@ $batch=@"
 @echo off
 call "$vcvars" >nul 2>&1
 if errorlevel 1 exit /b 1
-cl /nologo /MT /O2 /EHsc /std:c++17 /W4 /WX /I"$out" /Fo"$out\test.obj" /Fe"$out\test.exe" "$root\tests\host\test_fighter_ecb_top.cpp"
+cl /nologo /MT /O2 /EHsc /std:c++17 /W4 /WX /I"$out" /I"$root\src\xdk" /Fo"$out\test.obj" /Fe"$out\test.exe" "$root\tests\host\test_fighter_ecb_top.cpp"
 if errorlevel 1 exit /b 1
 "$out\test.exe"
 exit /b %errorlevel%
