@@ -115,6 +115,9 @@ int main()
     assert(mpCheckAllRemap(&hit, &line, &flags, &normal, -1, -1, 0, 10, 0, -10));
     assert(line == 1); Near(hit.y, 0); Near(normal.y, 1);
     testStage.lines[0].kind = M360_LINE_FLOOR | LINE_FLAG_EMPTY;
+    float floorY = -1;
+    assert(FloorAt(0, 10, -10, 1, &floorY, &line));
+    assert(line == 1); Near(floorY, 0);
     assert(mpCheckAll(&hit, &line, NULL, NULL, -1, -1, 0, 10, 0, -10));
     assert(line == 1); Near(hit.y, 0);
     testStage.lines[0].kind = M360_LINE_FLOOR;

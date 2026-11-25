@@ -27,7 +27,7 @@ $extracted = (Get-Function $scene 'int M360_MatchLineMatchesJoint(') + "`r`n"
 $extracted += (Get-Function $scene 'int M360_MatchFloorLineBelow(') + "`r`n"
 foreach ($signature in @('bool mpLib_80054ED8(', 'static void mpRemap2d(', 'bool mpGetSpeed(',
     'bool mpCollGetSpeedFloor(', 'bool mpCollGetSpeedCeiling(', 'bool mpCollGetSpeedLeftWall(', 'bool mpCollGetSpeedRightWall(',
-    'bool mpCheckAllRemap(', 'bool mpCheckAll(',
+    'bool mpCheckAllRemap(', 'bool mpCheckAll(', 'static int FloorAt(',
     'int mpLib_8005199C_Floor(')) {
     $extracted += (Get-Function $source $signature) + "`r`n"
 }

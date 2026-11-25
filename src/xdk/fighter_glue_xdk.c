@@ -1546,7 +1546,7 @@ static int FloorAt(float x, float yTop, float yBottom, int allowPlatform, float*
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
         float lo, hi, t, ly;
-        if (!(l->kind & M360_LINE_FLOOR))
+        if (!(l->kind & M360_LINE_FLOOR) || (l->kind & LINE_FLAG_EMPTY))
             continue;
         if (!allowPlatform && (l->flags & M360_LINE_PLATFORM))
             continue;
@@ -1898,7 +1898,10 @@ static int FindLedge(Fighter* fp, int left, int* ledge)
     for (i = 0; i < st->lineCount; ++i) {
         const M360StageLine* l = &st->lines[i];
         float ex, ey;
-        if (!(l->kind & M360_LINE_FLOOR) || !(l->flags & LINE_FLAG_LEDGE) || (int) i == fp->coll_data.floor_skip)
+        if (!(l->kind & M360_LINE_FLOOR) || (l->kind & LINE_FLAG_EMPTY) ||
+            !(l->flags & LINE_FLAG_LEDGE) || (int) i == fp->coll_data.floor_skip ||
+            !M360_MatchLineMatchesJoint((int) i, fp->coll_data.joint_id_skip,
+                                       fp->coll_data.joint_id_only))
             continue;
         if (left == (l->x0 < l->x1)) {
             ex = l->x0; ey = l->y0;
