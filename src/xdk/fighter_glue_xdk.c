@@ -2908,7 +2908,8 @@ bool mpCheckAllRemap(Vec3* pos_out, int* line_id_out, u32* flags_out, Vec3* norm
         float t, u;
         /* Hidden/disabled groups retain coordinates for later reactivation.
          * They must not participate in the all-surface query either. */
-        if (!l->kind || !M360_MatchLineMatchesJoint((int) i, joint_id_skip, joint_id_only))
+        if (!l->kind || (l->kind & LINE_FLAG_EMPTY) ||
+            !M360_MatchLineMatchesJoint((int) i, joint_id_skip, joint_id_only))
             continue;
         if (den > -1e-6f && den < 1e-6f)
             continue;

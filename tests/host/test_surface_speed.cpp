@@ -32,12 +32,12 @@ struct CollData {
 static M360MatchStage testStage;
 #define s_stage testStage
 const M360MatchStage* M360_MatchStageData() { return &testStage; }
+enum { LINE_FLAG_EMPTY=1u<<7 };
 #pragma warning(push)
 #pragma warning(disable: 4244)
 #include "surface_speed_original.h"
 #include "surface_remap_reference.h"
 #define SQ(x) ((x)*(x))
-enum { LINE_FLAG_EMPTY=1u<<7 };
 #pragma warning(push)
 #pragma warning(disable:4101 4701)
 #include "collision_projection.h"
@@ -114,6 +114,9 @@ int main()
     u32 flags = 0;
     assert(mpCheckAllRemap(&hit, &line, &flags, &normal, -1, -1, 0, 10, 0, -10));
     assert(line == 1); Near(hit.y, 0); Near(normal.y, 1);
+    testStage.lines[0].kind = M360_LINE_FLOOR | LINE_FLAG_EMPTY;
+    assert(mpCheckAll(&hit, &line, NULL, NULL, -1, -1, 0, 10, 0, -10));
+    assert(line == 1); Near(hit.y, 0);
     testStage.lines[0].kind = M360_LINE_FLOOR;
     assert(mpCheckAll(&hit, &line, NULL, NULL, -1, -1, 0, 10, 0, -10));
     assert(line == 0); Near(hit.y, 5);
@@ -156,6 +159,9 @@ int main()
     testStage.lines[1] = {-10,5,10,5,M360_LINE_FLOOR};
     Vec3 probe={0,10,73};
     assert(mpLib_8005199C_Floor(&probe,-1,-1)==0); // First, not highest.
+    testStage.lines[0].kind |= LINE_FLAG_EMPTY;
+    assert(mpLib_8005199C_Floor(&probe,-1,-1)==1);
+    testStage.lines[0].kind = M360_LINE_FLOOR;
     assert(mpLib_8005199C_Floor(&probe,0,-1)==1);
     assert(mpLib_8005199C_Floor(&probe,-1,1)==1);
     assert(mpLib_8005199C_Floor(&probe,1,1)==-1);

@@ -2081,7 +2081,8 @@ int M360_MatchFloorLineBelow(float x, float y, int skip, int only)
                 float dx;
                 if (index < 0 || (unsigned) index >= s_stage.lineCount) continue;
                 line = &s_stage.lines[index];
-                if (!(line->kind & M360_LINE_FLOOR) || x < line->x0 || x > line->x1) continue;
+                if (!(line->kind & M360_LINE_FLOOR) || (line->kind & LINE_FLAG_EMPTY) ||
+                    x < line->x0 || x > line->x1) continue;
                 if (y >= line->y0 && y >= line->y1) return index;
                 dx = line->x1 - line->x0;
                 if (fabsf(dx) > 0.0001f &&
