@@ -10,7 +10,7 @@ struct Vec3 { float x,y,z; };
 struct HSD_JObj { Vec3 world; };
 struct ftECB { Vec2 top,bottom,right,left; };
 enum { ECBSource_JObj=1, CollData_X130_Locked=16, CollData_X130_Clear=32,
-       CollisionFlagAir_CanGrabLedge=4, LINE_FLAG_EMPTY=128 };
+       CollisionFlagAir_CanGrabLedge=4, LINE_FLAG_EMPTY=128, LINE_FLAG_LEDGE=M360_LINE_LEDGE };
 struct ECBSource {
     int kind; HSD_JObj* x108_joint; HSD_JObj* x10C_joint[6];
     float x124,x128,x12C;
@@ -19,10 +19,12 @@ struct CollData {
     Vec3 cur_pos; unsigned x130_flags;
     struct { unsigned b0:1; } x34_flags;
     ftECB ecb,xE4_ecb,desired_ecb; ECBSource ecb_source;
-    int joint_id_skip,joint_id_only;
+    int joint_id_skip,joint_id_only,floor_skip;
     struct { s16 index; } ceiling;
 };
-struct Fighter { CollData coll_data; Vec3 x34_scale,prev_pos,cur_pos,self_vel,x8c_kb_vel; };
+struct ftData_x44_t { float ledge_snap_x,ledge_snap_y,ledge_snap_height; };
+struct FighterData { ftData_x44_t* x44; };
+struct Fighter { CollData coll_data; Vec3 x34_scale,prev_pos,cur_pos,self_vel,x8c_kb_vel; FighterData* ft_data; };
 static M360MatchStage stage;
 const M360MatchStage* M360_MatchStageData() { return &stage; }
 int M360_MatchLineMatchesJoint(int, int skip, int only) {
@@ -30,6 +32,7 @@ int M360_MatchLineMatchesJoint(int, int skip, int only) {
 }
 void lb_8000B1CC(HSD_JObj* joint, void*, Vec3* pos) { *pos=joint->world; }
 #define ABS(x) ((x)<0?-(x):(x))
+#define DP(type, value) ((type*)(value))
 #pragma warning(push)
 #pragma warning(disable:4101)
 #include "fighter_ecb_original.h"
@@ -94,4 +97,19 @@ int main() {
     puts("PASS: original six-bone ECB top tracks animation, root translation and locked bottom without changing live collision state");
     puts("PASS: native ceiling contact uses the sampled animated height and preserves velocity when no contact occurs");
     puts("PASS: native air walls and ceilings reject empty lines and respect joint skip/only filters");
+    ftData_x44_t snap={8,0,8};
+    FighterData data={&snap};
+    fp.ft_data=&data;
+    fp.prev_pos={-3,-1,0};fp.cur_pos={-2,-2,0};fp.coll_data.floor_skip=-1;
+    stage.lines[0]={0,0,20,0,M360_LINE_FLOOR,LINE_FLAG_LEDGE};
+    int ledge=-1;
+    assert(FindLedge(&fp,1,&ledge) && ledge==0);
+    stage.lines[0].kind |= LINE_FLAG_EMPTY;
+    assert(!FindLedge(&fp,1,&ledge));
+    stage.lines[0].kind = M360_LINE_FLOOR;
+    fp.coll_data.joint_id_skip=0;
+    assert(!FindLedge(&fp,1,&ledge));
+    fp.coll_data.joint_id_skip=-1;fp.coll_data.joint_id_only=1;
+    assert(!FindLedge(&fp,1,&ledge));
+    puts("PASS: ledge selection rejects empty and excluded floors");
 }
