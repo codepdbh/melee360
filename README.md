@@ -172,7 +172,7 @@ no una garantía de 60 FPS ni una prueba visual de paridad o de consola.
 
 ### Descarga y copia
 
-1. Descarga **[MELEE360-v0.1.0-alpha.3-xbox360.zip](https://github.com/codepdbh/melee360/releases/download/v0.1.0-alpha.3/MELEE360-v0.1.0-alpha.3-xbox360.zip)**
+1. Descarga **[MELEE360-v0.1.0-alpha.4-xbox360.zip](https://github.com/codepdbh/melee360/releases/download/v0.1.0-alpha.4/MELEE360-v0.1.0-alpha.4-xbox360.zip)**
    desde la prerelease publicada. Si compilas desde `main`, usa el nuevo
    `dist/default.xex` con sus assets.
    Para alpha.1 sigue su [guía de instalación y controles](https://github.com/codepdbh/melee360/blob/v0.1.0-alpha.1/docs/INSTALAR_XBOX360.md).
