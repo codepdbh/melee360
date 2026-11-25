@@ -2,6 +2,7 @@
 param(
     [string] $XeniaPath = '',
     [string] $XexPath = '',
+    [string] $IsoPath = '',
     [switch] $DisableKeyboard,
     [switch] $Mute
 )
@@ -15,11 +16,29 @@ if (-not $XexPath) {
     $XexPath = Join-Path $root 'dist\default.xex'
 }
 
-if (-not (Test-Path -LiteralPath $XeniaPath)) {
+if (-not (Test-Path -LiteralPath $XeniaPath -PathType Leaf)) {
     throw "Xenia Canary was not found: $XeniaPath"
 }
-if (-not (Test-Path -LiteralPath $XexPath)) {
+if (-not (Test-Path -LiteralPath $XexPath -PathType Leaf)) {
     throw "Build the XEX first with tools/build_xex.ps1: $XexPath"
+}
+
+$XeniaPath = (Resolve-Path -LiteralPath $XeniaPath).ProviderPath
+$XexPath = (Resolve-Path -LiteralPath $XexPath).ProviderPath
+$gameDirectory = Split-Path -Parent $XexPath
+$localIso = Join-Path $gameDirectory 'melee.iso'
+if ($IsoPath) {
+    if (Test-Path -LiteralPath $localIso) {
+        throw "A melee.iso already exists beside the XEX. Launch without -IsoPath to use it: $localIso"
+    }
+    if (-not (Test-Path -LiteralPath $IsoPath -PathType Leaf)) {
+        throw "ISO file not found: $IsoPath"
+    }
+    $sourceIso = (Resolve-Path -LiteralPath $IsoPath).ProviderPath
+    New-Item -ItemType HardLink -Path $localIso -Target $sourceIso | Out-Null
+    Write-Host "[M360][XENIA] linked ISO as $localIso"
+} elseif (-not (Test-Path -LiteralPath $localIso -PathType Leaf)) {
+    throw "Place melee.iso beside the XEX, or specify -IsoPath to link a local ISO on the same volume: $localIso"
 }
 
 $xeniaDirectory = Split-Path -Parent $XeniaPath
@@ -57,4 +76,4 @@ if (-not $DisableKeyboard -and (Test-Path -LiteralPath $xeniaConfig)) {
 Write-Host "[M360][XENIA] emulator: $XeniaPath"
 Write-Host "[M360][XENIA] executable: $XexPath"
 Write-Host "[M360][XENIA] audio enabled: $(-not $Mute.IsPresent)"
-Start-Process -FilePath $XeniaPath -ArgumentList @('--allow_game_relative_writes=true', '--apu=xaudio2', "--mute=$($Mute.IsPresent.ToString().ToLowerInvariant())", "`"$XexPath`"")
+Start-Process -FilePath $XeniaPath -WorkingDirectory $xeniaDirectory -ArgumentList @('--allow_game_relative_writes=true', '--apu=xaudio2', "--mute=$($Mute.IsPresent.ToString().ToLowerInvariant())", "`"$XexPath`"")

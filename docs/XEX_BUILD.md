@@ -100,6 +100,10 @@ Run it with a local Xenia Canary build:
 ./tools/run_xenia.ps1 -XeniaPath C:\path\to\xenia_canary.exe
 ```
 
+The launcher expects `melee.iso` next to the XEX. For a separate local ISO
+on the same volume, pass `-IsoPath`. The launcher creates a hard link and
+keeps any existing `melee.iso` in place.
+
 The launcher enables Xenia's keyboard-as-controller mode and applies these
 bindings:
 
