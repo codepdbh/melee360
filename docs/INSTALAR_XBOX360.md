@@ -1,6 +1,6 @@
 # Instalar y jugar MELEE360 en Xbox 360
 
-Version experimental `v0.1.0-alpha.3`. Probada mediante trazas de Xenia;
+Version experimental `v0.1.0-alpha.4`. Probada mediante trazas de Xenia;
 la ejecucion en Xbox 360 fisica todavia no esta verificada.
 Classic y Adventure siguen incompletos.
 
@@ -17,7 +17,7 @@ Classic y Adventure siguen incompletos.
 ## Copiar y abrir
 
 1. En https://github.com/codepdbh/melee360/releases descarga el asset
-   `MELEE360-v0.1.0-alpha.3-xbox360.zip`. Los botones **Source code**
+   `MELEE360-v0.1.0-alpha.4-xbox360.zip`. Los botones **Source code**
    descargan el codigo, no el juego ejecutable.
 2. Extrae el ZIP. Copia tu ISO a la carpeta `MELEE360` y llamala
    exactamente `melee.iso`; activa las extensiones en Windows para evitar

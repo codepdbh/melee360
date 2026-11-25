@@ -10,10 +10,11 @@ es conservar el comportamiento y los recursos originales del juego.
 
 ## Estado de esta versión
 
-La última prerelease publicada es **[v0.1.0-alpha.3](https://github.com/codepdbh/melee360/releases/tag/v0.1.0-alpha.3)**.
-Es experimental e incluye las correcciones de objetos, presentación panorámica,
-suelo y bordes posteriores a alpha.2. [Cambios y límites de alpha.3](docs/RELEASE_ALPHA3.md).
-[Paquete publicado y validación de alpha.3](docs/ALPHA3_VALIDATION.md).
+**[Descargar v0.1.0-alpha.4](https://github.com/codepdbh/melee360/releases/tag/v0.1.0-alpha.4)** ·
+[Guía de instalación en Xbox 360](docs/INSTALAR_XBOX360.md).
+Esta prerelease experimental incluye consultas direccionales de superficies,
+mejoras de aterrizaje, altura de colisión según la animación y filtros para
+ignorar líneas vacías al buscar suelo o agarrar un borde.
 Hay pruebas automatizadas de ejecución
 en Xenia Canary; todavía no se ha validado esta versión en una Xbox 360 física.
 El proyecto no incluye la ISO ni recursos extraídos del disco.
